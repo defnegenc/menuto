@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   },
   emptyStateTitle: {
     fontSize: theme.typography.sizes.xxl,
-    fontWeight: theme.typography.weights.bold,
+    fontWeight: 600,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.md,
   },
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
   addFirstButtonText: {
     color: theme.colors.text.light,
     fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.semibold,
+    fontWeight: 400,
   },
   addTestButton: {
     backgroundColor: theme.colors.primary,
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   addTestButtonText: {
     color: theme.colors.text.light,
     fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.semibold,
+    fontWeight: 400,
   },
   restaurantList: {
     paddingHorizontal: theme.spacing.xl,
@@ -263,14 +263,14 @@ const styles = StyleSheet.create({
   },
   restaurantName: {
     fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.weights.bold,
+    fontWeight: 600,
     color: theme.colors.text.primary,
   },
   cuisineType: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.tertiary,
     textTransform: 'capitalize',
-    fontWeight: theme.typography.weights.medium,
+    fontWeight: 300,
   },
   vicinity: {
     fontSize: theme.typography.sizes.md,
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
   },
   favoriteDishesTitle: {
     fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.weights.semibold,
+    fontWeight: 400,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.sm,
   },
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   dishChipText: {
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.secondary,
-    fontWeight: theme.typography.weights.medium,
+    fontWeight: 300,
   },
   actionButtons: {
     flexDirection: 'row',
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   addDishButtonText: {
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.tertiary,
-    fontWeight: theme.typography.weights.medium,
+    fontWeight: 300,
   },
   removeButton: {
     padding: theme.spacing.lg,
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   removeButtonText: {
     fontSize: theme.typography.sizes.xxl,
     color: theme.colors.error,
-    fontWeight: theme.typography.weights.bold,
+    fontWeight: 600,
   },
   addMoreButton: {
     backgroundColor: theme.colors.surface,
@@ -350,6 +350,6 @@ const styles = StyleSheet.create({
   addMoreButtonText: {
     color: theme.colors.primary,
     fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.semibold,
+    fontWeight: 400,
   },
 });

@@ -4,9 +4,10 @@ from typing import List, Dict, Optional
 import logging
 import json
 from datetime import datetime
-from sqlalchemy.orm import Session
-from ..database import get_db
-from ..models import ParsedMenu, ParsedDish, User
+# from sqlalchemy.orm import Session
+# from ..database import get_db
+from ..database_supabase import db as supabase_db
+# from ..models import ParsedMenu, ParsedDish, User
 from ..services.llm_menu_parser import parse_menu_with_llm
 from ..services.screenshot_menu_parser import ScreenshotMenuParser
 from pydantic import BaseModel
@@ -26,43 +27,29 @@ class DishCreate(BaseModel):
 async def parse_and_store_menu(
     menu_url: str = Form(..., description="URL of the menu to parse"),
     restaurant_name: str = Form(..., description="Name of the restaurant"),
-    restaurant_url: str = Form("", description="Restaurant website URL"),
-    db: Session = Depends(get_db)
+    restaurant_url: str = Form("", description="Restaurant website URL")
 ) -> JSONResponse:
     """
-    Parse menu from URL and store in database.
+    Parse menu from URL and store in Supabase.
     If menu already exists, return existing dishes.
     """
     try:
         logger.info(f"Parsing menu for {restaurant_name} from {menu_url}")
         
-        # Check if menu already exists
-        existing_menu = db.query(ParsedMenu).filter(
-            ParsedMenu.menu_url == menu_url
-        ).first()
+        # Check if menu already exists in Supabase
+        existing_menus = supabase_db.client.table("parsed_menus").select("*").eq("menu_url", menu_url).execute()
         
-        if existing_menu:
+        if existing_menus.data:
             logger.info(f"Menu already exists for {restaurant_name}")
-            dishes = existing_menu.dishes
+            menu_id = existing_menus.data[0]["id"]
+            dishes = supabase_db.client.table("parsed_dishes").select("*").eq("menu_id", menu_id).execute()
+            
             return JSONResponse({
                 "success": True,
                 "message": "Menu already exists in database",
                 "restaurant": restaurant_name,
-                "dishes": [
-                    {
-                        "id": dish.id,
-                        "name": dish.name,
-                        "description": dish.description,
-                        "category": dish.category,
-                        "ingredients": dish.ingredients,
-                        "dietary_tags": dish.dietary_tags,
-                        "preparation_style": dish.preparation_style,
-                        "is_user_added": dish.is_user_added
-                    }
-                    for dish in dishes
-                ],
-                "count": len(dishes),
-                "parsed_at": existing_menu.parsed_at.isoformat()
+                "dishes": dishes.data,
+                "count": len(dishes.data)
             })
         
         # Parse the menu
@@ -74,31 +61,36 @@ async def parse_and_store_menu(
                 detail="No dishes found in menu. Please check the URL or try a different menu."
             )
         
-        # Create menu record
-        menu = ParsedMenu(
-            restaurant_name=restaurant_name,
-            restaurant_url=restaurant_url,
-            menu_url=menu_url,
-            dish_count=len(dishes_data)
-        )
-        db.add(menu)
-        db.flush()  # Get the menu ID
+        # Create menu record in Supabase
+        supabase_menu_data = {
+            "restaurant_name": restaurant_name,
+            "restaurant_url": restaurant_url,
+            "menu_url": menu_url,
+            "dish_count": len(dishes_data)
+        }
+        supabase_menu = supabase_db.client.table("parsed_menus").insert(supabase_menu_data).execute()
         
-        # Create dish records
-        for dish_data in dishes_data:
-            dish = ParsedDish(
-                menu_id=menu.id,
-                name=dish_data['name'],
-                description=dish_data.get('description'),
-                category=dish_data.get('category', 'main'),
-                ingredients=dish_data.get('ingredients', []),
-                dietary_tags=dish_data.get('dietary_tags', []),
-                preparation_style=dish_data.get('preparation_style', []),
-                is_user_added=False
+        if not supabase_menu.data:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to create menu record"
             )
-            db.add(dish)
         
-        db.commit()
+        menu_id = supabase_menu.data[0]["id"]
+        
+        # Create dish records in Supabase
+        for dish_data in dishes_data:
+            supabase_dish_data = {
+                "menu_id": menu_id,
+                "name": dish_data['name'],
+                "description": dish_data.get('description'),
+                "category": dish_data.get('category', 'main'),
+                "ingredients": dish_data.get('ingredients', []),
+                "dietary_tags": dish_data.get('dietary_tags', []),
+                "preparation_style": dish_data.get('preparation_style', []),
+                "is_user_added": False
+            }
+            supabase_db.client.table("parsed_dishes").insert(supabase_dish_data).execute()
         
         logger.info(f"Successfully parsed and stored {len(dishes_data)} dishes for {restaurant_name}")
         
@@ -107,13 +99,11 @@ async def parse_and_store_menu(
             "message": f"Successfully parsed {len(dishes_data)} dishes",
             "restaurant": restaurant_name,
             "dishes": dishes_data,
-            "count": len(dishes_data),
-            "parsed_at": menu.parsed_at.isoformat()
+            "count": len(dishes_data)
         })
         
     except Exception as e:
         logger.error(f"Menu parsing failed: {e}")
-        db.rollback()
         raise HTTPException(
             status_code=400,
             detail=f"Failed to parse menu: {str(e)}"
@@ -121,49 +111,56 @@ async def parse_and_store_menu(
 
 @router.get("/restaurant/{restaurant_name}")
 async def get_restaurant_menu(
-    restaurant_name: str,
-    db: Session = Depends(get_db)
+    restaurant_name: str
 ) -> JSONResponse:
     """
     Get all dishes for a restaurant (parsed + user-added).
     """
     try:
-        # Find the most recent menu for this restaurant
-        menu = db.query(ParsedMenu).filter(
-            ParsedMenu.restaurant_name.ilike(f"%{restaurant_name}%")
-        ).order_by(ParsedMenu.parsed_at.desc()).first()
+        # Find the most recent menu for this restaurant in Supabase
+        menus = supabase_db.client.table("parsed_menus").select("*").ilike("restaurant_name", f"%{restaurant_name}%").execute()
         
-        if not menu:
+        if not menus.data:
             raise HTTPException(
                 status_code=404,
                 detail=f"No menu found for restaurant: {restaurant_name}"
             )
         
-        dishes = menu.dishes
+        # Get the most recent menu
+        menu = menus.data[0]  # Assuming first result is most recent
+        
+        # Get dishes for this menu
+        dishes = supabase_db.client.table("parsed_dishes").select("*").eq("menu_id", menu["id"]).execute()
+        
+        if not dishes.data:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No dishes found for restaurant: {restaurant_name}"
+            )
         
         # Group dishes by category
         categories = {}
-        for dish in dishes:
-            cat = dish.category
+        for dish in dishes.data:
+            cat = dish.get("category", "main")
             if cat not in categories:
                 categories[cat] = []
             categories[cat].append({
-                "id": dish.id,
-                "name": dish.name,
-                "description": dish.description,
-                "ingredients": dish.ingredients,
-                "dietary_tags": dish.dietary_tags,
-                "preparation_style": dish.preparation_style,
-                "is_user_added": dish.is_user_added
+                "id": dish["id"],
+                "name": dish["name"],
+                "description": dish.get("description"),
+                "ingredients": dish.get("ingredients", []),
+                "dietary_tags": dish.get("dietary_tags", []),
+                "preparation_style": dish.get("preparation_style", []),
+                "is_user_added": dish.get("is_user_added", False)
             })
         
         return JSONResponse({
             "success": True,
-            "restaurant": menu.restaurant_name,
-            "menu_url": menu.menu_url,
-            "parsed_at": menu.parsed_at.isoformat(),
+            "restaurant": menu["restaurant_name"],
+            "menu_url": menu.get("menu_url", ""),
+            "parsed_at": menu.get("created_at", ""),
             "categories": categories,
-            "total_dishes": len(dishes)
+            "total_dishes": len(dishes.data)
         })
         
     except HTTPException:
@@ -179,8 +176,7 @@ async def get_restaurant_menu(
 async def parse_menu_from_image(
     menu_image: UploadFile = File(..., description="Menu image file"),
     restaurant_name: str = Form(..., description="Restaurant name"),
-    restaurant_url: str = Form("", description="Restaurant website URL"),
-    db: Session = Depends(get_db)
+    restaurant_url: str = Form("", description="Restaurant website URL")
 ) -> JSONResponse:
     """
     Parse menu from uploaded image and store in database.
@@ -217,7 +213,7 @@ async def parse_menu_from_image(
                 )
             
             # Store in database
-            return await store_parsed_dishes(dishes_data, restaurant_name, restaurant_url, db)
+            return await store_parsed_dishes(dishes_data, restaurant_name, restaurant_url)
             
         finally:
             os.unlink(tmp_path)
@@ -233,8 +229,7 @@ async def parse_menu_from_image(
 async def parse_menu_from_screenshot(
     menu_image: UploadFile = File(..., description="Menu screenshot file"),
     restaurant_name: str = Form(..., description="Name of the restaurant"),
-    restaurant_url: str = Form("", description="Restaurant website URL"),
-    db: Session = Depends(get_db)
+    restaurant_url: str = Form("", description="Restaurant website URL")
 ) -> JSONResponse:
     """
     Parse menu from uploaded screenshot using OpenAI GPT-4 Vision.
@@ -268,34 +263,41 @@ async def parse_menu_from_screenshot(
                     detail=result["message"]
                 )
             
-            # Store in database
+            # Store in Supabase
             dishes_data = result["dishes"]
             
-            # Create menu record
-            menu = ParsedMenu(
-                restaurant_name=restaurant_name,
-                restaurant_url=restaurant_url,
-                menu_url=f"screenshot_upload_{datetime.now().isoformat()}",
-                dish_count=len(dishes_data)
-            )
-            db.add(menu)
-            db.flush()
+            # Create menu record in Supabase
+            supabase_menu_data = {
+                "restaurant_name": restaurant_name,
+                "restaurant_url": restaurant_url,
+                "menu_url": f"screenshot_upload_{datetime.now().isoformat()}",
+                "dish_count": len(dishes_data)
+            }
+            supabase_menu = supabase_db.client.table("parsed_menus").insert(supabase_menu_data).execute()
             
-            # Create dish records
-            for dish_data in dishes_data:
-                dish = ParsedDish(
-                    menu_id=menu.id,
-                    name=dish_data['name'],
-                    description=dish_data.get('description', ''),
-                    category=dish_data.get('category', 'main'),
-                    ingredients=dish_data.get('ingredients', []),
-                    dietary_tags=dish_data.get('dietary_tags', []),
-                    preparation_style=dish_data.get('preparation_style', []),
-                    is_user_added=False
+            if not supabase_menu.data:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to create menu record"
                 )
-                db.add(dish)
             
-            db.commit()
+            menu_id = supabase_menu.data[0]["id"]
+            
+            # Create dish records in Supabase
+            for dish_data in dishes_data:
+                supabase_dish_data = {
+                    "menu_id": menu_id,
+                    "name": dish_data['name'],
+                    "description": dish_data.get('description', ''),
+                    "category": dish_data.get('category', 'main'),
+                    "ingredients": dish_data.get('ingredients', []),
+                    "dietary_tags": dish_data.get('dietary_tags', []),
+                    "preparation_style": dish_data.get('preparation_style', []),
+                    "is_user_added": False
+                }
+                supabase_db.client.table("parsed_dishes").insert(supabase_dish_data).execute()
+            
+            logger.info(f"Successfully saved {len(dishes_data)} dishes to Supabase for {restaurant_name}")
             
             return JSONResponse({
                 "success": True,
@@ -321,8 +323,7 @@ async def parse_menu_from_screenshot(
 async def parse_menu_from_text(
     menu_text: str = Form(..., description="Menu text content"),
     restaurant_name: str = Form(..., description="Restaurant name"),
-    restaurant_url: str = Form("", description="Restaurant website URL"),
-    db: Session = Depends(get_db)
+    restaurant_url: str = Form("", description="Restaurant website URL")
 ) -> JSONResponse:
     """
     Parse menu from pasted text and store in database.
@@ -342,7 +343,7 @@ async def parse_menu_from_text(
             )
         
         # Store in database
-        return await store_parsed_dishes(dishes_data, restaurant_name, restaurant_url, db)
+        return await store_parsed_dishes(dishes_data, restaurant_name, restaurant_url)
         
     except Exception as e:
         logger.error(f"Text parsing failed: {e}")
@@ -351,61 +352,68 @@ async def parse_menu_from_text(
             detail=f"Failed to parse menu text: {str(e)}"
         )
 
-async def store_parsed_dishes(dishes_data: List[Dict], restaurant_name: str, restaurant_url: str, db: Session) -> JSONResponse:
-    """Helper function to store parsed dishes in database"""
+async def store_parsed_dishes(dishes_data: List[Dict], restaurant_name: str, restaurant_url: str) -> JSONResponse:
+    """Helper function to store parsed dishes in Supabase"""
     try:
-        # Check if menu already exists
-        existing_menu = db.query(ParsedMenu).filter(
-            ParsedMenu.restaurant_name == restaurant_name
-        ).first()
+        # Check if menu already exists in Supabase
+        existing_menus = supabase_db.client.table("parsed_menus").select("*").eq("restaurant_name", restaurant_name).execute()
         
-        if existing_menu:
+        if existing_menus.data:
             # Update existing menu
-            existing_menu.dish_count = len(dishes_data)
-            existing_menu.parsed_at = datetime.utcnow()
+            menu_id = existing_menus.data[0]["id"]
+            
+            # Update menu record
+            supabase_db.client.table("parsed_menus").update({
+                "dish_count": len(dishes_data)
+            }).eq("id", menu_id).execute()
             
             # Clear existing dishes
-            db.query(ParsedDish).filter(ParsedDish.menu_id == existing_menu.id).delete()
+            supabase_db.client.table("parsed_dishes").delete().eq("menu_id", menu_id).execute()
             
             # Add new dishes
             for dish_data in dishes_data:
-                dish = ParsedDish(
-                    menu_id=existing_menu.id,
-                    name=dish_data['name'],
-                    description=dish_data.get('description'),
-                    category=dish_data.get('category', 'main'),
-                    ingredients=dish_data.get('ingredients', []),
-                    dietary_tags=dish_data.get('dietary_tags', []),
-                    preparation_style=dish_data.get('preparation_style', []),
-                    is_user_added=False
-                )
-                db.add(dish)
+                supabase_dish_data = {
+                    "menu_id": menu_id,
+                    "name": dish_data['name'],
+                    "description": dish_data.get('description'),
+                    "category": dish_data.get('category', 'main'),
+                    "ingredients": dish_data.get('ingredients', []),
+                    "dietary_tags": dish_data.get('dietary_tags', []),
+                    "preparation_style": dish_data.get('preparation_style', []),
+                    "is_user_added": False
+                }
+                supabase_db.client.table("parsed_dishes").insert(supabase_dish_data).execute()
         else:
             # Create new menu
-            menu = ParsedMenu(
-                restaurant_name=restaurant_name,
-                restaurant_url=restaurant_url,
-                menu_url="",  # Not applicable for text/image
-                dish_count=len(dishes_data)
-            )
-            db.add(menu)
-            db.flush()
+            supabase_menu_data = {
+                "restaurant_name": restaurant_name,
+                "restaurant_url": restaurant_url,
+                "menu_url": "",  # Not applicable for text/image
+                "dish_count": len(dishes_data)
+            }
+            supabase_menu = supabase_db.client.table("parsed_menus").insert(supabase_menu_data).execute()
+            
+            if not supabase_menu.data:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to create menu record"
+                )
+            
+            menu_id = supabase_menu.data[0]["id"]
             
             # Add dishes
             for dish_data in dishes_data:
-                dish = ParsedDish(
-                    menu_id=menu.id,
-                    name=dish_data['name'],
-                    description=dish_data.get('description'),
-                    category=dish_data.get('category', 'main'),
-                    ingredients=dish_data.get('ingredients', []),
-                    dietary_tags=dish_data.get('dietary_tags', []),
-                    preparation_style=dish_data.get('preparation_style', []),
-                    is_user_added=False
-                )
-                db.add(dish)
-        
-        db.commit()
+                supabase_dish_data = {
+                    "menu_id": menu_id,
+                    "name": dish_data['name'],
+                    "description": dish_data.get('description'),
+                    "category": dish_data.get('category', 'main'),
+                    "ingredients": dish_data.get('ingredients', []),
+                    "dietary_tags": dish_data.get('dietary_tags', []),
+                    "preparation_style": dish_data.get('preparation_style', []),
+                    "is_user_added": False
+                }
+                supabase_db.client.table("parsed_dishes").insert(supabase_dish_data).execute()
         
         logger.info(f"Successfully stored {len(dishes_data)} dishes for {restaurant_name}")
         
@@ -419,7 +427,6 @@ async def store_parsed_dishes(dishes_data: List[Dict], restaurant_name: str, res
         
     except Exception as e:
         logger.error(f"Database storage failed: {e}")
-        db.rollback()
         raise HTTPException(
             status_code=500,
             detail=f"Failed to store dishes: {str(e)}"
@@ -429,31 +436,22 @@ async def store_parsed_dishes(dishes_data: List[Dict], restaurant_name: str, res
 async def add_dish_to_menu(
     restaurant_name: str = Form(..., description="Restaurant name"),
     dish_data: str = Form(..., description="Dish data as JSON string"),
-    user_id: int = Form(..., description="User ID adding the dish"),
-    db: Session = Depends(get_db)
+    user_id: int = Form(..., description="User ID adding the dish")
 ) -> JSONResponse:
     """
     Add a new dish to an existing restaurant menu.
     """
     try:
-        # Find the most recent menu for this restaurant
-        menu = db.query(ParsedMenu).filter(
-            ParsedMenu.restaurant_name.ilike(f"%{restaurant_name}%")
-        ).order_by(ParsedMenu.parsed_at.desc()).first()
+        # Find the most recent menu for this restaurant in Supabase
+        menus = supabase_db.client.table("parsed_menus").select("*").ilike("restaurant_name", f"%{restaurant_name}%").execute()
         
-        if not menu:
+        if not menus.data:
             raise HTTPException(
                 status_code=404,
                 detail=f"No menu found for restaurant: {restaurant_name}"
             )
         
-        # Check if user exists
-        user = db.query(User).filter(User.id == user_id).first()
-        if not user:
-            raise HTTPException(
-                status_code=404,
-                detail="User not found"
-            )
+        menu = menus.data[0]  # Get the first (most recent) menu
         
         # Parse dish data from JSON string
         try:
@@ -464,37 +462,42 @@ async def add_dish_to_menu(
                 detail="Invalid dish data format"
             )
         
-        # Create new dish
-        dish = ParsedDish(
-            menu_id=menu.id,
-            name=dish_data_dict.get('name', ''),
-            description=dish_data_dict.get('description'),
-            category=dish_data_dict.get('category', 'main'),
-            ingredients=dish_data_dict.get('ingredients', []),
-            dietary_tags=dish_data_dict.get('dietary_tags', []),
-            preparation_style=dish_data_dict.get('preparation_style', []),
-            is_user_added=True,
-            added_by_user_id=user_id
-        )
+        # Create new dish in Supabase
+        supabase_dish_data = {
+            "menu_id": menu["id"],
+            "name": dish_data_dict.get('name', ''),
+            "description": dish_data_dict.get('description'),
+            "category": dish_data_dict.get('category', 'main'),
+            "ingredients": dish_data_dict.get('ingredients', []),
+            "dietary_tags": dish_data_dict.get('dietary_tags', []),
+            "preparation_style": dish_data_dict.get('preparation_style', []),
+            "is_user_added": True
+        }
         
-        db.add(dish)
-        db.commit()
+        dish_result = supabase_db.client.table("parsed_dishes").insert(supabase_dish_data).execute()
         
-        logger.info(f"User {user_id} added dish '{dish_data.name}' to {restaurant_name}")
+        if not dish_result.data:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to add dish"
+            )
+        
+        dish = dish_result.data[0]
+        
+        logger.info(f"User {user_id} added dish '{dish['name']}' to {restaurant_name}")
         
         return JSONResponse({
             "success": True,
-            "message": f"Successfully added dish '{dish_data.name}' to {restaurant_name}",
+            "message": f"Successfully added dish '{dish['name']}' to {restaurant_name}",
             "dish": {
-                "id": dish.id,
-                "name": dish.name,
-                "description": dish.description,
-                "category": dish.category,
-                "ingredients": dish.ingredients,
-                "dietary_tags": dish.dietary_tags,
-                "preparation_style": dish.preparation_style,
-                "is_user_added": True,
-                "added_by_user": user.username
+                "id": dish["id"],
+                "name": dish["name"],
+                "description": dish.get("description"),
+                "category": dish.get("category"),
+                "ingredients": dish.get("ingredients", []),
+                "dietary_tags": dish.get("dietary_tags", []),
+                "preparation_style": dish.get("preparation_style", []),
+                "is_user_added": True
             }
         })
         
@@ -502,28 +505,27 @@ async def add_dish_to_menu(
         raise
     except Exception as e:
         logger.error(f"Error adding dish: {e}")
-        db.rollback()
         raise HTTPException(
             status_code=500,
             detail=f"Error adding dish: {str(e)}"
         )
 
 @router.get("/restaurants")
-async def list_restaurants(db: Session = Depends(get_db)) -> JSONResponse:
+async def list_restaurants() -> JSONResponse:
     """
     List all restaurants with parsed menus.
     """
     try:
-        menus = db.query(ParsedMenu).order_by(ParsedMenu.restaurant_name).all()
+        menus = supabase_db.client.table("parsed_menus").select("*").order("restaurant_name").execute()
         
         restaurants = []
-        for menu in menus:
+        for menu in menus.data:
             restaurants.append({
-                "restaurant_name": menu.restaurant_name,
-                "restaurant_url": menu.restaurant_url,
-                "menu_url": menu.menu_url,
-                "dish_count": menu.dish_count,
-                "parsed_at": menu.parsed_at.isoformat()
+                "restaurant_name": menu["restaurant_name"],
+                "restaurant_url": menu.get("restaurant_url", ""),
+                "menu_url": menu.get("menu_url", ""),
+                "dish_count": menu.get("dish_count", 0),
+                "parsed_at": menu.get("created_at", "")
             })
         
         return JSONResponse({

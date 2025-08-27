@@ -220,7 +220,7 @@ class MenutoAPI {
       }
       
       const result = await response.json();
-      console.log('✅ Menu received:', result);
+      console.log(`✅ Menu received: ${result?.dishes?.length || 0} dishes for ${restaurantName}`);
       return result;
     } catch (error) {
       console.error('Menu fetch error:', error);

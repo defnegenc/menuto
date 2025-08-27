@@ -1,19 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy.orm import Session
-from app.database import get_db
-from app.database_supabase import db as supabase_db
-from app.services.menu_data_service import MenuDataService
+from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi.responses import JSONResponse
 from typing import List, Dict, Any
+import logging
+from app.database_supabase import db as supabase_db
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 @router.get("/restaurant/{place_id}")
-async def get_restaurant_menu(place_id: str, restaurant_name: str, db: Session = Depends(get_db)):
+async def get_restaurant_menu(place_id: str, restaurant_name: str):
     """
-    Get the actual menu for a specific restaurant from multiple sources:
-    1. Our in-house database (user-contributed)
-    2. Google Places reviews (LLM extracted)
-    3. Yelp data (if available)
+    Get the actual menu for a specific restaurant from Supabase
     """
     try:
         if not place_id or not restaurant_name:
@@ -31,8 +28,8 @@ async def get_restaurant_menu(place_id: str, restaurant_name: str, db: Session =
             },
             "dishes": menu_items,
             "total_items": len(menu_items),
-            "sources": list(set([item.get('source', 'unknown') for item in menu_items])),
-            "message": f"Found {len(menu_items)} dishes"
+            "sources": ["supabase"],
+            "message": f"Found {len(menu_items)} menu items"
         }
         
     except Exception as e:
@@ -42,9 +39,9 @@ async def get_restaurant_menu(place_id: str, restaurant_name: str, db: Session =
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/restaurant/{place_id}/add-dish")
-async def add_user_dish(place_id: str, request: Request, db: Session = Depends(get_db)):
+async def add_user_dish(place_id: str, request: Request):
     """
-    Allow users to add missing menu items to build our in-house menu database
+    Allow users to add missing menu items to Supabase
     """
     try:
         data = await request.json()
@@ -65,40 +62,65 @@ async def add_user_dish(place_id: str, request: Request, db: Session = Depends(g
             except (ValueError, TypeError):
                 dish_price = None
         
+        # Find or create menu in Supabase
+        menus = supabase_db.client.table("parsed_menus").select("*").eq("restaurant_name", restaurant_name).execute()
+        
+        if not menus.data:
+            # Create new menu
+            menu_data = {
+                "restaurant_name": restaurant_name,
+                "restaurant_url": "",
+                "menu_url": "",
+                "dish_count": 1
+            }
+            menu_result = supabase_db.client.table("parsed_menus").insert(menu_data).execute()
+            menu_id = menu_result.data[0]["id"] if menu_result.data else None
+        else:
+            menu_id = menus.data[0]["id"]
+        
+        if not menu_id:
+            raise HTTPException(status_code=500, detail="Failed to create or find menu")
+        
+        # Add dish to Supabase
         dish_data = {
-            'name': dish_name,
-            'description': dish_description,
-            'price': dish_price,
-            'category': dish_category,
-            'ingredients': data.get('ingredients', []),
-            'dietary_tags': data.get('dietary_tags', [])
+            "menu_id": menu_id,
+            "name": dish_name,
+            "description": dish_description,
+            "category": dish_category,
+            "ingredients": data.get('ingredients', []),
+            "dietary_tags": data.get('dietary_tags', []),
+            "preparation_style": data.get('preparation_style', []),
+            "is_user_added": True
         }
         
-        menu_service = MenuDataService()
-        result = menu_service.add_user_contributed_dish(
-            place_id, restaurant_name, dish_data, db
-        )
+        dish_result = supabase_db.client.table("parsed_dishes").insert(dish_data).execute()
         
-        return result
+        if not dish_result.data:
+            raise HTTPException(status_code=500, detail="Failed to add dish")
+        
+        return {
+            "success": True,
+            "message": f"Successfully added dish '{dish_name}' to {restaurant_name}",
+            "dish": dish_result.data[0]
+        }
         
     except Exception as e:
         print(f"❌ Add dish error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/restaurant/{place_id}/coverage")
-async def get_menu_coverage(place_id: str, restaurant_name: str, db: Session = Depends(get_db)):
+async def get_menu_coverage(place_id: str, restaurant_name: str):
     """
-    Check what menu data we have for a restaurant and suggest if user should contribute
+    Check what menu data we have for a restaurant in Supabase
     """
     try:
-        menu_service = MenuDataService()
-        menu_items = menu_service.get_restaurant_menu(place_id, restaurant_name, db)
+        menu_items = supabase_db.get_dishes_by_place(place_id, restaurant_name)
         
         # Analyze coverage
-        database_items = [item for item in menu_items if item.get('source') == 'database']
-        extracted_items = [item for item in menu_items if item.get('source') == 'reviews']
+        user_added_items = [item for item in menu_items if item.get('is_user_added')]
+        parsed_items = [item for item in menu_items if not item.get('is_user_added')]
         
-        coverage_status = "complete" if len(database_items) >= 5 else "partial" if len(database_items) > 0 else "missing"
+        coverage_status = "complete" if len(menu_items) >= 5 else "partial" if len(menu_items) > 0 else "missing"
         
         return {
             "restaurant": {
@@ -107,13 +129,13 @@ async def get_menu_coverage(place_id: str, restaurant_name: str, db: Session = D
             },
             "coverage": {
                 "status": coverage_status,
-                "database_items": len(database_items),
-                "extracted_items": len(extracted_items),
+                "user_added_items": len(user_added_items),
+                "parsed_items": len(parsed_items),
                 "total_items": len(menu_items),
-                "needs_contribution": len(database_items) < 3
+                "needs_contribution": len(menu_items) < 3
             },
             "suggestions": {
-                "add_popular_items": len(database_items) < 3,
+                "add_popular_items": len(menu_items) < 3,
                 "verify_prices": len([item for item in menu_items if not item.get('price')]) > 0,
                 "add_descriptions": len([item for item in menu_items if not item.get('description')]) > 0
             }
