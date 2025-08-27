@@ -62,7 +62,6 @@ Please analyze the image and return a JSON object with the following structure:
         {{
           "name": "dish_name",
           "description": "dish_description",
-          "price": price_number,
           "category": "main|starter|dessert|drink|side"
         }}
       ]
@@ -72,12 +71,10 @@ Please analyze the image and return a JSON object with the following structure:
 
 Guidelines:
 - Extract ALL dishes visible in the image
-- Include prices if visible
 - Categorize dishes appropriately (main, starter, dessert, drink, side)
-- If price is not visible, use 0
 - Be thorough and don't miss any items
 - Handle special characters and formatting properly
-- If there are multiple price options, use the main price or average
+- Focus on dish names, descriptions, and categories
 
 Return ONLY valid JSON, no other text.
 """
@@ -115,7 +112,6 @@ Return ONLY valid JSON, no other text.
                     dish = {
                         "name": item.get("name", ""),
                         "description": item.get("description", ""),
-                        "price": item.get("price", 0),
                         "category": item.get("category", "main"),
                         "ingredients": [],  # Could be enhanced with ingredient extraction
                         "dietary_tags": [],  # Could be enhanced with dietary info extraction

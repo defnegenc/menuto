@@ -10,26 +10,19 @@ interface AppState {
   currentScan: MenuScanResult | null;
   currentRecommendations: RecommendationResponse | null;
   
-  // UI state
-  isLoading: boolean;
-  loadingMessage: string;
-  
   // Actions
   setUser: (user: UserPreferences, userId: string) => void;
   setCurrentScan: (scan: MenuScanResult) => void;
   setRecommendations: (recommendations: RecommendationResponse) => void;
-  setLoading: (loading: boolean, message?: string) => void;
   clearSession: () => void;
 }
 
-export const useStore = create<AppState>((set) => ({
+export const useStore = create<AppState>((set, get) => ({
   // Initial state
   user: null,
   userId: null,
   currentScan: null,
   currentRecommendations: null,
-  isLoading: false,
-  loadingMessage: '',
   
   // Actions
   setUser: (user: UserPreferences, userId: string) => 
@@ -40,9 +33,6 @@ export const useStore = create<AppState>((set) => ({
     
   setRecommendations: (recommendations: RecommendationResponse) => 
     set({ currentRecommendations: recommendations }),
-    
-  setLoading: (loading: boolean, message: string = '') => 
-    set({ isLoading: loading, loadingMessage: message }),
     
   clearSession: () => 
     set({ currentScan: null, currentRecommendations: null }),

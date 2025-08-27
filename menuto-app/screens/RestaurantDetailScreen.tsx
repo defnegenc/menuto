@@ -46,6 +46,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
   
   // Track current request to cancel it when switching restaurants
   const currentRequestRef = useRef<AbortController | null>(null);
+  const componentId = useRef(Math.random().toString(36).slice(2, 8));
 
   // Load menu when restaurant changes
   useEffect(() => {
@@ -96,7 +97,13 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
   ];
 
   const loadRestaurantMenu = async () => {
-    if (isLoading || isParsing) return; // Prevent concurrent loads
+    const reqId = Math.random().toString(36).slice(2, 8);
+    console.log(`[${componentId.current}-${reqId}] start ${restaurant.place_id}`);
+    
+    if (isLoading || isParsing) {
+      console.log(`[${componentId.current}-${reqId}] blocked by existing load`);
+      return;
+    }
     
     // Set loaded flag to prevent duplicate calls
     hasLoadedRef.current = true;
@@ -107,19 +114,17 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
     
     try {
       setIsLoading(true);
-      const response = await api.getRestaurantMenuWithPlaceId(restaurant.place_id, restaurant.name);
+      const response = await api.getRestaurantMenuWithPlaceId(restaurant.place_id, restaurant.name, abortController);
       
-      console.log(`🍽️ Frontend received menu response for ${restaurant.name}:`, response);
+      console.log(`[${componentId.current}-${reqId}] done`);
       
-      if (response.menu_items && response.menu_items.length > 0) {
-        console.log(`✅ Setting ${response.menu_items.length} menu items for ${restaurant.name}`);
-        setMenuDishes(response.menu_items);
+      if (response.dishes && response.dishes.length > 0) {
+        setMenuDishes(response.dishes);
       } else {
-        console.log(`❌ No menu items found for ${restaurant.name}`);
         setMenuDishes([]);
       }
-    } catch (error) {
-      console.error(`Error loading menu for ${restaurant.name}:`, error);
+    } catch (error: any) {
+      console.log(`[${componentId.current}-${reqId}] err ${error?.name === 'AbortError' ? 'ABORT' : error}`);
       setMenuDishes([]);
     } finally {
       setIsLoading(false);
@@ -230,11 +235,6 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
         setMenuDishes(response.dishes);
         console.log(`✅ URL parsing completed for: ${restaurant.name}`);
         Alert.alert('Success', `Added ${response.count} dishes to the menu!`);
-        
-        // Add a small delay before trying to fetch the menu again
-        setTimeout(() => {
-          loadRestaurantMenu();
-        }, 2000); // 2 second delay
       }
     } catch (error) {
       console.error('Menu parsing error:', error);
@@ -252,11 +252,6 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
       if (response.success) {
         setMenuDishes(response.dishes);
         Alert.alert('Success', `Added ${response.count} dishes to the menu!`);
-        
-        // Add a small delay before trying to fetch the menu again
-        setTimeout(() => {
-          loadRestaurantMenu();
-        }, 2000); // 2 second delay
       }
     } catch (error) {
       console.error('Menu parsing error:', error);
@@ -287,11 +282,6 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
         setMenuText('');
         console.log(`✅ Text parsing completed for: ${restaurant.name}`);
         Alert.alert('Success', `Added ${response.dishes.length} dishes to the menu!`);
-        
-        // Add a small delay before trying to fetch the menu again
-        setTimeout(() => {
-          loadRestaurantMenu();
-        }, 2000); // 2 second delay
       } else {
         Alert.alert('Error', response.message || 'Failed to parse menu text.');
       }
@@ -376,7 +366,6 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
       const response = await api.addDishToMenu(restaurant.name, {
         name: newDishName,
         description: '',
-        price: 0,
         category: 'main'
       }, user?.id || 0);
 

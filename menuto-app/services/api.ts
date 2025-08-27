@@ -1,7 +1,7 @@
 import { UserPreferences, RecommendationResponse, MenuScanResult } from '../types';
 
 // Change this to your backend URL
-const API_BASE = 'http://localhost:8000';
+const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080';
 
 class MenutoAPI {
   // Upload menu image
@@ -201,11 +201,13 @@ class MenutoAPI {
   }
 
   // Get actual restaurant menu from multiple sources
-  async getRestaurantMenuWithPlaceId(restaurantPlaceId: string, restaurantName: string): Promise<any> {
+  async getRestaurantMenuWithPlaceId(restaurantPlaceId: string, restaurantName: string, abortController?: AbortController): Promise<any> {
     try {
       console.log('🍽️  Requesting menu for:', restaurantName);
       
-      const response = await fetch(`${API_BASE}/menu/restaurant/${restaurantPlaceId}?restaurant_name=${encodeURIComponent(restaurantName)}`);
+      const response = await fetch(`${API_BASE}/menu/restaurant/${restaurantPlaceId}?restaurant_name=${encodeURIComponent(restaurantName)}`, {
+        signal: abortController?.signal
+      });
       
       if (!response.ok) {
         if (response.status === 404) {
@@ -399,7 +401,7 @@ class MenutoAPI {
   }
 
   // Parse and store menu from URL
-  async parseAndStoreMenu(menuUrl: string, restaurantName: string, restaurantUrl: string = ''): Promise<any> {
+  async parseAndStoreMenu(menuUrl: string, restaurantName: string, restaurantUrl: string = '', abortController?: AbortController): Promise<any> {
     try {
       const formData = new FormData();
       formData.append('menu_url', menuUrl);
@@ -409,6 +411,7 @@ class MenutoAPI {
       const response = await fetch(`${API_BASE}/menu-parsing/parse-and-store`, {
         method: 'POST',
         body: formData,
+        signal: abortController?.signal
       });
       
       if (!response.ok) {
@@ -423,9 +426,11 @@ class MenutoAPI {
   }
 
   // Parse menu from screenshot using OpenAI Vision
-  async parseMenuFromScreenshot(imageUri: string, restaurantName: string, restaurantUrl: string = ''): Promise<any> {
+  async parseMenuFromScreenshot(imageUri: string, restaurantName: string, restaurantUrl: string = '', abortController?: AbortController): Promise<any> {
     try {
       const formData = new FormData();
+      
+      // React Native requires this specific format for file uploads
       formData.append('menu_image', {
         uri: imageUri,
         type: 'image/jpeg',
@@ -436,11 +441,16 @@ class MenutoAPI {
       
       const response = await fetch(`${API_BASE}/menu-parsing/parse-screenshot`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
         body: formData,
+        signal: abortController?.signal
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
       
       return await response.json();
@@ -451,7 +461,7 @@ class MenutoAPI {
   }
 
   // Parse menu from text
-  async parseMenuFromText(menuText: string, restaurantName: string, restaurantUrl: string = ''): Promise<any> {
+  async parseMenuFromText(menuText: string, restaurantName: string, restaurantUrl: string = '', abortController?: AbortController): Promise<any> {
     try {
       const formData = new FormData();
       formData.append('menu_text', menuText);
@@ -461,6 +471,7 @@ class MenutoAPI {
       const response = await fetch(`${API_BASE}/menu-parsing/parse-text`, {
         method: 'POST',
         body: formData,
+        signal: abortController?.signal
       });
       
       if (!response.ok) {

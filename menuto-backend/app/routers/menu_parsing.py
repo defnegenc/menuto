@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 class DishCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    price: Optional[float] = None
     category: str
     ingredients: Optional[List[str]] = None
     dietary_tags: Optional[List[str]] = None
@@ -288,7 +287,6 @@ async def parse_menu_from_screenshot(
                     menu_id=menu.id,
                     name=dish_data['name'],
                     description=dish_data.get('description', ''),
-                    price=dish_data.get('price', 0),
                     category=dish_data.get('category', 'main'),
                     ingredients=dish_data.get('ingredients', []),
                     dietary_tags=dish_data.get('dietary_tags', []),
@@ -471,7 +469,6 @@ async def add_dish_to_menu(
             menu_id=menu.id,
             name=dish_data_dict.get('name', ''),
             description=dish_data_dict.get('description'),
-            price=dish_data_dict.get('price'),
             category=dish_data_dict.get('category', 'main'),
             ingredients=dish_data_dict.get('ingredients', []),
             dietary_tags=dish_data_dict.get('dietary_tags', []),

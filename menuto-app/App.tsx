@@ -91,7 +91,7 @@ function AppContent() {
       case 'restaurantDetail':
         return selectedRestaurant ? (
           <RestaurantDetailScreen
-            key={`${selectedRestaurant.place_id}-${selectedRestaurant.name}-${Date.now()}`}
+            key={selectedRestaurant.place_id}
             restaurant={selectedRestaurant}
             onBack={handleBackToMain}
             onGetRecommendations={handleGetRecommendations}

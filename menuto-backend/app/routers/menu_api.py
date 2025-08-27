@@ -29,10 +29,10 @@ async def get_restaurant_menu(place_id: str, restaurant_name: str, db: Session =
                 "place_id": place_id,
                 "name": restaurant_name
             },
-            "menu_items": menu_items,
+            "dishes": menu_items,
             "total_items": len(menu_items),
             "sources": list(set([item.get('source', 'unknown') for item in menu_items])),
-            "message": f"Found {len(menu_items)} menu items"
+            "message": f"Found {len(menu_items)} dishes"
         }
         
     except Exception as e:
