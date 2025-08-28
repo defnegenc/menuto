@@ -27,13 +27,7 @@ export function MainTabScreen({ onSelectRestaurant }: Props) {
     <NavigationContainer>
       <Tab.Navigator
         screenOptions={{
-          headerStyle: {
-            backgroundColor: theme.colors.primary,
-          },
-          headerTintColor: '#FFFFFF',
-          headerTitleStyle: {
-            fontWeight: '600',
-          },
+          headerShown: false,
           tabBarStyle: {
             backgroundColor: '#FFFFFF',
             borderTopColor: '#E1E8ED',
@@ -55,7 +49,6 @@ export function MainTabScreen({ onSelectRestaurant }: Props) {
             tabBarIcon: ({ color }) => (
               <Text style={{ color, fontSize: 16 }}>🍽️</Text>
             ),
-            headerTitle: 'My Restaurants',
           }}
         />
         <Tab.Screen 
@@ -66,7 +59,6 @@ export function MainTabScreen({ onSelectRestaurant }: Props) {
             tabBarIcon: ({ color }) => (
               <Text style={{ color, fontSize: 16 }}>➕</Text>
             ),
-            headerTitle: 'Add Restaurant',
           }}
         />
       </Tab.Navigator>

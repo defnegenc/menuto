@@ -14,6 +14,8 @@ import * as Location from 'expo-location';
 import { api } from '../services/api';
 import { theme } from '../theme';
 import { useStore } from '../store/useStore';
+import { SearchHeader } from '../components/SearchHeader';
+import { LoadingScreen } from '../components/LoadingScreen';
 
 interface Restaurant {
   place_id: string;
@@ -198,14 +200,7 @@ export function RestaurantSearchScreen({}: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Text style={styles.title}>Add Restaurants</Text>
-          <Text style={styles.subtitle}>
-            Search and tap to add restaurants you love
-          </Text>
-        </View>
-      </View>
+      <SearchHeader />
 
       <View style={styles.searchSection}>
         <View style={styles.searchContainer}>
@@ -279,38 +274,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  header: {
-    padding: theme.spacing.xl,
-    backgroundColor: theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    marginBottom: theme.spacing.lg,
-    padding: theme.spacing.sm,
-  },
-  backButtonText: {
-    color: theme.colors.primary,
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.semibold,
-  },
-  headerContent: {
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: theme.typography.sizes.title,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
-  },
-  subtitle: {
-    fontSize: theme.typography.sizes.lg,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-  },
+
   searchSection: {
-    padding: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: theme.spacing.xl,
+    paddingBottom: theme.spacing.lg,
     backgroundColor: theme.colors.surface,
     marginBottom: theme.spacing.sm,
   },
@@ -365,6 +333,7 @@ const styles = StyleSheet.create({
   resultsContainer: {
     flex: 1,
     paddingHorizontal: theme.spacing.xl,
+    paddingTop: theme.spacing.xl,
   },
   restaurantCard: {
     backgroundColor: theme.colors.surface,

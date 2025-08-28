@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
 import { ClerkProvider, useUser } from '@clerk/clerk-expo';
+import { loadFonts } from './utils/fonts';
+import { theme } from './theme';
 
 // Screens
 import { SignInScreen } from './screens/SignInScreen';
@@ -24,6 +26,16 @@ type AppScreen = 'signIn' | 'onboarding' | 'mainTabs' | 'restaurantDetail' | 're
 function AppContent() {
   const { user: clerkUser } = useUser();
   const { user } = useStore();
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+  
+  // Load fonts on app startup
+  useEffect(() => {
+    const loadFontsAsync = async () => {
+      await loadFonts();
+      setFontsLoaded(true);
+    };
+    loadFontsAsync();
+  }, []);
   
   // Determine initial screen based on user state
   const getInitialScreen = (): AppScreen => {
@@ -119,6 +131,19 @@ function AppContent() {
         return <SignInScreen onSignInComplete={handleSignInComplete} />;
     }
   };
+
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.container}>
+        <StatusBar style="dark" />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ fontSize: 16, color: theme.colors.text.secondary }}>
+            Loading fonts...
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

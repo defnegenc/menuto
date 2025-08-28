@@ -355,7 +355,7 @@ class MenutoAPI {
   }
 
   // Get restaurant menu from database
-  async getRestaurantMenu(restaurantName: string, abortController?: AbortController): Promise<any> {
+  async getRestaurantMenu(restaurantName: string, placeId?: string, abortController?: AbortController): Promise<any> {
     try {
       console.log(`🔍 Fetching menu for: ${restaurantName}`);
       
@@ -371,7 +371,8 @@ class MenutoAPI {
         }, 15000); // 15 second timeout
       }
       
-      const response = await fetch(`${API_BASE}/menu-parsing/restaurant/${encodeURIComponent(restaurantName)}`, {
+      const placeIdParam = placeId || restaurantName;
+      const response = await fetch(`${API_BASE}/menu/restaurant/${encodeURIComponent(placeIdParam)}?restaurant_name=${encodeURIComponent(restaurantName)}`, {
         signal: controller.signal
       });
       

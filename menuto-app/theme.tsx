@@ -46,10 +46,47 @@ export const theme = {
       display: 32,
     },
     weights: {
-      normal: '400',
-      medium: '500',
-      semibold: '600',
-      bold: 'bold',
+      normal: '400' as const,
+      medium: '500' as const,
+      semibold: '600' as const,
+      bold: '700' as const,
+    },
+    // Fancy fonts (Artifact.otf)
+    h1: {
+      fancy: {
+        fontSize: 30,
+        fontFamily: 'Artifact',
+        fontWeight: '700' as const,
+        color: '#890620', // Darker pink (primary color)
+      },
+      regular: {
+        fontSize: 24,
+        fontWeight: '700' as const,
+      },
+    },
+    h2: {
+      fancy: {
+        fontSize: 28,
+        fontFamily: 'Artifact',
+        fontWeight: '700' as const,
+        color: '#890620', // Darker pink (primary color)
+      },
+      regular: {
+        fontSize: 20,
+        fontWeight: '600' as const,
+      },
+    },
+    h3: {
+      fancy: {
+        fontSize: 20,
+        fontFamily: 'Artifact',
+        fontWeight: '700' as const,
+        color: '#2C0703', // Darker pink (primary color)
+      },
+      regular: {
+        fontSize: 18,
+        fontWeight: '500' as const,
+      },
     },
   },
   

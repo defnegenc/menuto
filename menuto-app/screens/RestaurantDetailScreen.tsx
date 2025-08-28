@@ -20,6 +20,10 @@ import { useStore } from '../store/useStore';
 import { api } from '../services/api';
 import { FavoriteRestaurant, ParsedDish } from '../types';
 import { theme } from '../theme';
+import { Header } from '../components/Header';
+import { MenuItemCard } from '../components/MenuItemCard';
+import { DishChip } from '../components/DishChip';
+import { LoadingScreen } from '../components/LoadingScreen';
 
 interface Props {
   restaurant: FavoriteRestaurant;
@@ -35,9 +39,10 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
   const [showAddOptions, setShowAddOptions] = useState(false);
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [menuText, setMenuText] = useState('');
-  const [newDishName, setNewDishName] = useState('');
-  const [showAddDishModal, setShowAddDishModal] = useState(false);
+  const [searchText, setSearchText] = useState('');
   const [filteredDishes, setFilteredDishes] = useState<ParsedDish[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   
   // Simple flag to prevent duplicate loads
@@ -46,7 +51,6 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
   
   // Track current request to cancel it when switching restaurants
   const currentRequestRef = useRef<AbortController | null>(null);
-  const componentId = useRef(Math.random().toString(36).slice(2, 8));
 
   // Load menu when restaurant changes
   useEffect(() => {
@@ -65,10 +69,12 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
     setIsParsing(false);
     setShowAddOptions(false);
     setShowPasteModal(false);
-    setShowAddDishModal(false);
+
     setMenuText('');
-    setNewDishName('');
+    setSearchText('');
     setFilteredDishes([]);
+    setSelectedCategory('all');
+
     setLoadingMessageIndex(0);
     
     // Reset the loaded flag when restaurant changes
@@ -83,27 +89,25 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
   useEffect(() => {
     if (isLoading || isParsing) {
       const interval = setInterval(() => {
-        setLoadingMessageIndex((prev) => (prev + 1) % 4);
+        setLoadingMessageIndex((prev) => (prev + 1) % 8);
       }, 2000);
       return () => clearInterval(interval);
     }
   }, [isLoading, isParsing]);
 
   const loadingMessages = [
-    "Extracting dishes...",
-    "Prepare for a feast...",
-    "Something smells good...",
-    "I already know you've got good taste..."
+    "🍽️ Extracting dishes",
+    "🎉 Prepare for a feast",
+    "👃 Something smells good",
+    "😋 I already know you've got good taste",
+    "👨‍🍳 Cooking up the menu",
+    "⏰ Almost ready to serve",
+    "🥬 Gathering ingredients",
+    "⭐ Chef's special coming up"
   ];
 
-  const loadRestaurantMenu = async () => {
-    const reqId = Math.random().toString(36).slice(2, 8);
-    console.log(`[${componentId.current}-${reqId}] start ${restaurant.place_id}`);
-    
-    if (isLoading || isParsing) {
-      console.log(`[${componentId.current}-${reqId}] blocked by existing load`);
-      return;
-    }
+  const loadRestaurantMenu = useCallback(async () => {
+    if (isLoading || isParsing) return; // Prevent concurrent loads
     
     // Set loaded flag to prevent duplicate calls
     hasLoadedRef.current = true;
@@ -114,17 +118,22 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
     
     try {
       setIsLoading(true);
-      const response = await api.getRestaurantMenuWithPlaceId(restaurant.place_id, restaurant.name, abortController);
+      const response = await api.getRestaurantMenu(restaurant.name, restaurant.place_id, abortController);
       
-      console.log(`[${componentId.current}-${reqId}] done`);
-      
-      if (response.dishes && response.dishes.length > 0) {
+      if (response.dishes && Array.isArray(response.dishes)) {
+        // Backend returns dishes directly with their categories
+        console.log(`✅ Loaded ${response.dishes.length} dishes with categories:`, response.dishes.map((d: any) => d.category));
         setMenuDishes(response.dishes);
+      } else if (response.success === false) {
+        // Handle explicit failure case
+        console.log('❌ No menu found or API error:', response.message);
+        setMenuDishes([]);
       } else {
+        console.log('❌ Unexpected response format:', response);
         setMenuDishes([]);
       }
-    } catch (error: any) {
-      console.log(`[${componentId.current}-${reqId}] err ${error?.name === 'AbortError' ? 'ABORT' : error}`);
+    } catch (error) {
+      console.error(`Error loading menu for ${restaurant.name}:`, error);
       setMenuDishes([]);
     } finally {
       setIsLoading(false);
@@ -133,7 +142,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
         currentRequestRef.current = null;
       }
     }
-  };
+  }, [restaurant.name, restaurant.place_id, isLoading, isParsing]);
 
   const handleAddMenuPDF = async () => {
     Alert.prompt(
@@ -157,6 +166,19 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
 
   const handlePasteMenuText = () => {
     setShowPasteModal(true);
+  };
+
+  const handleSearchMenu = (text: string) => {
+    setSearchText(text);
+    if (text.trim()) {
+      const filtered = menuDishes.filter(dish => 
+        dish.name.toLowerCase().includes(text.toLowerCase()) ||
+        (dish.description && dish.description.toLowerCase().includes(text.toLowerCase()))
+      );
+      setFilteredDishes(filtered);
+    } else {
+      setFilteredDishes([]);
+    }
   };
 
   const handleAddPhoto = () => {
@@ -235,6 +257,11 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
         setMenuDishes(response.dishes);
         console.log(`✅ URL parsing completed for: ${restaurant.name}`);
         Alert.alert('Success', `Added ${response.count} dishes to the menu!`);
+        
+        // Add a small delay before trying to fetch the menu again
+        setTimeout(() => {
+          loadRestaurantMenu();
+        }, 2000); // 2 second delay
       }
     } catch (error) {
       console.error('Menu parsing error:', error);
@@ -252,6 +279,11 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
       if (response.success) {
         setMenuDishes(response.dishes);
         Alert.alert('Success', `Added ${response.count} dishes to the menu!`);
+        
+        // Add a small delay before trying to fetch the menu again
+        setTimeout(() => {
+          loadRestaurantMenu();
+        }, 2000); // 2 second delay
       }
     } catch (error) {
       console.error('Menu parsing error:', error);
@@ -282,6 +314,11 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
         setMenuText('');
         console.log(`✅ Text parsing completed for: ${restaurant.name}`);
         Alert.alert('Success', `Added ${response.dishes.length} dishes to the menu!`);
+        
+        // Add a small delay before trying to fetch the menu again
+        setTimeout(() => {
+          loadRestaurantMenu();
+        }, 2000); // 2 second delay
       } else {
         Alert.alert('Error', response.message || 'Failed to parse menu text.');
       }
@@ -304,83 +341,11 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
     parseMenuFromText();
   };
 
-  const handleAddFavoriteDish = () => {
-    if (menuDishes.length === 0) {
-      Alert.alert(
-        'No Menu Yet', 
-        'This restaurant doesn\'t have a menu yet. Would you like to add one?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Add Menu', onPress: () => setShowAddOptions(true) }
-        ]
-      );
-      return;
-    }
-    setShowAddDishModal(true);
-  };
 
-  const handleDishSearch = (text: string) => {
-    setNewDishName(text);
-    if (text.trim()) {
-      const filtered = menuDishes.filter(dish => 
-        dish.name.toLowerCase().includes(text.toLowerCase())
-      );
-      setFilteredDishes(filtered);
-    } else {
-      setFilteredDishes([]);
-    }
-  };
 
-  const handleSelectDish = (dish: ParsedDish) => {
-    // Add to user's favorite dishes
-    const updatedUser = {
-      ...user,
-      favorite_dishes: [...(user?.favorite_dishes || []), {
-        dish_name: dish.name,
-        restaurant_id: restaurant.place_id,
-        dessert_name: dish.category === 'dessert' ? dish.name : undefined
-      }],
-      preferred_cuisines: user?.preferred_cuisines || [],
-      spice_tolerance: user?.spice_tolerance || 0,
-      price_preference: user?.price_preference || 0,
-      dietary_restrictions: user?.dietary_restrictions || []
-    };
 
-    if (user && userId) {
-      setUser(updatedUser, userId);
-    }
 
-    setNewDishName('');
-    setFilteredDishes([]);
-    setShowAddDishModal(false);
-    Alert.alert('Success', `Added "${dish.name}" to your favorite dishes!`);
-  };
 
-  const handleAddNewDish = async () => {
-    if (!newDishName.trim()) {
-      Alert.alert('Error', 'Please enter a dish name.');
-      return;
-    }
-
-    try {
-      const response = await api.addDishToMenu(restaurant.name, {
-        name: newDishName,
-        description: '',
-        category: 'main'
-      }, user?.id || 0);
-
-      if (response.success) {
-        setMenuDishes([...menuDishes, response.dish]);
-        setNewDishName('');
-        setFilteredDishes([]);
-        setShowAddDishModal(false);
-        Alert.alert('Success', `Added "${newDishName}" to the menu!`);
-      }
-    } catch (error) {
-      console.error('Add dish error:', error);
-      Alert.alert('Error', 'Failed to add dish. Please try again.');
-    }
-  };
 
   const removeFavoriteDish = (favoriteDish: any) => {
     Alert.alert(
@@ -412,22 +377,59 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
     );
   };
 
-  const renderDishCard = useCallback((dish: ParsedDish, index: number) => (
-    <View key={dish.id || `dish-${index}`} style={styles.dishCard}>
-      <View style={styles.dishHeader}>
-        <Text style={styles.dishName}>{dish.name}</Text>
-      </View>
-      {dish.description && (
-        <Text style={styles.dishDescription}>{dish.description}</Text>
-      )}
-      <View style={styles.dishCategory}>
-        <Text style={styles.categoryText}>{dish.category}</Text>
-        {dish.is_user_added && (
-          <Text style={styles.userAddedText}>Added by user</Text>
-        )}
-      </View>
-    </View>
-  ), []);
+  const handleAddDishToFavorites = useCallback((dish: ParsedDish) => {
+    // Check if dish is already in favorites
+    const isAlreadyFavorite = (user?.favorite_dishes || []).some(fav => 
+      fav.dish_name === dish.name && 
+      (fav.restaurant_id === restaurant.place_id || fav.restaurant_id === restaurant.name)
+    );
+
+    if (isAlreadyFavorite) {
+      // Remove from favorites
+      const updatedUser = {
+        ...user,
+        favorite_dishes: (user?.favorite_dishes || []).filter(fav => 
+          !(fav.dish_name === dish.name && 
+            (fav.restaurant_id === restaurant.place_id || fav.restaurant_id === restaurant.name))
+        ),
+        preferred_cuisines: user?.preferred_cuisines || [],
+        spice_tolerance: user?.spice_tolerance || 0,
+        price_preference: user?.price_preference || 0,
+        dietary_restrictions: user?.dietary_restrictions || []
+      };
+      
+      if (user && userId) {
+        setUser(updatedUser, userId);
+      }
+      Alert.alert('Removed', `Removed "${dish.name}" from your favorites!`);
+    } else {
+      // Add to favorites
+      const updatedUser = {
+        ...user,
+        favorite_dishes: [...(user?.favorite_dishes || []), {
+          dish_name: dish.name,
+          restaurant_id: restaurant.place_id,
+          dessert_name: dish.category === 'dessert' ? dish.name : undefined
+        }],
+        preferred_cuisines: user?.preferred_cuisines || [],
+        spice_tolerance: user?.spice_tolerance || 0,
+        price_preference: user?.price_preference || 0,
+        dietary_restrictions: user?.dietary_restrictions || []
+      };
+      
+      if (user && userId) {
+        setUser(updatedUser, userId);
+      }
+      Alert.alert('Added to Favorites', `Added "${dish.name}" to your favorites!`);
+    }
+  }, [user, userId, restaurant.place_id, restaurant.name, setUser]);
+
+  const isDishFavorite = useCallback((dish: ParsedDish) => {
+    return (user?.favorite_dishes || []).some(fav => 
+      fav.dish_name === dish.name && 
+      (fav.restaurant_id === restaurant.place_id || fav.restaurant_id === restaurant.name)
+    );
+  }, [user, restaurant.place_id, restaurant.name]);
 
   const getFavoriteDishesForRestaurant = () => {
     return (user?.favorite_dishes || []).filter(dish => 
@@ -450,29 +452,24 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={styles.title}>{restaurant.name}</Text>
-          <Text style={styles.subtitle}>{restaurant.vicinity}</Text>
-        </View>
-      </View>
+      <Header 
+        onBack={onBack}
+        restaurantName={restaurant.name}
+        restaurantAddress={restaurant.vicinity}
+      />
 
       {isLoading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Loading menu...</Text>
-        </View>
+        <LoadingScreen 
+          message="Loading menu" 
+          subMessage="Getting your restaurant's delicious dishes ready"
+        />
       )}
 
       {isParsing && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>{loadingMessages[loadingMessageIndex]}</Text>
-          <Text style={styles.loadingSubtext}>Menu is parsing! Check back later to see the menu items.</Text>
-        </View>
+        <LoadingScreen 
+          message={loadingMessages[loadingMessageIndex]}
+          subMessage="Menu is parsing! Check back later to see the menu items."
+        />
       )}
 
       {!isLoading && !isParsing && (
@@ -504,48 +501,125 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
           ) : (
                         <View style={styles.menuContainer}>
               {/* Your Favorites Section */}
-              {getFavoriteDishesForRestaurant().length > 0 && (
-                <View style={styles.favoritesSection}>
-                  <Text style={styles.favoritesTitle}>Your Favorites</Text>
+              <View style={styles.favoritesSection}>
+                <Text style={[styles.sectionTitle, theme.typography.h2.fancy]}>Your Favorites</Text>
+                {getFavoriteDishesForRestaurant().length > 0 ? (
                   <View style={styles.favoritesChips}>
                     {getFavoriteDishesForRestaurant().map((favorite, index) => (
-                      <View key={`${favorite.dish_name}-${index}`} style={styles.favoriteChip}>
-                        <Text style={styles.favoriteChipText}>🍽️ {favorite.dish_name}</Text>
-                        <TouchableOpacity 
-                          style={styles.removeFavoriteButton}
-                          onPress={() => removeFavoriteDish(favorite)}
-                        >
-                          <Text style={styles.removeFavoriteText}>×</Text>
-                        </TouchableOpacity>
-                      </View>
+                      <DishChip
+                        key={`${favorite.dish_name}-${index}`}
+                        dishName={favorite.dish_name}
+                        onRemove={() => removeFavoriteDish(favorite)}
+                        showRemoveButton={true}
+                      />
                     ))}
                   </View>
-                </View>
-              )}
-
-              <View style={styles.menuHeader}>
-                <Text style={styles.menuTitle}>Menu ({menuDishes.length} dishes)</Text>
-                <View style={styles.menuActions}>
-                  <TouchableOpacity style={styles.addDishButton} onPress={handleAddFavoriteDish}>
-                    <Text style={styles.addDishButtonText}>+ Add Favorite Dish</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.addMoreButton} onPress={() => setShowAddOptions(true)}>
-                    <Text style={styles.addMoreButtonText}>+ Add More Items</Text>
-                  </TouchableOpacity>
-                  {onGetRecommendations && (
-                    <TouchableOpacity style={styles.recommendationsButton} onPress={onGetRecommendations}>
-                      <Text style={styles.recommendationsButtonText}>Get Recommendations</Text>
-                    </TouchableOpacity>
-                  )}
+                ) : (
+                  <Text style={styles.emptyFavoritesText}>Add your favorites!</Text>
+                )}
+                
+                {/* Search Bar */}
+                <View style={styles.searchContainer}>
+                  <View style={styles.searchInputContainer}>
+                    <Text style={styles.searchIcon}>🔍</Text>
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Search the menu!"
+                      placeholderTextColor={theme.colors.text.secondary}
+                      value={searchText}
+                      onChangeText={handleSearchMenu}
+                    />
+                  </View>
                 </View>
               </View>
 
-              {Object.entries(groupedDishes).map(([category, dishes]) => (
-                <View key={category} style={styles.categorySection}>
-                  <Text style={styles.categoryTitle}>{category.toUpperCase()}</Text>
-                  {dishes.map((dish, index) => renderDishCard(dish, index))}
+              <View style={styles.menuHeader}>
+                <View style={styles.menuTitleRow}>
+                  <Text style={[styles.sectionTitle, theme.typography.h2.fancy]}>Menu</Text>
+                  <TouchableOpacity style={styles.addMoreButton} onPress={() => setShowAddOptions(true)}>
+                    <Text style={styles.addMoreButtonText}>+ Add More Items</Text>
+                  </TouchableOpacity>
                 </View>
-              ))}
+              </View>
+
+              {/* Category Filter Buttons */}
+              <View style={styles.categoryFilterContainer}>
+                <TouchableOpacity 
+                  style={[
+                    styles.categoryFilterButton, 
+                    selectedCategory === 'all' && styles.categoryFilterButtonActive
+                  ]}
+                  onPress={() => setSelectedCategory('all')}
+                >
+                  <Text style={[
+                    styles.categoryFilterText,
+                    selectedCategory === 'all' && styles.categoryFilterTextActive
+                  ]}>All</Text>
+                </TouchableOpacity>
+                {Object.keys(groupedDishes).map((category) => (
+                  <TouchableOpacity 
+                    key={category}
+                    style={[
+                      styles.categoryFilterButton, 
+                      selectedCategory === category && styles.categoryFilterButtonActive
+                    ]}
+                    onPress={() => setSelectedCategory(category)}
+                  >
+                    <Text style={[
+                      styles.categoryFilterText,
+                      selectedCategory === category && styles.categoryFilterTextActive
+                    ]}>{category.charAt(0).toUpperCase() + category.slice(1)}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {searchText.trim() ? (
+                // Show filtered results
+                <View style={styles.categorySection}>
+                  <Text style={styles.categoryTitle}>SEARCH RESULTS ({filteredDishes.length})</Text>
+                  {filteredDishes.map((dish, index) => (
+                    <MenuItemCard
+                      key={dish.id || `filtered-dish-${index}`}
+                      dish={dish}
+                      onAddToFavorites={handleAddDishToFavorites}
+                      isFavorite={isDishFavorite(dish)}
+                    />
+                  ))}
+                  {filteredDishes.length === 0 && (
+                    <Text style={styles.noResultsText}>No dishes found matching "{searchText}"</Text>
+                  )}
+                </View>
+              ) : selectedCategory === 'all' ? (
+                // Show all dishes grouped by category
+                Object.entries(groupedDishes).map(([category, dishes]) => (
+                  <View key={category} style={styles.categorySection}>
+                    <Text style={styles.categoryTitle}>{category.toUpperCase()} ({dishes.length} dishes total)</Text>
+                    {dishes.map((dish, index) => (
+                      <MenuItemCard
+                        key={dish.id || `dish-${index}`}
+                        dish={dish}
+                        onAddToFavorites={handleAddDishToFavorites}
+                        isFavorite={isDishFavorite(dish)}
+                      />
+                    ))}
+                  </View>
+                ))
+              ) : (
+                // Show dishes for selected category only
+                groupedDishes[selectedCategory] && (
+                  <View style={styles.categorySection}>
+                    <Text style={styles.categoryTitle}>{selectedCategory.toUpperCase()} ({groupedDishes[selectedCategory].length} dishes total)</Text>
+                    {groupedDishes[selectedCategory].map((dish, index) => (
+                      <MenuItemCard
+                        key={dish.id || `dish-${index}`}
+                        dish={dish}
+                        onAddToFavorites={handleAddDishToFavorites}
+                        isFavorite={isDishFavorite(dish)}
+                      />
+                    ))}
+                  </View>
+                )
+              )}
             </View>
           )}
         </ScrollView>
@@ -620,59 +694,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
         </SafeAreaView>
       </Modal>
 
-      {/* Add Dish Modal */}
-      <Modal
-        visible={showAddDishModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowAddDishModal(false)}>
-              <Text style={styles.modalCloseButton}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Add Dish</Text>
-            <TouchableOpacity onPress={handleAddNewDish}>
-              <Text style={styles.modalDoneButton}>Add</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.searchContainer}>
-            <Text style={styles.searchTitle}>Search Existing Dishes</Text>
-            <TextInput
-              style={styles.searchInput}
-              value={newDishName}
-              onChangeText={handleDishSearch}
-              placeholder="Type to search existing dishes..."
-              placeholderTextColor={theme.colors.text.secondary}
-            />
-            
-            {filteredDishes.length > 0 && (
-              <ScrollView style={styles.searchResults}>
-                <Text style={styles.searchResultsTitle}>Found Dishes:</Text>
-                {filteredDishes.map((dish, index) => (
-                  <TouchableOpacity
-                    key={dish.id || `filtered-dish-${index}`}
-                    style={styles.searchResultItem}
-                    onPress={() => handleSelectDish(dish)}
-                  >
-                    <Text style={styles.searchResultText}>{dish.name}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
-            
-            {newDishName.trim() && filteredDishes.length === 0 && (
-              <View style={styles.addNewSection}>
-                <Text style={styles.addNewTitle}>Can't find your favorite?</Text>
-                <TouchableOpacity style={styles.addNewButton} onPress={handleAddNewDish}>
-                  <Text style={styles.addNewButtonText}>Add "{newDishName}" to Menu</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </SafeAreaView>
-      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -682,52 +704,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E1E8ED',
-  },
-  backButton: {
-    marginRight: 16,
-  },
-  backButtonText: {
-    color: theme.colors.primary,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  headerContent: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: theme.colors.text.secondary,
-  },
-  loadingSubtext: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    marginTop: 8,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
+  // Header styles removed - now using Header component
   scrollView: {
     flex: 1,
   },
@@ -735,19 +712,19 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    padding: theme.spacing.huge,
   },
   emptyTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: theme.typography.sizes.title,
+    fontWeight: theme.typography.weights.bold,
     color: theme.colors.text.primary,
-    marginBottom: 8,
+    marginBottom: theme.spacing.sm,
   },
   emptySubtitle: {
-    fontSize: 16,
+    fontSize: theme.typography.sizes.lg,
     color: theme.colors.text.secondary,
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: theme.spacing.huge,
   },
   addOptions: {
     width: '100%',
@@ -777,6 +754,44 @@ const styles = StyleSheet.create({
   favoritesSection: {
     marginBottom: 24,
   },
+  emptyFavoritesText: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.secondary,
+    fontStyle: 'italic',
+  },
+  searchContainer: {
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E1E8ED',
+    paddingHorizontal: 16,
+  },
+  searchIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 16,
+    fontSize: 16,
+    color: theme.colors.text.primary,
+  },
+  noResultsText: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    padding: 20,
+  },
+  sectionTitle: {
+    marginBottom: 12,
+  },
   favoritesTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -788,35 +803,14 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
-  favoriteChip: {
-    backgroundColor: theme.colors.secondary,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  favoriteChipText: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '500',
-  },
-  removeFavoriteButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 10,
-    width: 16,
-    height: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  removeFavoriteText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
+
   menuHeader: {
     marginBottom: 20,
+  },
+  menuTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   menuActions: {
     flexDirection: 'row',
@@ -829,39 +823,21 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: theme.colors.text.primary,
   },
-  addDishButton: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  addDishButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+
   addMoreButton: {
-    backgroundColor: theme.colors.secondary,
+    backgroundColor: theme.colors.secondary + '20', // Light pink background
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.secondary,
   },
   addMoreButtonText: {
-    color: '#FFFFFF',
+    color: theme.colors.text.primary, // Black text
     fontSize: 14,
     fontWeight: '600',
   },
-  recommendationsButton: {
-    backgroundColor: theme.colors.secondary,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  recommendationsButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+
   categorySection: {
     marginBottom: 24,
   },
@@ -871,49 +847,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     marginBottom: 12,
   },
-  dishCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  dishHeader: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  dishName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-  },
-  dishDescription: {
-    fontSize: 14,
-    color: theme.colors.text.secondary,
-    marginBottom: 8,
-    lineHeight: 20,
-  },
-  dishCategory: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  categoryText: {
-    fontSize: 12,
-    color: theme.colors.text.secondary,
-    textTransform: 'capitalize',
-  },
-  userAddedText: {
-    fontSize: 12,
-    color: theme.colors.primary,
-    fontStyle: 'italic',
-  },
+  // Dish card styles removed - now using MenuItemCard component
   modalContainer: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -947,76 +881,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     textAlignVertical: 'top',
   },
-  searchContainer: {
-    flex: 1,
-    padding: 20,
-  },
-  searchTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-    marginBottom: 12,
-  },
-  searchResultsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: 8,
-  },
-  addNewSection: {
-    marginTop: 20,
-    padding: 16,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.primary,
-  },
-  addNewTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: 12,
-  },
-  addNewButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  addNewButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  searchInput: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: theme.colors.text.primary,
-    borderWidth: 1,
-    borderColor: '#E1E8ED',
-    marginBottom: 16,
-  },
-  searchResults: {
-    flex: 1,
-  },
-  searchResultItem: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 8,
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E1E8ED',
-  },
-  searchResultText: {
-    fontSize: 16,
-    color: theme.colors.text.primary,
-  },
+
   addOptionsContainer: {
     flex: 1,
     padding: 20,
@@ -1040,5 +905,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: theme.colors.primary,
+  },
+  categoryFilterContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 20,
+  },
+  categoryFilterButton: {
+    backgroundColor: theme.colors.secondary + '20',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: theme.colors.secondary,
+  },
+  categoryFilterButtonActive: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  categoryFilterText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+  },
+  categoryFilterTextActive: {
+    color: '#FFFFFF',
   },
 });

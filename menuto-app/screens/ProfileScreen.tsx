@@ -13,6 +13,8 @@ import { useStore } from '../store/useStore';
 import { api } from '../services/api';
 import { FavoriteRestaurant, FavoriteDish } from '../types';
 import { theme } from '../theme';
+import { ProfileHeader } from '../components/ProfileHeader';
+import { DishChip } from '../components/DishChip';
 
 interface Props {
   onSelectRestaurant: (restaurant: FavoriteRestaurant) => void;
@@ -100,9 +102,10 @@ export function ProfileScreen({ onSelectRestaurant }: Props) {
               <Text style={styles.favoriteDishesTitle}>Your Favorite Dishes:</Text>
               <View style={styles.dishesContainer}>
                 {dishes.map((dish, index) => (
-                  <View key={`${dish.dish_name}-${index}`} style={styles.dishChip}>
-                    <Text style={styles.dishChipText}>🍽️ {dish.dish_name}</Text>
-                  </View>
+                  <DishChip
+                    key={`${dish.dish_name}-${index}`}
+                    dishName={dish.dish_name}
+                  />
                 ))}
               </View>
             </View>
@@ -132,6 +135,7 @@ export function ProfileScreen({ onSelectRestaurant }: Props) {
 
   return (
     <View style={styles.container}>
+      <ProfileHeader />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {favoriteRestaurants.length === 0 ? (
           <View style={styles.emptyState}>
@@ -159,36 +163,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  header: {
-    padding: theme.spacing.xl,
-    backgroundColor: theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    marginBottom: theme.spacing.lg,
-    padding: theme.spacing.sm,
-  },
-  backButtonText: {
-    color: theme.colors.primary,
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.semibold as any,
-  },
-  headerContent: {
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: theme.typography.sizes.title,
-    fontWeight: theme.typography.weights.bold as any,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
-  },
-  subtitle: {
-    fontSize: theme.typography.sizes.lg,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-  },
+
   scrollView: {
     flex: 1,
   },
@@ -296,19 +271,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: theme.spacing.xs,
   },
-  dishChip: {
-    backgroundColor: theme.colors.secondary + '20',
-    borderRadius: theme.borderRadius.round,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
-    borderWidth: 1,
-    borderColor: theme.colors.secondary,
-  },
-  dishChipText: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.secondary,
-    fontWeight: 300,
-  },
+
   actionButtons: {
     flexDirection: 'row',
   },
