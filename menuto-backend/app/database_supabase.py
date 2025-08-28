@@ -90,6 +90,16 @@ class SupabaseDB:
         
         return all_dishes
     
+    def get_restaurant_info(self, restaurant_name: str) -> Optional[Dict]:
+        """Get restaurant info including cuisine_type from restaurants table"""
+        result = self.client.table("restaurants").select("*").eq("name", restaurant_name).execute()
+        if result.data:
+            return result.data[0]
+        
+        # Try case-insensitive search
+        result = self.client.table("restaurants").select("*").ilike("name", f"%{restaurant_name}%").execute()
+        return result.data[0] if result.data else None
+    
     def get_dish_by_id(self, dish_id: str) -> Optional[Dict]:
         """Get dish by ID"""
         result = self.client.table("dishes").select("*").eq("id", dish_id).execute()

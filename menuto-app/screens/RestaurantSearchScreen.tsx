@@ -25,9 +25,13 @@ interface Restaurant {
   rating?: number;
 }
 
-interface Props {}
+interface Props {
+  isOnboarding?: boolean;
+  onComplete?: (restaurants: Restaurant[]) => void;
+  minSelection?: number;
+}
 
-export function RestaurantSearchScreen({}: Props) {
+export function RestaurantSearchScreen({ isOnboarding = false, onComplete, minSelection = 3 }: Props) {
   const { user, setUser, userId } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Restaurant[]>([]);
@@ -131,26 +135,38 @@ export function RestaurantSearchScreen({}: Props) {
     await searchRestaurantsAutocomplete();
   };
 
-  const addRestaurant = (restaurant: Restaurant) => {
+  const toggleRestaurantSelection = (restaurant: Restaurant) => {
+    const isSelected = selectedRestaurants.some(r => r.place_id === restaurant.place_id);
+    
+    if (isSelected) {
+      setSelectedRestaurants(selectedRestaurants.filter(r => r.place_id !== restaurant.place_id));
+    } else {
+      setSelectedRestaurants([...selectedRestaurants, restaurant]);
+    }
+  };
+
+  const confirmSelectedRestaurants = () => {
     if (!user || !userId) return;
 
-    // Check if restaurant already exists in user's favorites
+    // Check for duplicates
     const existingRestaurants = user.favorite_restaurants || [];
-    const exists = existingRestaurants.some(r => r.place_id === restaurant.place_id);
-    
-    if (exists) {
-      Alert.alert('Restaurant already added', `${restaurant.name} is already in your restaurants!`);
+    const newRestaurants = selectedRestaurants.filter(restaurant => 
+      !existingRestaurants.some(existing => existing.place_id === restaurant.place_id)
+    );
+
+    if (newRestaurants.length === 0) {
+      Alert.alert('No new restaurants to add', 'All selected restaurants are already in your list.');
       return;
     }
 
-    // Add to user's favorites immediately
-    const updatedRestaurants = [...existingRestaurants, {
+    // Add all selected restaurants
+    const updatedRestaurants = [...existingRestaurants, ...newRestaurants.map(restaurant => ({
       place_id: restaurant.place_id,
       name: restaurant.name,
       vicinity: restaurant.vicinity,
       cuisine_type: restaurant.cuisine_type || 'Restaurant',
       rating: restaurant.rating || 4.0
-    }];
+    }))];
 
     const updatedUser = {
       ...user,
@@ -159,9 +175,13 @@ export function RestaurantSearchScreen({}: Props) {
 
     setUser(updatedUser, userId);
     
+    // Clear selection
+    setSelectedRestaurants([]);
+    
+    // Show success message
     Alert.alert(
-      'Restaurant Added!', 
-      `${restaurant.name} has been added to your restaurants. You can now get recommendations from their menu!`,
+      'Restaurants Added!', 
+      `Added ${newRestaurants.length} restaurant${newRestaurants.length > 1 ? 's' : ''} to your list.`,
       [{ text: 'Great!' }]
     );
   };
@@ -169,15 +189,20 @@ export function RestaurantSearchScreen({}: Props) {
   const renderRestaurantCard = (restaurant: Restaurant) => {
     const existingRestaurants = user?.favorite_restaurants || [];
     const isAlreadyAdded = existingRestaurants.some(r => r.place_id === restaurant.place_id);
+    const isSelected = selectedRestaurants.some(r => r.place_id === restaurant.place_id);
     
     return (
       <TouchableOpacity
         key={restaurant.place_id}
         style={[
           styles.restaurantCard,
-          isAlreadyAdded && styles.restaurantCardAdded
+          isAlreadyAdded && styles.restaurantCardAdded,
+          isSelected && styles.restaurantCardSelected
         ]}
-        onPress={() => addRestaurant(restaurant)}
+        onPress={() => {
+          if (isAlreadyAdded) return;
+          toggleRestaurantSelection(restaurant);
+        }}
         disabled={isAlreadyAdded}
       >
         <View style={styles.restaurantInfo}>
@@ -191,7 +216,12 @@ export function RestaurantSearchScreen({}: Props) {
           {isAlreadyAdded ? (
             <Text style={styles.addedText}>Added ✓</Text>
           ) : (
-            <Text style={styles.addButton}>+ Add</Text>
+            <View style={[
+              styles.radioButton,
+              isSelected && styles.radioButtonSelected
+            ]}>
+              {isSelected && <Text style={styles.radioButtonInner}>●</Text>}
+            </View>
           )}
         </View>
       </TouchableOpacity>
@@ -227,7 +257,10 @@ export function RestaurantSearchScreen({}: Props) {
         
         <View style={styles.statusRow}>
           <Text style={styles.selectedCount}>
-            Selected: {selectedRestaurants.length}/3
+            {isOnboarding 
+              ? `Selected: ${user?.favorite_restaurants?.length || 0}/${minSelection}`
+              : `Selected: ${selectedRestaurants.length}`
+            }
           </Text>
           
           <View style={styles.locationStatus}>
@@ -264,6 +297,40 @@ export function RestaurantSearchScreen({}: Props) {
           </View>
         )}
       </ScrollView>
+
+      {isOnboarding && (
+        <View style={styles.footer}>
+          <TouchableOpacity 
+            style={[
+              styles.continueButton,
+              (user?.favorite_restaurants?.length || 0) < minSelection && styles.continueButtonDisabled
+            ]}
+            onPress={() => {
+              if (onComplete && (user?.favorite_restaurants?.length || 0) >= minSelection) {
+                onComplete(user?.favorite_restaurants || []);
+              }
+            }}
+            disabled={(user?.favorite_restaurants?.length || 0) < minSelection}
+          >
+            <Text style={styles.continueButtonText}>
+              Continue ({user?.favorite_restaurants?.length || 0}/{minSelection})
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {!isOnboarding && selectedRestaurants.length > 0 && (
+        <View style={styles.footer}>
+          <TouchableOpacity 
+            style={styles.continueButton}
+            onPress={confirmSelectedRestaurants}
+          >
+            <Text style={styles.continueButtonText}>
+              Add {selectedRestaurants.length} Restaurant{selectedRestaurants.length > 1 ? 's' : ''}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
     </View>
   );
@@ -348,7 +415,8 @@ const styles = StyleSheet.create({
   },
   restaurantCardSelected: {
     borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primary + '10',
+    backgroundColor: theme.colors.primary + '15',
+    borderWidth: 2,
   },
   restaurantCardAdded: {
     backgroundColor: '#F0F0F0',
@@ -376,13 +444,26 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
   selectionIndicator: {
+    marginLeft: theme.spacing.md,
+  },
+  radioButton: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: theme.colors.primary,
+    borderWidth: 2,
+    borderColor: theme.colors.secondary,
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: theme.spacing.md,
+  },
+  radioButtonSelected: {
+    backgroundColor: theme.colors.secondary,
+    borderColor: theme.colors.secondary,
+  },
+  radioButtonInner: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   checkmark: {
     color: theme.colors.text.light,
@@ -390,6 +471,11 @@ const styles = StyleSheet.create({
   },
   addedText: {
     color: theme.colors.text.secondary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  selectedText: {
+    color: theme.colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -423,5 +509,8 @@ const styles = StyleSheet.create({
     color: theme.colors.text.light,
     fontSize: theme.typography.sizes.lg,
     fontWeight: theme.typography.weights.semibold,
+  },
+  continueButtonDisabled: {
+    backgroundColor: theme.colors.text.muted,
   },
 });

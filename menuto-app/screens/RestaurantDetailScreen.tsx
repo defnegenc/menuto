@@ -825,7 +825,7 @@ const styles = StyleSheet.create({
   },
 
   addMoreButton: {
-    backgroundColor: theme.colors.secondary + '20', // Light pink background
+    backgroundColor: theme.colors.secondary, // Secondary color background
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
@@ -833,7 +833,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.secondary,
   },
   addMoreButtonText: {
-    color: theme.colors.text.primary, // Black text
+    color: '#FFFFFF', // White text
     fontSize: 14,
     fontWeight: '600',
   },

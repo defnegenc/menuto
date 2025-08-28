@@ -21,7 +21,7 @@ interface Props {
   onAddRestaurant?: () => void;
 }
 
-export function ProfileScreen({ onSelectRestaurant, onAddRestaurant }: Props) {
+export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
   const { user, setUser, userId } = useStore();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -64,10 +64,17 @@ export function ProfileScreen({ onSelectRestaurant, onAddRestaurant }: Props) {
       vicinity: 'New York, NY',
       cuisine_type: 'Mediterranean'
     };
+    
+    const testRestaurant2: FavoriteRestaurant = {
+      place_id: 'test_sushi_bar',
+      name: "Sushi Bar",
+      vicinity: 'San Francisco, CA',
+      cuisine_type: 'Japanese'
+    };
 
     const updatedUser = {
       ...user,
-      favorite_restaurants: [...favoriteRestaurants, testRestaurant],
+      favorite_restaurants: [...favoriteRestaurants, testRestaurant, testRestaurant2],
       preferred_cuisines: user?.preferred_cuisines || [],
       spice_tolerance: user?.spice_tolerance || 0,
       price_preference: user?.price_preference || 0,
@@ -98,7 +105,7 @@ export function ProfileScreen({ onSelectRestaurant, onAddRestaurant }: Props) {
             onPress={() => onSelectRestaurant(restaurant)}
           >
             <View style={styles.restaurantHeader}>
-              <Text style={styles.restaurantName}>{restaurant.name}</Text>
+              <Text style={[styles.restaurantName, theme.typography.h2.regular]}>{restaurant.name}</Text>
               <Text style={styles.cuisineType}>{restaurant.cuisine_type}</Text>
             </View>
             <Text style={styles.vicinity}>{restaurant.vicinity}</Text>
@@ -251,7 +258,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.md,
     color: theme.colors.tertiary,
     textTransform: 'capitalize',
-    fontWeight: 300,
+    fontWeight: '500' as const,
   },
   vicinity: {
     fontSize: theme.typography.sizes.md,

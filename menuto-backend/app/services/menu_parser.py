@@ -304,8 +304,10 @@ class MenuParser:
                 parsed = json.loads(response_content)
                 if isinstance(parsed, dict) and 'dishes' in parsed:
                     dishes = parsed['dishes']
+                    cuisine_type = parsed.get('cuisine_type', 'restaurant')
                 elif isinstance(parsed, list):
                     dishes = parsed
+                    cuisine_type = 'restaurant'
                 else:
                     raise ValueError("Invalid JSON structure")
                 
@@ -319,8 +321,8 @@ class MenuParser:
                         logger.warning(f"Invalid dish data: {e}")
                         continue
                 
-                logger.info(f"✅ Successfully parsed {len(validated_dishes)} dishes")
-                return validated_dishes
+                logger.info(f"✅ Successfully parsed {len(validated_dishes)} dishes with cuisine_type: {cuisine_type}")
+                return validated_dishes, cuisine_type
                 
             except json.JSONDecodeError as e:
                 logger.error(f"JSON parsing failed: {e}")
@@ -338,7 +340,7 @@ class MenuParser:
         ])
         
         return f"""
-Parse these menu items from {restaurant_name} and return a JSON object with a "dishes" array.
+Parse these menu items from {restaurant_name} and return a JSON object with a "dishes" array and "cuisine_type".
 
 Menu items:
 {items_text}
@@ -355,13 +357,16 @@ Return ONLY a JSON object with this exact structure:
       "dietary_tags": ["vegetarian", "gluten-free"],
       "preparation_style": ["grilled", "fried"]
     }}
-  ]
+  ],
+  "cuisine_type": "mediterranean"
 }}
 
 Guidelines:
 - Extract prices from price_text fields
 - Infer ingredients from descriptions
 - Add dietary tags if obvious
+- Determine cuisine_type from dish names, descriptions, and restaurant name
+- Common cuisine types: mediterranean, italian, mexican, chinese, japanese, indian, thai, french, american, greek, turkish, lebanese, vietnamese, korean, spanish, moroccan, ethiopian, caribbean, brazilian, peruvian
 - If no valid items found, return empty dishes array
 - Return ONLY the JSON object, no other text
 """
@@ -369,7 +374,7 @@ Guidelines:
     def _create_text_prompt(self, text: str, restaurant_name: str) -> str:
         """Create prompt for raw text content"""
         return f"""
-Parse this restaurant menu text from {restaurant_name} and return a JSON object with a "dishes" array.
+Parse this restaurant menu text from {restaurant_name} and return a JSON object with a "dishes" array and "cuisine_type".
 
 Menu text:
 {text[:3000]}  # Limit text length
@@ -386,13 +391,16 @@ Return ONLY a JSON object with this exact structure:
       "dietary_tags": ["vegetarian", "gluten-free"],
       "preparation_style": ["grilled", "fried"]
     }}
-  ]
+  ],
+  "cuisine_type": "mediterranean"
 }}
 
 Guidelines:
 - Extract actual prices (convert to float)
 - Infer ingredients from descriptions
 - Add dietary tags if obvious
+- Determine cuisine_type from dish names, descriptions, and restaurant name
+- Common cuisine types: mediterranean, italian, mexican, chinese, japanese, indian, thai, french, american, greek, turkish, lebanese, vietnamese, korean, spanish, moroccan, ethiopian, caribbean, brazilian, peruvian
 - If no valid menu items found, return empty dishes array
 - Return ONLY the JSON object, no other text
 """

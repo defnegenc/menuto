@@ -30,13 +30,9 @@
       [
         "expo-font",
         {
-          "fonts": [
-            "./assets/fonts/Artifact.otf",
-            "./assets/fonts/DMSans-Regular.ttf",
-            "./assets/fonts/DMSans-Medium.ttf",
-            "./assets/fonts/DMSans-SemiBold.ttf",
-            "./assets/fonts/DMSans-Bold.ttf"
-          ]
+                  "fonts": [
+          "./assets/fonts/Artifact.otf"
+        ]
         }
       ]
     ]

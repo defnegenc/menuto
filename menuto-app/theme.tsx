@@ -51,6 +51,8 @@ export const theme = {
       semibold: '600' as const,
       bold: '700' as const,
     },
+    // Default font family for all text (system font)
+    fontFamily: undefined,
     // Fancy fonts (Artifact.otf)
     h1: {
       fancy: {

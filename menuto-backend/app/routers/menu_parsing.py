@@ -61,6 +61,66 @@ async def parse_and_store_menu(
                 detail="No dishes found in menu. Please check the URL or try a different menu."
             )
         
+        # Extract cuisine type from dishes or use default
+        cuisine_type = "restaurant"  # Default fallback
+        if dishes_data:
+            # Try to infer cuisine type from dish names and descriptions
+            all_text = " ".join([
+                dish.get('name', '') + " " + dish.get('description', '')
+                for dish in dishes_data
+            ]).lower()
+            
+            # Simple cuisine detection
+            cuisine_keywords = {
+                'mediterranean': ['mediterranean', 'greek', 'lebanese', 'turkish', 'falafel', 'hummus', 'tabbouleh'],
+                'italian': ['italian', 'pasta', 'pizza', 'risotto', 'bruschetta', 'tiramisu'],
+                'mexican': ['mexican', 'taco', 'burrito', 'enchilada', 'guacamole', 'quesadilla'],
+                'chinese': ['chinese', 'dim sum', 'kung pao', 'sweet and sour', 'wonton'],
+                'japanese': ['japanese', 'sushi', 'sashimi', 'ramen', 'tempura', 'miso'],
+                'indian': ['indian', 'curry', 'naan', 'tandoori', 'biryani', 'dal'],
+                'thai': ['thai', 'pad thai', 'tom yum', 'green curry', 'mango sticky rice'],
+                'french': ['french', 'croissant', 'quiche', 'ratatouille', 'coq au vin'],
+                'american': ['american', 'burger', 'hot dog', 'bbq', 'mac and cheese'],
+                'greek': ['greek', 'gyro', 'moussaka', 'spanakopita', 'baklava'],
+                'turkish': ['turkish', 'kebab', 'doner', 'lahmacun', 'borek'],
+                'lebanese': ['lebanese', 'shawarma', 'fattoush', 'manoushe'],
+                'vietnamese': ['vietnamese', 'pho', 'banh mi', 'spring roll', 'bun cha'],
+                'korean': ['korean', 'bibimbap', 'bulgogi', 'kimchi', 'japchae'],
+                'spanish': ['spanish', 'paella', 'tapas', 'gazpacho', 'chorizo'],
+                'moroccan': ['moroccan', 'tagine', 'couscous', 'harissa', 'pastilla'],
+                'ethiopian': ['ethiopian', 'injera', 'wat', 'berbere', 'doro wat'],
+                'caribbean': ['caribbean', 'jerk', 'plantain', 'ackee', 'callaloo'],
+                'brazilian': ['brazilian', 'feijoada', 'churrasco', 'moqueca', 'brigadeiro'],
+                'peruvian': ['peruvian', 'ceviche', 'lomo saltado', 'aji de gallina', 'anticuchos']
+            }
+            
+            for cuisine, keywords in cuisine_keywords.items():
+                if any(keyword in all_text for keyword in keywords):
+                    cuisine_type = cuisine
+                    break
+        
+        # Create or update restaurant record in Supabase
+        restaurant_data = {
+            "name": restaurant_name,
+            "address": "",  # We don't have address from menu parsing
+            "cuisine_type": cuisine_type,
+            "google_place_id": None,  # We don't have this from menu parsing
+            "yelp_business_id": None,
+            "avg_rating": None,
+            "price_level": None
+        }
+        
+        # Check if restaurant already exists
+        existing_restaurant = supabase_db.client.table("restaurants").select("*").eq("name", restaurant_name).execute()
+        
+        if existing_restaurant.data:
+            # Update existing restaurant with cuisine_type if it's better than default
+            if cuisine_type != "restaurant":
+                supabase_db.client.table("restaurants").update({"cuisine_type": cuisine_type}).eq("name", restaurant_name).execute()
+        else:
+            # Create new restaurant record
+            supabase_db.client.table("restaurants").insert(restaurant_data).execute()
+        
         # Create menu record in Supabase
         supabase_menu_data = {
             "restaurant_name": restaurant_name,
@@ -92,12 +152,13 @@ async def parse_and_store_menu(
             }
             supabase_db.client.table("parsed_dishes").insert(supabase_dish_data).execute()
         
-        logger.info(f"Successfully parsed and stored {len(dishes_data)} dishes for {restaurant_name}")
+        logger.info(f"Successfully parsed and stored {len(dishes_data)} dishes for {restaurant_name} (cuisine: {cuisine_type})")
         
         return JSONResponse({
             "success": True,
             "message": f"Successfully parsed {len(dishes_data)} dishes",
             "restaurant": restaurant_name,
+            "cuisine_type": cuisine_type,
             "dishes": dishes_data,
             "count": len(dishes_data)
         })

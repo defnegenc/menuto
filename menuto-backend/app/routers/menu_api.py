@@ -21,10 +21,15 @@ async def get_restaurant_menu(place_id: str, restaurant_name: str):
         # Get dishes from Supabase
         menu_items = supabase_db.get_dishes_by_place(place_id, restaurant_name)
         
+        # Get restaurant info including cuisine_type
+        restaurant_info = supabase_db.get_restaurant_info(restaurant_name)
+        cuisine_type = restaurant_info.get('cuisine_type', 'restaurant') if restaurant_info else 'restaurant'
+        
         return {
             "restaurant": {
                 "place_id": place_id,
-                "name": restaurant_name
+                "name": restaurant_name,
+                "cuisine_type": cuisine_type
             },
             "dishes": menu_items,
             "total_items": len(menu_items),
