@@ -3,6 +3,20 @@ import { UserPreferences, RecommendationResponse, MenuScanResult } from '../type
 // Change this to your backend URL
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080';
 
+// Helper function to get Clerk token
+let authTokenGetter: (() => Promise<string | null>) | null = null;
+
+export const setAuthTokenGetter = (getter: () => Promise<string | null>) => {
+  authTokenGetter = getter;
+};
+
+const getAuthToken = async (): Promise<string | null> => {
+  if (authTokenGetter) {
+    return await authTokenGetter();
+  }
+  return null;
+};
+
 class MenutoAPI {
   // Upload menu image
   async uploadMenu(imageUri: string, restaurantName: string): Promise<any> {
@@ -125,7 +139,7 @@ class MenutoAPI {
   // Search places
   async searchPlaces(query: string, location?: string | null): Promise<any> {
     try {
-      // First try the backend
+      // Use Google Places API for real restaurant search with location
       const params = new URLSearchParams({ query });
       
       if (location) {
@@ -140,9 +154,21 @@ class MenutoAPI {
       
       return await response.json();
     } catch (error) {
-      console.error('Backend search failed:', error);
-      // If backend fails, return a structured error so the frontend can handle it
-      throw new Error('Backend not available');
+      console.error('Google Places search failed:', error);
+      // If Google Places fails, try LLM-based search as fallback
+      try {
+        const params = new URLSearchParams({ query });
+        const response = await fetch(`${API_BASE}/menu-parsing/search?${params}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        return await response.json();
+      } catch (llmError) {
+        console.error('LLM search also failed:', llmError);
+        throw new Error('Backend not available');
+      }
     }
   }
   
@@ -506,6 +532,123 @@ class MenutoAPI {
       return await response.json();
     } catch (error) {
       console.error('Add dish to menu error:', error);
+      throw error;
+    }
+  }
+
+  // User Management
+  async saveUserPreferences(userId: string, preferences: any): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE}/users/${userId}/preferences`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(preferences),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to save user preferences: ${response.statusText}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.log('Backend not available - user preferences will be stored locally only');
+      // Return a mock response so the app continues working
+      return { success: true, message: 'Stored locally only' };
+    }
+  }
+
+  async getUserPreferences(userId: string): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE}/users/${userId}/preferences`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to get user preferences: ${response.statusText}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Get user preferences error:', error);
+      throw error;
+    }
+  }
+
+  async updateUserPreferences(userId: string, preferences: any): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE}/users/${userId}/preferences`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(preferences),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update user preferences: ${response.statusText}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Update user preferences error:', error);
+      throw error;
+    }
+  }
+
+  async updateTop3Restaurants(userId: string, restaurants: any[]): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE}/users/${userId}/top-3-restaurants`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(restaurants),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update top 3 restaurants: ${response.statusText}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.log('Backend not available - top 3 restaurants will be stored locally only');
+      // Return a mock response so the app continues working
+      return { success: true, message: 'Stored locally only' };
+    }
+  }
+
+  async addFavoriteDish(userId: string, dishData: any): Promise<any> {
+    try {
+      const response = await fetch(`${API_BASE}/users/${userId}/favorite-dishes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dishData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to add favorite dish: ${response.statusText}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Add favorite dish error:', error);
+      throw error;
+    }
+  }
+
+  async getFavoriteDishes(userId: string): Promise<any[]> {
+    try {
+      const response = await fetch(`${API_BASE}/users/${userId}/favorite-dishes`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to get favorite dishes: ${response.statusText}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Get favorite dishes error:', error);
       throw error;
     }
   }

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Form, File, UploadFile
+from fastapi import APIRouter, HTTPException, Depends, Form, File, UploadFile, Query
 from fastapi.responses import JSONResponse
 from typing import List, Dict, Optional
 import logging
@@ -126,7 +126,8 @@ async def parse_and_store_menu(
             "restaurant_name": restaurant_name,
             "restaurant_url": restaurant_url,
             "menu_url": menu_url,
-            "dish_count": len(dishes_data)
+            "dish_count": len(dishes_data),
+            "cuisine_type": cuisine_type
         }
         supabase_menu = supabase_db.client.table("parsed_menus").insert(supabase_menu_data).execute()
         
@@ -586,6 +587,7 @@ async def list_restaurants() -> JSONResponse:
                 "restaurant_url": menu.get("restaurant_url", ""),
                 "menu_url": menu.get("menu_url", ""),
                 "dish_count": menu.get("dish_count", 0),
+                "cuisine_type": menu.get("cuisine_type", "restaurant"),
                 "parsed_at": menu.get("created_at", "")
             })
         
@@ -600,4 +602,47 @@ async def list_restaurants() -> JSONResponse:
         raise HTTPException(
             status_code=500,
             detail=f"Error listing restaurants: {str(e)}"
+        )
+
+@router.get("/search")
+async def search_restaurants_by_name(
+    query: str = Query(..., description="Search query for restaurant names"),
+    limit: int = Query(20, le=50, description="Number of results to return")
+) -> JSONResponse:
+    """
+    Search restaurants by name and return their LLM-extracted cuisine types.
+    """
+    try:
+        # Search in parsed_menus table for restaurants matching the query
+        menus = supabase_db.client.table("parsed_menus").select("*").ilike("restaurant_name", f"%{query}%").limit(limit).execute()
+        
+        # Deduplicate by restaurant name
+        seen_names = set()
+        restaurants = []
+        for menu in menus.data:
+            restaurant_name = menu["restaurant_name"]
+            if restaurant_name not in seen_names:
+                seen_names.add(restaurant_name)
+                restaurants.append({
+                    "place_id": f"menu_{menu['id']}",  # Generate a unique ID
+                    "name": restaurant_name,
+                    "vicinity": menu.get("restaurant_url", "Menu available"),  # Use restaurant URL as address
+                    "cuisine_type": menu.get("cuisine_type", "restaurant"),
+                    "rating": 4.0,  # Default rating
+                    "price_level": None,
+                    "has_menu": True
+                })
+        
+        return JSONResponse({
+            "query": query,
+            "restaurants": restaurants,
+            "total": len(restaurants),
+            "source": "parsed_menus"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error searching restaurants: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error searching restaurants: {str(e)}"
         )

@@ -72,9 +72,23 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
       cuisine_type: 'Japanese'
     };
 
+    const testRestaurant3: FavoriteRestaurant = {
+      place_id: 'test_italian_place',
+      name: "Pizza Palace",
+      vicinity: 'Los Angeles, CA',
+      cuisine_type: 'Italian'
+    };
+
+    const testRestaurant4: FavoriteRestaurant = {
+      place_id: 'test_thai_place',
+      name: "Thai Delight",
+      vicinity: 'Chicago, IL',
+      cuisine_type: 'Thai'
+    };
+
     const updatedUser = {
       ...user,
-      favorite_restaurants: [...favoriteRestaurants, testRestaurant, testRestaurant2],
+      favorite_restaurants: [...favoriteRestaurants, testRestaurant, testRestaurant2, testRestaurant3, testRestaurant4],
       preferred_cuisines: user?.preferred_cuisines || [],
       spice_tolerance: user?.spice_tolerance || 0,
       price_preference: user?.price_preference || 0,
@@ -89,6 +103,9 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
 
   const renderRestaurantCard = (restaurant: FavoriteRestaurant) => {
     const dishes = getFavoriteDishesForRestaurant(restaurant);
+    
+    // Fix any restaurants that have "Restaurant" as cuisine_type
+    const cuisineType = restaurant.cuisine_type === 'Restaurant' ? 'American' : restaurant.cuisine_type;
     
     return (
       <View key={restaurant.place_id} style={styles.restaurantCard}>
@@ -106,7 +123,7 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
           >
             <View style={styles.restaurantHeader}>
               <Text style={[styles.restaurantName, theme.typography.h2.regular]}>{restaurant.name}</Text>
-              <Text style={styles.cuisineType}>{restaurant.cuisine_type}</Text>
+              <Text style={styles.cuisineType}>{cuisineType}</Text>
             </View>
             <Text style={styles.vicinity}>{restaurant.vicinity}</Text>
             <Text style={styles.tapHint}>Tap to scan menu or get recommendations</Text>
@@ -162,11 +179,7 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
           </View>
         )}
         
-        {onAddRestaurant && (
-          <TouchableOpacity style={styles.addRestaurantButton} onPress={onAddRestaurant}>
-            <Text style={styles.addRestaurantButtonText}>+ Add Restaurant</Text>
-          </TouchableOpacity>
-        )}
+
       </ScrollView>
     </View>
   );

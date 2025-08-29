@@ -38,26 +38,12 @@ class SupabaseDB:
         result = self.client.table("users").update(updates).eq("id", user_id).execute()
         return result.data[0]
     
-    # Places
-    def get_place_by_id(self, place_id: str) -> Optional[Dict]:
-        """Get place by ID"""
-        result = self.client.table("places").select("*").eq("id", place_id).execute()
-        return result.data[0] if result.data else None
-    
-    def get_place_by_google_id(self, google_place_id: str) -> Optional[Dict]:
-        """Get place by Google Place ID"""
-        result = self.client.table("places").select("*").eq("google_place_id", google_place_id).execute()
-        return result.data[0] if result.data else None
-    
-    def create_place(self, place_data: Dict) -> Dict:
-        """Create new place"""
-        result = self.client.table("places").insert(place_data).execute()
-        return result.data[0]
+    # Note: Places table has been removed - all restaurant data is now in parsed_menus
     
     def search_places(self, query: str, limit: int = 20) -> List[Dict]:
-        """Search places by name or cuisine"""
-        result = self.client.table("places").select("*").or_(
-            f"name.ilike.%{query}%,cuisine_type.ilike.%{query}%"
+        """Search parsed menus by restaurant name or cuisine"""
+        result = self.client.table("parsed_menus").select("*").or_(
+            f"restaurant_name.ilike.%{query}%,cuisine_type.ilike.%{query}%"
         ).limit(limit).execute()
         return result.data
     
@@ -91,14 +77,17 @@ class SupabaseDB:
         return all_dishes
     
     def get_restaurant_info(self, restaurant_name: str) -> Optional[Dict]:
-        """Get restaurant info including cuisine_type from restaurants table"""
-        result = self.client.table("restaurants").select("*").eq("name", restaurant_name).execute()
+        """Get restaurant info including cuisine_type from parsed_menus table"""
+        result = self.client.table("parsed_menus").select("*").ilike("restaurant_name", f"%{restaurant_name}%").execute()
         if result.data:
-            return result.data[0]
-        
-        # Try case-insensitive search
-        result = self.client.table("restaurants").select("*").ilike("name", f"%{restaurant_name}%").execute()
-        return result.data[0] if result.data else None
+            menu = result.data[0]
+            return {
+                "name": menu["restaurant_name"],
+                "cuisine_type": menu.get("cuisine_type", "restaurant"),
+                "restaurant_url": menu.get("restaurant_url", ""),
+                "menu_url": menu.get("menu_url", "")
+            }
+        return None
     
     def get_dish_by_id(self, dish_id: str) -> Optional[Dict]:
         """Get dish by ID"""
@@ -178,6 +167,41 @@ class SupabaseDB:
         self.client.table("reviewer_profiles").update(updates).eq(
             "external_id", external_id
         ).eq("platform", platform).execute()
+
+    # User Profile Management
+    def get_user_profile(self, user_id: str) -> Optional[Dict]:
+        """Get user profile from user_profiles table"""
+        result = self.client.table("user_profiles").select("*").eq("id", user_id).execute()
+        return result.data[0] if result.data else None
+    
+    def upsert_user_profile(self, user_data: Dict) -> Dict:
+        """Create or update user profile"""
+        result = self.client.table("user_profiles").upsert(user_data).execute()
+        return result.data[0]
+    
+    def update_user_profile(self, user_id: str, updates: Dict) -> Dict:
+        """Update user profile"""
+        result = self.client.table("user_profiles").update(updates).eq("id", user_id).execute()
+        return result.data[0]
+    
+    def update_top_3_restaurants(self, user_id: str, restaurants: List[Dict]) -> Dict:
+        """Update user's top 3 restaurants"""
+        return self.update_user_profile(user_id, {"top_3_restaurants": restaurants})
+    
+    def add_favorite_dish(self, user_id: str, dish_data: Dict) -> Dict:
+        """Add a favorite dish for a restaurant"""
+        result = self.client.table("user_favorite_dishes").insert({
+            "user_id": user_id,
+            "restaurant_id": dish_data.get("restaurant_id"),
+            "dish_name": dish_data.get("dish_name"),
+            "dish_description": dish_data.get("dish_description")
+        }).execute()
+        return result.data[0] if result.data else {}
+    
+    def get_favorite_dishes(self, user_id: str) -> List[Dict]:
+        """Get user's favorite dishes"""
+        result = self.client.table("user_favorite_dishes").select("*").eq("user_id", user_id).execute()
+        return result.data
 
 # Global database instance
 db = SupabaseDB()

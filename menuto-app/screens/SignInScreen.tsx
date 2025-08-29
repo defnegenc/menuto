@@ -29,6 +29,9 @@ export function SignInScreen({ onSignInComplete }: Props) {
     const userId = `user_${Date.now()}`;
     const newUser = {
       name: name.trim(),
+      preferred_cuisines: [],
+      spice_tolerance: 3,
+      price_preference: 2,
       dietary_restrictions: [],
       favorite_restaurants: [],
       favorite_dishes: []

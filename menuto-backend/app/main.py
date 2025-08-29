@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import restaurants, dishes, reviews, recommendations, recommendations_supabase, smart_recommendations, menu_api, menu_parser_api, menu_parsing
+from app.routers import restaurants, dishes, reviews, recommendations, recommendations_supabase, smart_recommendations, menu_api, menu_parser_api, menu_parsing, users
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -25,6 +25,7 @@ app.include_router(smart_recommendations.router, prefix="/smart-recommendations"
 app.include_router(menu_api.router, prefix="/menu", tags=["menu-data"])
 app.include_router(menu_parser_api.router)
 app.include_router(menu_parsing.router)
+app.include_router(users.router)
 
 @app.get("/")
 async def root():

@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet, Text } from 'react-native';
-import { ClerkProvider, useUser } from '@clerk/clerk-expo';
+import { ClerkProvider, useUser, useAuth } from '@clerk/clerk-expo';
 import { loadFonts } from './utils/fonts';
 import { theme } from './theme';
 
 // Screens
-import { SignInScreen } from './screens/SignInScreen';
-import { ClerkSignInScreen } from './screens/ClerkSignInScreen';
+import { ClerkAuthScreen } from './screens/ClerkAuthScreen';
 import { OnboardingScreen } from './screens/OnboardingScreen';
 import { MainTabScreen } from './screens/MainTabScreen';
 import { RecommendationsScreen } from './screens/RecommendationsScreen';
 import { DishDetailScreen } from './screens/DishDetailScreen';
 import { RestaurantDetailScreen } from './screens/RestaurantDetailScreen';
+import { RestaurantSearchScreen } from './screens/RestaurantSearchScreen';
 
 // Store and Types
 import { useStore } from './store/useStore';
@@ -21,11 +21,12 @@ import { ParsedDish, FavoriteRestaurant } from './types';
 // Get Clerk publishable key
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
-type AppScreen = 'signIn' | 'onboarding' | 'mainTabs' | 'restaurantDetail' | 'recommendations' | 'dishDetail';
+type AppScreen = 'signIn' | 'onboarding' | 'onboardingRestaurants' | 'mainTabs' | 'restaurantDetail' | 'recommendations' | 'dishDetail';
 
 function AppContent() {
-  const { user: clerkUser } = useUser();
-  const { user } = useStore();
+  const { user, setUser } = useStore();
+  const { user: clerkUser, isLoaded } = useUser();
+  const { signOut } = useAuth();
   const [fontsLoaded, setFontsLoaded] = useState(false);
   
   // Load fonts on app startup
@@ -40,7 +41,7 @@ function AppContent() {
   // Determine initial screen based on user state
   const getInitialScreen = (): AppScreen => {
     if (!clerkUser) return 'signIn';
-    if (!user || !user.dietary_restrictions || user.dietary_restrictions.length === 0) {
+    if (!user || !user.preferred_cuisines || user.preferred_cuisines.length === 0) {
       return 'onboarding';
     }
     return 'mainTabs';
@@ -51,11 +52,27 @@ function AppContent() {
   const [selectedRestaurant, setSelectedRestaurant] = useState<FavoriteRestaurant | null>(null);
 
 
-  const handleSignInComplete = () => {
+  const handleAuthComplete = () => {
     setCurrentScreen('onboarding');
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      // Clear user data
+      setUser({} as any, '');
+      setCurrentScreen('signIn');
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  };
+
   const handleOnboardingComplete = () => {
+    setCurrentScreen('onboardingRestaurants');
+  };
+
+  const handleOnboardingRestaurantsComplete = () => {
+    console.log('handleOnboardingRestaurantsComplete called');
     setCurrentScreen('mainTabs');
   };
 
@@ -92,13 +109,22 @@ function AppContent() {
   const renderCurrentScreen = () => {
     switch (currentScreen) {
       case 'signIn':
-        return <ClerkSignInScreen onSignInComplete={handleSignInComplete} />;
+        return <ClerkAuthScreen onAuthComplete={handleAuthComplete} />;
       
       case 'onboarding':
-        return <OnboardingScreen onComplete={handleOnboardingComplete} />;
+        return <OnboardingScreen onComplete={handleOnboardingComplete} onAddRestaurants={handleOnboardingComplete} />;
+      
+      case 'onboardingRestaurants':
+        return (
+          <RestaurantSearchScreen 
+            isOnboarding={true}
+            onComplete={handleOnboardingRestaurantsComplete}
+            minSelection={3}
+          />
+        );
       
       case 'mainTabs':
-        return <MainTabScreen onSelectRestaurant={handleSelectRestaurant} />;
+        return <MainTabScreen onSelectRestaurant={handleSelectRestaurant} onAddRestaurant={() => setCurrentScreen('onboardingRestaurants')} onSignOut={handleSignOut} />;
       
       case 'restaurantDetail':
         return selectedRestaurant ? (
@@ -128,17 +154,17 @@ function AppContent() {
         ) : null;
       
       default:
-        return <SignInScreen onSignInComplete={handleSignInComplete} />;
+        return <ClerkAuthScreen onAuthComplete={handleAuthComplete} />;
     }
   };
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded || !isLoaded) {
     return (
       <View style={styles.container}>
         <StatusBar style="dark" />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <Text style={{ fontSize: 16, color: theme.colors.text.secondary }}>
-            Loading fonts...
+            {!fontsLoaded ? 'Loading fonts...' : 'Loading...'}
           </Text>
         </View>
       </View>

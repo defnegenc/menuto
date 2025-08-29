@@ -18,22 +18,23 @@ export const SearchHeader: React.FC = () => {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.xl,
+    paddingBottom: 0,
     borderBottomWidth: 1,
-    borderBottomColor: '#E1E8ED',
+    borderBottomColor: theme.colors.border,
   },
   headerContent: {
     alignItems: 'center',
   },
   title: {
-    marginBottom: 8,
+    marginBottom: theme.spacing.sm,
   },
   subtitle: {
     fontSize: theme.typography.sizes.lg,
     color: theme.colors.text.secondary,
     textAlign: 'center',
+    fontFamily: 'DMSans-Regular',
   },
 });

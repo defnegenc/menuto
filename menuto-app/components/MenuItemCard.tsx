@@ -7,15 +7,25 @@ interface MenuItemCardProps {
   dish: ParsedDish;
   onAddToFavorites: (dish: ParsedDish) => void;
   isFavorite?: boolean;
+  lightPinkBg?: boolean; // New prop for light pink background
 }
 
 export const MenuItemCard: React.FC<MenuItemCardProps> = ({ 
   dish, 
   onAddToFavorites,
-  isFavorite = false 
+  isFavorite = false,
+  lightPinkBg = false
 }) => {
   return (
-    <View style={styles.card}>
+    <View style={[
+      styles.card, 
+      lightPinkBg && styles.lightPinkCard
+    ]}>
+      {isFavorite && lightPinkBg && (
+        <View style={styles.starContainer}>
+          <Text style={styles.starText}>⭐</Text>
+        </View>
+      )}
       <View style={styles.content}>
         <View style={styles.dishInfo}>
           <Text style={styles.dishName}>{dish.name}</Text>
@@ -28,7 +38,7 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({
           style={[styles.addButton, isFavorite && styles.addButtonActive]}
           onPress={() => onAddToFavorites(dish)}
         >
-          <Text style={styles.addButtonText}>
+          <Text style={[styles.addButtonText, isFavorite && styles.addButtonTextActive]}>
             {isFavorite ? '⭐' : '+'}
           </Text>
         </TouchableOpacity>
@@ -80,12 +90,37 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.secondary,
   },
   addButtonActive: {
-    backgroundColor: theme.colors.secondary + '20', // Same semi-transparent secondary color
+    backgroundColor: theme.colors.secondary, // Solid secondary color for favorited items
     borderColor: theme.colors.secondary,
   },
   addButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: theme.colors.secondary, // Secondary color text
+    color: theme.colors.secondary, // Secondary color text for unfavorited
+  },
+  addButtonTextActive: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: theme.colors.text.light, // White text for favorited items
+  },
+  // Light pink background style
+  lightPinkCard: {
+    backgroundColor: '#F0E0E3',
+  },
+  starContainer: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 1,
+    backgroundColor: theme.colors.secondary,
+    borderRadius: 12,
+    padding: 4,
+  },
+  starText: {
+    fontSize: 16,
+    color: theme.colors.text.light,
+  },
+  favouriteText: {
+    color: theme.colors.text.light,
   },
 });

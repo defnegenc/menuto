@@ -63,10 +63,12 @@ const DIETARY_RESTRICTIONS = [
 interface Props {
   onComplete: () => void;
   onBack?: () => void;
+  onAddRestaurants?: () => void;
 }
 
-export function OnboardingScreen({ onComplete, onBack }: Props) {
+export function OnboardingScreen({ onComplete, onBack, onAddRestaurants }: Props) {
   const setUser = useStore((state) => state.setUser);
+  const userId = useStore((state) => state.userId);
   
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const [cuisineSearch, setCuisineSearch] = useState<string>('');
@@ -111,7 +113,7 @@ export function OnboardingScreen({ onComplete, onBack }: Props) {
     return cuisinesToShow;
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
     if (selectedCuisines.length === 0) {
       Alert.alert('Please select at least one cuisine preference');
       return;
@@ -124,11 +126,19 @@ export function OnboardingScreen({ onComplete, onBack }: Props) {
       dietary_restrictions: dietaryRestrictions.map(r => r.toLowerCase()),
     };
 
-    // Generate a mock user ID (in real app, this would come from auth)
-    const mockUserId = '00000000-0000-0000-0000-000000000001';
+    // Use the actual user ID from the store
+    if (userId) {
+      await setUser(preferences, userId);
+    } else {
+      console.log('No userId available for onboarding');
+    }
     
-    setUser(preferences, mockUserId);
-    onComplete();
+    // If we have an onAddRestaurants callback, use it for restaurant selection
+    if (onAddRestaurants) {
+      onAddRestaurants();
+    } else {
+      onComplete();
+    }
   };
 
   const renderChip = (

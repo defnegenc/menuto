@@ -1,167 +1,154 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
-  ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStore } from '../store/useStore';
-import { api } from '../services/api';
-import { FavoriteRestaurant, FavoriteDish } from '../types';
 import { theme } from '../theme';
-import { ProfileHeader } from '../components/ProfileHeader';
-import { DishChip } from '../components/DishChip';
+import { FavoriteRestaurant } from '../types';
 
 interface Props {
   onSelectRestaurant: (restaurant: FavoriteRestaurant) => void;
-  onAddRestaurant?: () => void;
+  onSignOut?: () => void;
 }
 
-export function ProfileScreen({ onSelectRestaurant, onAddRestaurant }: Props) {
-  const { user, setUser, userId } = useStore();
-  const [isLoading, setIsLoading] = useState(false);
-
-  const favoriteRestaurants = user?.favorite_restaurants || [];
-  const favoriteDishes = user?.favorite_dishes || [];
-
-  const getFavoriteDishesForRestaurant = (restaurant: FavoriteRestaurant): FavoriteDish[] => {
-    // Match by restaurant name since we don't have a proper restaurant_id mapping
-    return favoriteDishes.filter(dish => 
-      dish.restaurant_id === restaurant.place_id || 
-      dish.restaurant_id === restaurant.name
-    );
+export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
+  const { user } = useStore();
+  
+  // Use favorite restaurants (first 3) for the top restaurants display
+  const top3Restaurants = user?.favorite_restaurants?.slice(0, 3) || [];
+  
+  const getSpiceEmoji = (level: number) => {
+    return '🌶️'.repeat(level);
+  };
+  
+  const getPriceEmoji = (level: number) => {
+    return '$'.repeat(level);
   };
 
-  const handleRemoveRestaurant = (restaurantId: string) => {
-    Alert.alert(
-      'Remove Restaurant',
-      'Are you sure you want to remove this restaurant from your favorites?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Remove', 
-          style: 'destructive',
-          onPress: () => removeRestaurant(restaurantId)
-        }
-      ]
-    );
-  };
+  const renderChip = (text: string) => (
+    <View key={text} style={styles.chip}>
+      <Text style={styles.chipText}>{text}</Text>
+    </View>
+  );
 
-  const removeRestaurant = async (restaurantId: string) => {
-    // TODO: Update user profile in backend
-    // For now, just update local state
-    console.log('Remove restaurant:', restaurantId);
-  };
-
-  const addTestRestaurant = () => {
-    const testRestaurant: FavoriteRestaurant = {
-      place_id: 'test_jacks_wife_freda',
-      name: "Jack's Wife Freda",
-      vicinity: 'New York, NY',
-      cuisine_type: 'Mediterranean'
-    };
-
-    const updatedUser = {
-      ...user,
-      favorite_restaurants: [...favoriteRestaurants, testRestaurant],
-      preferred_cuisines: user?.preferred_cuisines || [],
-      spice_tolerance: user?.spice_tolerance || 0,
-      price_preference: user?.price_preference || 0,
-      dietary_restrictions: user?.dietary_restrictions || []
-    };
-
-    if (user && userId) {
-      setUser(updatedUser, userId);
-      Alert.alert('Success', 'Test restaurant added! You can now click on it to see the menu parsing.');
-    }
-  };
-
-  const renderRestaurantCard = (restaurant: FavoriteRestaurant) => {
-    const dishes = getFavoriteDishesForRestaurant(restaurant);
-    
-    return (
-      <View key={restaurant.place_id} style={styles.restaurantCard}>
-        <TouchableOpacity
-          style={styles.removeButton}
-          onPress={() => handleRemoveRestaurant(restaurant.place_id)}
-        >
-          <Text style={styles.removeButtonText}>✕</Text>
-        </TouchableOpacity>
-        
-        <View style={styles.restaurantContent}>
-          <TouchableOpacity 
-            style={styles.restaurantInfo}
-            onPress={() => onSelectRestaurant(restaurant)}
-          >
-            <View style={styles.restaurantHeader}>
-              <Text style={styles.restaurantName}>{restaurant.name}</Text>
-              <Text style={styles.cuisineType}>{restaurant.cuisine_type}</Text>
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Header with Profile Pic and Name */}
+        <View style={styles.header}>
+          <View style={styles.profilePicContainer}>
+            <View style={styles.profilePic}>
+              <Text style={styles.profilePicText}>
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+              </Text>
             </View>
-            <Text style={styles.vicinity}>{restaurant.vicinity}</Text>
-            <Text style={styles.tapHint}>Tap to scan menu or get recommendations</Text>
-          </TouchableOpacity>
+          </View>
+          <Text style={styles.userName}>{user?.name || 'User'}</Text>
+        </View>
+
+        {/* Preferences Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Your Preferences</Text>
           
-          {dishes.length > 0 && (
-            <View style={styles.favoriteDishesSection}>
-              <Text style={styles.favoriteDishesTitle}>Your Favorite Dishes:</Text>
-              <View style={styles.dishesContainer}>
-                {dishes.map((dish, index) => (
-                  <DishChip
-                    key={`${dish.dish_name}-${index}`}
-                    dishName={dish.dish_name}
-                  />
-                ))}
+          {/* Cuisine Preferences */}
+          {user?.preferred_cuisines && user.preferred_cuisines.length > 0 && (
+            <View style={styles.preferenceGroup}>
+              <Text style={styles.preferenceLabel}>Favorite Cuisines</Text>
+              <View style={styles.chipsContainer}>
+                {user.preferred_cuisines.map(cuisine => 
+                  renderChip(cuisine.charAt(0).toUpperCase() + cuisine.slice(1))
+                )}
               </View>
             </View>
           )}
-          
-          <View style={styles.actionButtons}>
-            <TouchableOpacity 
-              style={styles.addDishButton}
-              onPress={() => onSelectRestaurant(restaurant)}
-            >
-              <Text style={styles.addDishButtonText}>
-                {dishes.length > 0 ? '+ Add Another Favorite' : '+ Add Favorite Dish'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    );
-  };
 
-  return (
-    <View style={styles.container}>
-      <ProfileHeader />
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {favoriteRestaurants.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateIcon}>🍽️</Text>
-            <Text style={styles.emptyStateTitle}>No Restaurants Yet</Text>
-            <Text style={styles.emptyStateText}>
-              Use the "Add Restaurant" tab to find your favorite places and get personalized recommendations.
-            </Text>
-            <TouchableOpacity style={styles.addTestButton} onPress={addTestRestaurant}>
-              <Text style={styles.addTestButtonText}>+ Add Test Restaurant</Text>
+          {/* Spice Tolerance */}
+          {user?.spice_tolerance && (
+            <View style={styles.preferenceGroup}>
+              <Text style={styles.preferenceLabel}>Spice Tolerance</Text>
+              <View style={styles.spiceContainer}>
+                <Text style={styles.spiceEmoji}>{getSpiceEmoji(user.spice_tolerance)}</Text>
+                <Text style={styles.spiceText}>Level {user.spice_tolerance}/5</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Price Preference */}
+          {user?.price_preference && (
+            <View style={styles.preferenceGroup}>
+              <Text style={styles.preferenceLabel}>Price Preference</Text>
+              <View style={styles.priceContainer}>
+                <Text style={styles.priceEmoji}>{getPriceEmoji(user.price_preference)}</Text>
+                <Text style={styles.priceText}>
+                  {user.price_preference === 1 ? 'Very Budget-friendly' :
+                   user.price_preference === 2 ? 'Budget-friendly' :
+                   user.price_preference === 3 ? 'Moderate' : 'Premium'}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Dietary Restrictions */}
+          {user?.dietary_restrictions && user.dietary_restrictions.length > 0 && (
+            <View style={styles.preferenceGroup}>
+              <Text style={styles.preferenceLabel}>Dietary Restrictions</Text>
+              <View style={styles.chipsContainer}>
+                {user.dietary_restrictions.map(restriction => 
+                  renderChip(restriction.charAt(0).toUpperCase() + restriction.slice(1))
+                )}
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Top 3 Restaurants */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Your Top Restaurants</Text>
+          {top3Restaurants.length > 0 ? (
+            <View style={styles.restaurantsContainer}>
+              {top3Restaurants.map((restaurant: any, index: number) => (
+                <TouchableOpacity
+                  key={restaurant.place_id}
+                  style={styles.restaurantCard}
+                  onPress={() => onSelectRestaurant(restaurant)}
+                >
+                  <View style={styles.restaurantRank}>
+                    <Text style={styles.rankText}>#{index + 1}</Text>
+                  </View>
+                  <View style={styles.restaurantInfo}>
+                    <Text style={styles.restaurantName}>{restaurant.name}</Text>
+                    <Text style={styles.restaurantLocation}>{restaurant.vicinity}</Text>
+                    {restaurant.cuisine_type && (
+                      <Text style={styles.restaurantCuisine}>{restaurant.cuisine_type}</Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No restaurants added yet</Text>
+              <Text style={styles.emptyStateSubtext}>Add restaurants to see them here</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Sign Out Button */}
+        {onSignOut && (
+          <View style={styles.signOutContainer}>
+            <TouchableOpacity style={styles.signOutButton} onPress={onSignOut}>
+              <Text style={styles.signOutButtonText}>Sign Out</Text>
             </TouchableOpacity>
           </View>
-        ) : (
-          <View style={styles.restaurantList}>
-            {favoriteRestaurants.map(renderRestaurantCard)}
-          </View>
-        )}
-        
-        {onAddRestaurant && (
-          <TouchableOpacity style={styles.addRestaurantButton} onPress={onAddRestaurant}>
-            <Text style={styles.addRestaurantButtonText}>+ Add Restaurant</Text>
-          </TouchableOpacity>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -170,170 +157,171 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-
   scrollView: {
     flex: 1,
   },
-  emptyState: {
-    flex: 1,
+  header: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  profilePicContainer: {
+    marginBottom: 16,
+  },
+  profilePic: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.huge,
-    paddingVertical: 60,
   },
-  emptyStateIcon: {
-    fontSize: 64,
-    marginBottom: theme.spacing.xl,
+  profilePicText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
-  emptyStateTitle: {
-    fontSize: theme.typography.sizes.xxl,
-    fontWeight: 600,
+  userName: {
+    fontSize: 24,
+    fontWeight: '600',
     color: theme.colors.text.primary,
-    marginBottom: theme.spacing.md,
   },
-  emptyStateText: {
-    fontSize: theme.typography.sizes.lg,
+  section: {
+    paddingHorizontal: 20,
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+    marginBottom: 16,
+  },
+  preferenceGroup: {
+    marginBottom: 24,
+  },
+  preferenceLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: theme.colors.text.primary,
+    marginBottom: 8,
+  },
+  chipsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    backgroundColor: theme.colors.secondary + '20',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.secondary,
+  },
+  chipText: {
+    fontSize: 14,
+    color: theme.colors.secondary,
+    fontWeight: '500',
+  },
+  spiceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  spiceEmoji: {
+    fontSize: 20,
+  },
+  spiceText: {
+    fontSize: 16,
     color: theme.colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: theme.spacing.xxxl,
   },
-  addFirstButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.xxxl,
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  addFirstButtonText: {
-    color: theme.colors.text.light,
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: 400,
+  priceEmoji: {
+    fontSize: 20,
+    color: theme.colors.primary,
   },
-  addTestButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.xxxl,
-    marginTop: theme.spacing.lg,
+  priceText: {
+    fontSize: 16,
+    color: theme.colors.text.secondary,
   },
-  addTestButtonText: {
-    color: theme.colors.text.light,
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: 400,
-  },
-  restaurantList: {
-    paddingHorizontal: theme.spacing.xl,
-    paddingTop: theme.spacing.xl,
+  restaurantsContainer: {
+    gap: 12,
   },
   restaurantCard: {
     backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    marginBottom: theme.spacing.md,
-    position: 'relative',
-    ...theme.shadows.md,
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  restaurantContent: {
-    flex: 1,
-    padding: theme.spacing.lg,
+  restaurantRank: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  rankText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   restaurantInfo: {
-    marginBottom: theme.spacing.md,
-  },
-  restaurantHeader: {
-    marginBottom: theme.spacing.xs,
+    flex: 1,
   },
   restaurantName: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: 600,
+    fontSize: 16,
+    fontWeight: '600',
     color: theme.colors.text.primary,
+    marginBottom: 4,
   },
-  cuisineType: {
-    fontSize: theme.typography.sizes.md,
+  restaurantLocation: {
+    fontSize: 14,
+    color: theme.colors.text.secondary,
+    marginBottom: 2,
+  },
+  restaurantCuisine: {
+    fontSize: 12,
     color: theme.colors.tertiary,
     textTransform: 'capitalize',
-    fontWeight: 300,
   },
-  vicinity: {
-    fontSize: theme.typography.sizes.md,
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyStateText: {
+    fontSize: 16,
     color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.sm,
+    marginBottom: 4,
   },
-  tapHint: {
-    fontSize: theme.typography.sizes.sm,
+  emptyStateSubtext: {
+    fontSize: 14,
     color: theme.colors.text.muted,
-    fontStyle: 'italic',
   },
-  favoriteDishesSection: {
-    marginBottom: theme.spacing.md,
+  signOutContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
-  favoriteDishesTitle: {
-    fontSize: theme.typography.sizes.md,
-    fontWeight: 400,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
-  },
-  dishesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.xs,
-  },
-
-  actionButtons: {
-    flexDirection: 'row',
-  },
-  addDishButton: {
-    backgroundColor: theme.colors.tertiary + '15',
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.tertiary,
-    borderStyle: 'dashed',
-  },
-  addDishButtonText: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.tertiary,
-    fontWeight: 300,
-  },
-  removeButton: {
-    position: 'absolute',
-    top: theme.spacing.sm,
-    right: theme.spacing.sm,
-    padding: theme.spacing.xs,
-    zIndex: 1,
-  },
-  removeButtonText: {
-    fontSize: theme.typography.sizes.xl,
-    color: theme.colors.primary,
-    fontWeight: 600,
-  },
-  addMoreButton: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.lg,
-    alignItems: 'center',
-    marginHorizontal: theme.spacing.xl,
-    marginVertical: theme.spacing.xl,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    borderStyle: 'dashed',
-  },
-  addMoreButtonText: {
-    color: theme.colors.primary,
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: 400,
-  },
-  addRestaurantButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.lg,
-    marginHorizontal: theme.spacing.xl,
-    marginVertical: theme.spacing.lg,
+  signOutButton: {
+    backgroundColor: theme.colors.error,
+    borderRadius: 12,
+    paddingVertical: 16,
     alignItems: 'center',
   },
-  addRestaurantButtonText: {
-    color: theme.colors.text.light,
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: 600,
+  signOutButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

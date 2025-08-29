@@ -378,6 +378,10 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
   };
 
   const handleAddDishToFavorites = useCallback((dish: ParsedDish) => {
+    console.log('🔄 Adding/removing dish from favorites:', dish.name);
+    console.log('Current user:', user);
+    console.log('Current userId:', userId);
+    
     // Check if dish is already in favorites
     const isAlreadyFavorite = (user?.favorite_dishes || []).some(fav => 
       fav.dish_name === dish.name && 
@@ -385,6 +389,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
     );
 
     if (isAlreadyFavorite) {
+      console.log('🗑️ Removing dish from favorites');
       // Remove from favorites
       const updatedUser = {
         ...user,
@@ -399,10 +404,12 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
       };
       
       if (user && userId) {
+        console.log('💾 Saving updated user (removed):', updatedUser);
         setUser(updatedUser, userId);
       }
       Alert.alert('Removed', `Removed "${dish.name}" from your favorites!`);
     } else {
+      console.log('⭐ Adding dish to favorites');
       // Add to favorites
       const updatedUser = {
         ...user,
@@ -418,6 +425,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
       };
       
       if (user && userId) {
+        console.log('💾 Saving updated user (added):', updatedUser);
         setUser(updatedUser, userId);
       }
       Alert.alert('Added to Favorites', `Added "${dish.name}" to your favorites!`);
@@ -556,6 +564,18 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                     selectedCategory === 'all' && styles.categoryFilterTextActive
                   ]}>All</Text>
                 </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[
+                    styles.categoryFilterButton, 
+                    selectedCategory === 'favorites' && styles.categoryFilterButtonActive
+                  ]}
+                  onPress={() => setSelectedCategory('favorites')}
+                >
+                  <Text style={[
+                    styles.categoryFilterText,
+                    selectedCategory === 'favorites' && styles.categoryFilterTextActive
+                  ]}>⭐ Favorites</Text>
+                </TouchableOpacity>
                 {Object.keys(groupedDishes).map((category) => (
                   <TouchableOpacity 
                     key={category}
@@ -589,6 +609,28 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                     <Text style={styles.noResultsText}>No dishes found matching "{searchText}"</Text>
                   )}
                 </View>
+              ) : selectedCategory === 'favorites' ? (
+                // Show favorite dishes as cards
+                (() => {
+                  const favoriteDishes = menuDishes.filter(dish => isDishFavorite(dish));
+                  return (
+                    <View style={styles.categorySection}>
+                      <Text style={styles.categoryTitle}>⭐ FAVORITES ({favoriteDishes.length})</Text>
+                      {favoriteDishes.map((dish, index) => (
+                        <MenuItemCard
+                          key={dish.id || `favorite-dish-${index}`}
+                          dish={dish}
+                          onAddToFavorites={handleAddDishToFavorites}
+                          isFavorite={true}
+                          lightPinkBg={true}
+                        />
+                      ))}
+                      {favoriteDishes.length === 0 && (
+                        <Text style={styles.noResultsText}>No favorite dishes yet. Tap the + button on any dish to add it to favorites!</Text>
+                      )}
+                    </View>
+                  );
+                })()
               ) : selectedCategory === 'all' ? (
                 // Show all dishes grouped by category
                 Object.entries(groupedDishes).map(([category, dishes]) => (

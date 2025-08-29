@@ -4,6 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { Text } from 'react-native';
 import { MyRestaurants } from './MyRestaurants';
 import { RestaurantSearchScreen } from './RestaurantSearchScreen';
+import { ProfileScreen } from './ProfileScreen';
 
 import { FavoriteRestaurant } from '../types';
 import { theme } from '../theme';
@@ -12,16 +13,22 @@ const Tab = createBottomTabNavigator();
 
 interface Props {
   onSelectRestaurant: (restaurant: FavoriteRestaurant) => void;
+  onAddRestaurant?: () => void;
+  onSignOut?: () => void;
 }
 
-export function MainTabScreen({ onSelectRestaurant }: Props) {
+export function MainTabScreen({ onSelectRestaurant, onAddRestaurant, onSignOut }: Props) {
   // Create wrapper components to pass props
   const MyRestaurantsScreen = () => (
-    <MyRestaurants onSelectRestaurant={onSelectRestaurant} />
+    <MyRestaurants onSelectRestaurant={onSelectRestaurant} onAddRestaurant={onAddRestaurant} />
   );
 
   const AddRestaurantScreen = () => (
     <RestaurantSearchScreen />
+  );
+
+  const ProfileScreenWrapper = () => (
+    <ProfileScreen onSelectRestaurant={onSelectRestaurant} onSignOut={onSignOut} />
   );
   return (
     <NavigationContainer>
@@ -58,6 +65,16 @@ export function MainTabScreen({ onSelectRestaurant }: Props) {
             tabBarLabel: 'Add Restaurant',
             tabBarIcon: ({ color }) => (
               <Text style={{ color, fontSize: 16 }}>➕</Text>
+            ),
+          }}
+        />
+        <Tab.Screen 
+          name="Profile" 
+          component={ProfileScreenWrapper}
+          options={{
+            tabBarLabel: 'Profile',
+            tabBarIcon: ({ color }) => (
+              <Text style={{ color, fontSize: 16 }}>👤</Text>
             ),
           }}
         />

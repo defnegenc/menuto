@@ -2,12 +2,15 @@
 
 export interface UserPreferences {
   id?: number;
+  name?: string;
+  email?: string;
   preferred_cuisines: string[];
   spice_tolerance: number; // 1-5
   price_preference: number; // 1-4
   dietary_restrictions: string[];
   favorite_restaurants?: FavoriteRestaurant[];
   favorite_dishes?: FavoriteDish[];
+  top_3_restaurants?: FavoriteRestaurant[];
 }
 
 export interface FavoriteRestaurant {
@@ -15,6 +18,9 @@ export interface FavoriteRestaurant {
   name: string;
   vicinity: string;
   cuisine_type?: string;
+  visit_count?: number;
+  rating?: number;
+  last_visited?: string;
 }
 
 export interface FavoriteDish {

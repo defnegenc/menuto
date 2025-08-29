@@ -21,9 +21,9 @@ async def get_restaurant_menu(place_id: str, restaurant_name: str):
         # Get dishes from Supabase
         menu_items = supabase_db.get_dishes_by_place(place_id, restaurant_name)
         
-        # Get restaurant info including cuisine_type
-        restaurant_info = supabase_db.get_restaurant_info(restaurant_name)
-        cuisine_type = restaurant_info.get('cuisine_type', 'restaurant') if restaurant_info else 'restaurant'
+        # Get cuisine_type from parsed_menus table
+        menus = supabase_db.client.table("parsed_menus").select("cuisine_type").ilike("restaurant_name", f"%{restaurant_name}%").execute()
+        cuisine_type = menus.data[0].get('cuisine_type', 'restaurant') if menus.data else 'restaurant'
         
         return {
             "restaurant": {

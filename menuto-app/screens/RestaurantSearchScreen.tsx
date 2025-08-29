@@ -145,7 +145,7 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, minSe
     }
   };
 
-  const confirmSelectedRestaurants = () => {
+  const confirmSelectedRestaurants = async () => {
     if (!user || !userId) return;
 
     // Check for duplicates
@@ -168,12 +168,9 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, minSe
       rating: restaurant.rating || 4.0
     }))];
 
-    const updatedUser = {
-      ...user,
-      favorite_restaurants: updatedRestaurants
-    };
-
-    setUser(updatedUser, userId);
+    // Update user and save to Supabase
+    const updatedUser = { ...user, favorite_restaurants: updatedRestaurants };
+    await setUser(updatedUser, userId);
     
     // Clear selection
     setSelectedRestaurants([]);
@@ -258,7 +255,7 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, minSe
         <View style={styles.statusRow}>
           <Text style={styles.selectedCount}>
             {isOnboarding 
-              ? `Selected: ${user?.favorite_restaurants?.length || 0}/${minSelection}`
+              ? `Selected: ${selectedRestaurants.length}/${minSelection}`
               : `Selected: ${selectedRestaurants.length}`
             }
           </Text>
@@ -303,17 +300,37 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, minSe
           <TouchableOpacity 
             style={[
               styles.continueButton,
-              (user?.favorite_restaurants?.length || 0) < minSelection && styles.continueButtonDisabled
+              selectedRestaurants.length < minSelection && styles.continueButtonDisabled
             ]}
-            onPress={() => {
-              if (onComplete && (user?.favorite_restaurants?.length || 0) >= minSelection) {
-                onComplete(user?.favorite_restaurants || []);
+            onPress={async () => {
+              console.log('Continue button pressed, selected:', selectedRestaurants.length, 'min:', minSelection);
+              if (onComplete && selectedRestaurants.length >= minSelection) {
+                console.log('Calling onComplete with', selectedRestaurants.length, 'restaurants');
+                // Add selected restaurants to user's favorites
+                if (user && userId) {
+                  const existingRestaurants = user.favorite_restaurants || [];
+                  const newRestaurants = selectedRestaurants.map(restaurant => ({
+                    place_id: restaurant.place_id,
+                    name: restaurant.name,
+                    vicinity: restaurant.vicinity,
+                    cuisine_type: restaurant.cuisine_type || 'Restaurant',
+                    rating: restaurant.rating || 4.0
+                  }));
+                  
+                  const updatedRestaurants = [...existingRestaurants, ...newRestaurants];
+                  // Update user's favorite restaurants
+                  const updatedUser = { ...user, favorite_restaurants: updatedRestaurants };
+                  await setUser(updatedUser, userId);
+                }
+                onComplete(selectedRestaurants);
+              } else {
+                console.log('Continue button conditions not met');
               }
             }}
-            disabled={(user?.favorite_restaurants?.length || 0) < minSelection}
+            disabled={selectedRestaurants.length < minSelection}
           >
             <Text style={styles.continueButtonText}>
-              Continue ({user?.favorite_restaurants?.length || 0}/{minSelection})
+              Continue ({selectedRestaurants.length}/{minSelection})
             </Text>
           </TouchableOpacity>
         </View>
@@ -343,7 +360,7 @@ const styles = StyleSheet.create({
   },
 
   searchSection: {
-    paddingHorizontal: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.xl,
     paddingBottom: theme.spacing.lg,
     backgroundColor: theme.colors.surface,
@@ -352,6 +369,8 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     marginBottom: theme.spacing.md,
+    maxWidth: '100%',
+    alignSelf: 'center',
   },
   searchInput: {
     flex: 1,
@@ -399,7 +418,7 @@ const styles = StyleSheet.create({
   },
   resultsContainer: {
     flex: 1,
-    paddingHorizontal: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.xl,
   },
   restaurantCard: {
