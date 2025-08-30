@@ -22,6 +22,7 @@ export function DishDetailScreen({ dish, onBack }: Props) {
   const [rating, setRating] = useState<number>(0);
   const [hasRated, setHasRated] = useState(false);
 
+
   const handleRating = (starRating: number) => {
     setRating(starRating);
   };

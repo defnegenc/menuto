@@ -171,7 +171,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
   const handleSearchMenu = (text: string) => {
     setSearchText(text);
     if (text.trim()) {
-      const filtered = menuDishes.filter(dish => 
+      const filtered = nonFavoriteDishes.filter(dish => 
         dish.name.toLowerCase().includes(text.toLowerCase()) ||
         (dish.description && dish.description.toLowerCase().includes(text.toLowerCase()))
       );
@@ -407,7 +407,6 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
         console.log('💾 Saving updated user (removed):', updatedUser);
         setUser(updatedUser, userId);
       }
-      Alert.alert('Removed', `Removed "${dish.name}" from your favorites!`);
     } else {
       console.log('⭐ Adding dish to favorites');
       // Add to favorites
@@ -428,7 +427,6 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
         console.log('💾 Saving updated user (added):', updatedUser);
         setUser(updatedUser, userId);
       }
-      Alert.alert('Added to Favorites', `Added "${dish.name}" to your favorites!`);
     }
   }, [user, userId, restaurant.place_id, restaurant.name, setUser]);
 
@@ -439,16 +437,23 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
     );
   }, [user, restaurant.place_id, restaurant.name]);
 
-  const getFavoriteDishesForRestaurant = () => {
+  
+
+  const getFavoriteDishesForRestaurant = useCallback(() => {
     return (user?.favorite_dishes || []).filter(dish => 
       dish.restaurant_id === restaurant.place_id || 
       dish.restaurant_id === restaurant.name
     );
-  };
+  }, [user?.favorite_dishes, restaurant.place_id, restaurant.name]);
+
+  // Filter out favorited dishes from main menu (they appear in favorites section)
+  const nonFavoriteDishes = useMemo(() => {
+    return menuDishes.filter(d => !isDishFavorite(d));
+  }, [menuDishes, isDishFavorite]);
 
   const groupedDishes = useMemo(() => {
     const categories: { [key: string]: ParsedDish[] } = {};
-    menuDishes.forEach(dish => {
+    nonFavoriteDishes.forEach(dish => {
       const category = dish.category || 'other';
       if (!categories[category]) {
         categories[category] = [];
@@ -456,7 +461,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
       categories[category].push(dish);
     });
     return categories;
-  }, [menuDishes]);
+  }, [nonFavoriteDishes]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -508,37 +513,98 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
             </View>
           ) : (
                         <View style={styles.menuContainer}>
+              {/* Search Results - Show above favorites when searching */}
+              {searchText.trim() && (
+                <View style={styles.searchResultsSection}>
+                  <Text style={[styles.sectionTitle, theme.typography.h2.fancy]}>
+                    Search Results
+                  </Text>
+                  
+                  {/* Search Bar */}
+                  <View style={styles.searchContainer}>
+                    <View style={styles.searchInputContainer}>
+                      <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search the menu!"
+                        placeholderTextColor={theme.colors.text.secondary}
+                        value={searchText}
+                        onChangeText={handleSearchMenu}
+                      />
+                    </View>
+                  </View>
+                  
+                  {filteredDishes.map((dish, index) => (
+                    <MenuItemCard
+                      key={dish.id || `search-dish-${index}`}
+                      dish={dish}
+                      onAddToFavorites={handleAddDishToFavorites}
+                      isFavorite={isDishFavorite(dish)}
+                    />
+                  ))}
+                  {filteredDishes.length === 0 && (
+                    <Text style={styles.noResultsText}>No dishes found matching "{searchText}"</Text>
+                  )}
+                </View>
+              )}
+
               {/* Your Favorites Section */}
               <View style={styles.favoritesSection}>
                 <Text style={[styles.sectionTitle, theme.typography.h2.fancy]}>Your Favorites</Text>
-                {getFavoriteDishesForRestaurant().length > 0 ? (
-                  <View style={styles.favoritesChips}>
-                    {getFavoriteDishesForRestaurant().map((favorite, index) => (
-                      <DishChip
-                        key={`${favorite.dish_name}-${index}`}
-                        dishName={favorite.dish_name}
-                        onRemove={() => removeFavoriteDish(favorite)}
-                        showRemoveButton={true}
-                      />
-                    ))}
-                  </View>
-                ) : (
-                  <Text style={styles.emptyFavoritesText}>Add your favorites!</Text>
-                )}
                 
-                {/* Search Bar */}
-                <View style={styles.searchContainer}>
-                  <View style={styles.searchInputContainer}>
-                    <Text style={styles.searchIcon}>🔍</Text>
-                    <TextInput
-                      style={styles.searchInput}
-                      placeholder="Search the menu!"
-                      placeholderTextColor={theme.colors.text.secondary}
-                      value={searchText}
-                      onChangeText={handleSearchMenu}
-                    />
+                {/* Search Bar - Only show when not searching */}
+                {!searchText.trim() && (
+                  <View style={styles.searchContainer}>
+                    <View style={styles.searchInputContainer}>
+                      <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search the menu!"
+                        placeholderTextColor={theme.colors.text.secondary}
+                        value={searchText}
+                        onChangeText={handleSearchMenu}
+                      />
+                    </View>
                   </View>
-                </View>
+                )}
+                {(() => {
+                  const favoriteDishes = getFavoriteDishesForRestaurant();
+                  return favoriteDishes.length > 0 ? (
+                    
+                    <View style={styles.favoritesCards}>
+                      {favoriteDishes.map((favorite, index) => {
+                        // Find the full dish data from menuDishes
+                        const fullDish = menuDishes.find(dish => 
+                          dish.name === favorite.dish_name
+                        );
+                        
+                        if (fullDish) {
+                          return (
+                            <MenuItemCard
+                              key={`${favorite.dish_name}-${index}`}
+                              dish={fullDish}
+                              onAddToFavorites={handleAddDishToFavorites}
+                              isFavorite={true}
+                            />
+                          );
+                        }
+
+                        // Fallback if dish not found in menu
+                        return (
+                          <View key={`${favorite.dish_name}-${index}`} style={styles.fallbackCard}>
+                            <Text style={styles.fallbackDishName}>{favorite.dish_name}</Text>
+                            <TouchableOpacity 
+                              style={styles.removeButton}
+                              onPress={() => removeFavoriteDish(favorite)}
+                            >
+                              <Text style={styles.removeButtonText}>Remove</Text>
+                            </TouchableOpacity>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ) : (
+                    <Text style={styles.emptyFavoritesText}>Add your favorites!</Text>
+                  );
+                })()}
               </View>
 
               <View style={styles.menuHeader}>
@@ -564,18 +630,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                     selectedCategory === 'all' && styles.categoryFilterTextActive
                   ]}>All</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[
-                    styles.categoryFilterButton, 
-                    selectedCategory === 'favorites' && styles.categoryFilterButtonActive
-                  ]}
-                  onPress={() => setSelectedCategory('favorites')}
-                >
-                  <Text style={[
-                    styles.categoryFilterText,
-                    selectedCategory === 'favorites' && styles.categoryFilterTextActive
-                  ]}>⭐ Favorites</Text>
-                </TouchableOpacity>
+
                 {Object.keys(groupedDishes).map((category) => (
                   <TouchableOpacity 
                     key={category}
@@ -593,48 +648,11 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                 ))}
               </View>
 
-              {searchText.trim() ? (
-                // Show filtered results
-                <View style={styles.categorySection}>
-                  <Text style={styles.categoryTitle}>SEARCH RESULTS ({filteredDishes.length})</Text>
-                  {filteredDishes.map((dish, index) => (
-                    <MenuItemCard
-                      key={dish.id || `filtered-dish-${index}`}
-                      dish={dish}
-                      onAddToFavorites={handleAddDishToFavorites}
-                      isFavorite={isDishFavorite(dish)}
-                    />
-                  ))}
-                  {filteredDishes.length === 0 && (
-                    <Text style={styles.noResultsText}>No dishes found matching "{searchText}"</Text>
-                  )}
-                </View>
-              ) : selectedCategory === 'favorites' ? (
-                // Show favorite dishes as cards
-                (() => {
-                  const favoriteDishes = menuDishes.filter(dish => isDishFavorite(dish));
-                  return (
-                    <View style={styles.categorySection}>
-                      <Text style={styles.categoryTitle}>⭐ FAVORITES ({favoriteDishes.length})</Text>
-                      {favoriteDishes.map((dish, index) => (
-                        <MenuItemCard
-                          key={dish.id || `favorite-dish-${index}`}
-                          dish={dish}
-                          onAddToFavorites={handleAddDishToFavorites}
-                          isFavorite={true}
-                        />
-                      ))}
-                      {favoriteDishes.length === 0 && (
-                        <Text style={styles.noResultsText}>No favorite dishes yet. Tap the + button on any dish to add it to favorites!</Text>
-                      )}
-                    </View>
-                  );
-                })()
-              ) : selectedCategory === 'all' ? (
+              {selectedCategory === 'all' ? (
                 // Show all dishes grouped by category
                 Object.entries(groupedDishes).map(([category, dishes]) => (
                   <View key={category} style={styles.categorySection}>
-                    <Text style={styles.categoryTitle}>{category.toUpperCase()} ({dishes.length} dishes total)</Text>
+                    <Text style={styles.categoryTitle}>{category.toUpperCase()} ({dishes.length})</Text>
                     {dishes.map((dish, index) => (
                       <MenuItemCard
                         key={dish.id || `dish-${index}`}
@@ -792,6 +810,9 @@ const styles = StyleSheet.create({
   menuContainer: {
     padding: 20,
   },
+  searchResultsSection: {
+    marginBottom: 24,
+  },
   favoritesSection: {
     marginBottom: 24,
   },
@@ -801,8 +822,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   searchContainer: {
-    marginTop: 16,
-    marginBottom: 8,
+    marginBottom: 10,
   },
   searchInputContainer: {
     flexDirection: 'row',
@@ -837,12 +857,36 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: theme.colors.text.primary,
-    marginBottom: 12,
   },
-  favoritesChips: {
+  favoritesCards: {
+    marginBottom: 16,
+  },
+  fallbackCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  fallbackDishName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+  },
+  removeButton: {
+    backgroundColor: theme.colors.secondary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  removeButtonText: {
+    color: theme.colors.text.light,
+    fontSize: 12,
+    fontWeight: '600',
   },
 
   menuHeader: {
