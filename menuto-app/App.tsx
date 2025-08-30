@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet, Text } from 'react-native';
 import { ClerkProvider, useUser, useAuth } from '@clerk/clerk-expo';
+import * as Linking from 'expo-linking';
 import { loadFonts } from './utils/fonts';
 import { theme } from './theme';
 
@@ -17,6 +18,26 @@ import { RestaurantSearchScreen } from './screens/RestaurantSearchScreen';
 // Store and Types
 import { useStore } from './store/useStore';
 import { ParsedDish, FavoriteRestaurant } from './types';
+import { api } from './services/api';
+
+// Onboarding completion helpers
+const hasTastePrefs = (u?: any) => {
+  const hasPrefs = Array.isArray(u?.preferred_cuisines) && u.preferred_cuisines.length > 0;
+  console.log('🔍 hasTastePrefs:', { hasPrefs, prefs: u?.preferred_cuisines });
+  return hasPrefs;
+};
+
+const hasRestaurants = (u?: any) => {
+  const hasRest = Array.isArray(u?.favorite_restaurants) && u.favorite_restaurants.length > 0;
+  console.log('🔍 hasRestaurants:', { hasRest, restaurants: u?.favorite_restaurants?.length });
+  return hasRest;
+};
+
+const hasCompletedOnboarding = (u?: any) => {
+  const completed = hasTastePrefs(u) && hasRestaurants(u);
+  console.log('🔍 hasCompletedOnboarding:', { completed });
+  return completed;
+};
 
 // Get Clerk publishable key
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
@@ -37,14 +58,87 @@ function AppContent() {
     };
     loadFontsAsync();
   }, []);
+
+  // Load user data when Clerk user is available
+  useEffect(() => {
+    const loadUserData = async () => {
+      console.log('🔄 App.tsx: Clerk user state:', { 
+        hasClerkUser: !!clerkUser, 
+        clerkUserId: clerkUser?.id,
+        hasLocalUser: !!user,
+        localUserId: user?.id || 'none',
+        isLoaded: isLoaded
+      });
+      
+      if (!isLoaded) {
+        console.log('⏳ App.tsx: Clerk still loading...');
+        return;
+      }
+      
+      if (clerkUser && !user) {
+        try {
+          console.log('🔄 App.tsx: Loading user data for Clerk ID:', clerkUser.id);
+          const userData = await api.getUserPreferences(clerkUser.id);
+          if (userData) {
+            console.log('✅ App.tsx: User data loaded successfully');
+            console.log('📊 User data breakdown:', {
+              hasPreferences: !!userData.preferred_cuisines?.length,
+              hasRestaurants: !!userData.favorite_restaurants?.length,
+              restaurantCount: userData.favorite_restaurants?.length || 0,
+              preferences: userData.preferred_cuisines
+            });
+            setUser(userData, clerkUser.id);
+
+            // Route based on what they already have
+            if (hasCompletedOnboarding(userData)) {
+              console.log('🎯 App.tsx: User has completed onboarding, going to mainTabs');
+              setCurrentScreen('mainTabs');
+            } else if (hasTastePrefs(userData)) {
+              console.log('🎯 App.tsx: User has taste prefs but no restaurants, going to onboardingRestaurants');
+              setCurrentScreen('onboardingRestaurants');
+            } else {
+              console.log('🎯 App.tsx: New user, going to onboarding');
+              setCurrentScreen('onboarding');
+            }
+          } else {
+            console.log('❌ App.tsx: No user data found for Clerk ID:', clerkUser.id);
+          }
+        } catch (error) {
+          console.log('❌ App.tsx: Failed to load user data:', error);
+        }
+      } else if (!clerkUser) {
+        console.log('❌ App.tsx: No Clerk user available - user needs to sign in');
+      } else if (user) {
+        console.log('✅ App.tsx: User already loaded, ID:', user.id || 'no-id');
+      } else {
+        console.log('✅ App.tsx: No user loaded');
+      }
+    };
+    
+    loadUserData();
+  }, [clerkUser, user, setUser, isLoaded]);
+
+  // Set userId in store when Clerk user changes
+  useEffect(() => {
+    if (clerkUser?.id && !user) {
+      console.log('🔄 App.tsx: Setting userId in store:', clerkUser.id);
+      // Don't call setUser here, just set the userId
+      // The loadUserData effect above will handle loading the actual user data
+    }
+  }, [clerkUser?.id, user]);
   
   // Determine initial screen based on user state
   const getInitialScreen = (): AppScreen => {
+    // If Clerk not ready, keep sign-in UI
     if (!clerkUser) return 'signIn';
-    if (!user || !user.preferred_cuisines || user.preferred_cuisines.length === 0) {
-      return 'onboarding';
-    }
-    return 'mainTabs';
+
+    // If we haven't loaded the user profile yet, show a neutral screen
+    // (We'll jump to the right screen once loadUserData resolves)
+    if (!user) return 'signIn';
+
+    if (hasCompletedOnboarding(user)) return 'mainTabs';
+    if (hasTastePrefs(user)) return 'onboardingRestaurants';
+    return 'onboarding';
   };
   
   const [currentScreen, setCurrentScreen] = useState<AppScreen>(getInitialScreen());
@@ -53,17 +147,36 @@ function AppContent() {
 
 
   const handleAuthComplete = () => {
-    setCurrentScreen('onboarding');
+    // Wait for user data to be available before routing
+    if (!user) {
+      console.log('⏳ handleAuthComplete: Waiting for user data to load...');
+      return; // Don't route yet, let the loadUserData effect handle routing
+    }
+    
+    // If the user object already exists (e.g., returning user), route correctly
+    if (hasCompletedOnboarding(user)) {
+      console.log('🎯 handleAuthComplete: User has completed onboarding, going to mainTabs');
+      setCurrentScreen('mainTabs');
+    } else if (hasTastePrefs(user)) {
+      console.log('🎯 handleAuthComplete: User has taste prefs but no restaurants, going to onboardingRestaurants');
+      setCurrentScreen('onboardingRestaurants');
+    } else {
+      console.log('🎯 handleAuthComplete: New user, going to onboarding');
+      setCurrentScreen('onboarding');
+    }
   };
 
   const handleSignOut = async () => {
     try {
-      await signOut();
-      // Clear user data
-      setUser({} as any, '');
-      setCurrentScreen('signIn');
+      console.log('🔄 Signing out...');
+      await signOut({ redirectUrl: Linking.createURL('/') });
+      console.log('✅ Sign out successful');
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('❌ Sign out error:', error);
+    } finally {
+      // Clear local state either way
+      setUser(null, 'SIGNED_OUT');
+      setCurrentScreen('signIn');
     }
   };
 

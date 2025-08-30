@@ -170,7 +170,7 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, minSe
 
     // Update user and save to Supabase
     const updatedUser = { ...user, favorite_restaurants: updatedRestaurants };
-    await setUser(updatedUser, userId);
+    setUser(updatedUser, userId);
     
     // Clear selection
     setSelectedRestaurants([]);
@@ -318,9 +318,17 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, minSe
                   }));
                   
                   const updatedRestaurants = [...existingRestaurants, ...newRestaurants];
+                  console.log('🍽️ Saving restaurants to user:', {
+                    userId,
+                    existingCount: existingRestaurants.length,
+                    newCount: newRestaurants.length,
+                    totalCount: updatedRestaurants.length,
+                    restaurants: newRestaurants.map(r => r.name)
+                  });
+                  
                   // Update user's favorite restaurants
                   const updatedUser = { ...user, favorite_restaurants: updatedRestaurants };
-                  await setUser(updatedUser, userId);
+                  setUser(updatedUser, userId);
                 }
                 onComplete(selectedRestaurants);
               } else {

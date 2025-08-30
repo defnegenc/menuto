@@ -80,7 +80,7 @@ export function AuthScreen({ onAuthComplete }: Props) {
       favorite_dishes: []
     };
 
-    await setUser(newUser, userId);
+            setUser(newUser, userId);
     
     Alert.alert(
       'Success', 

@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   signOutButton: {
-    backgroundColor: theme.colors.error,
+    backgroundColor: theme.colors.secondary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',

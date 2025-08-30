@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -67,7 +67,7 @@ interface Props {
 }
 
 export function OnboardingScreen({ onComplete, onBack, onAddRestaurants }: Props) {
-  const setUser = useStore((state) => state.setUser);
+  const { user, setUser } = useStore();
   const userId = useStore((state) => state.userId);
   
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
@@ -76,6 +76,30 @@ export function OnboardingScreen({ onComplete, onBack, onAddRestaurants }: Props
   const [spiceTolerance, setSpiceTolerance] = useState<number>(3);
   const [pricePreferences, setPricePreferences] = useState<number[]>([2]); // Multiple selection
   const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>([]);
+
+  // ⛳️ If prefs already exist, skip this screen
+  useEffect(() => {
+    if (Array.isArray(user?.preferred_cuisines) && user.preferred_cuisines.length > 0) {
+      console.log('🎯 OnboardingScreen: User already has preferences, skipping to next step');
+      // If you want to go to restaurant selection next:
+      if (onAddRestaurants) onAddRestaurants();
+      else onComplete();
+    }
+  }, [user, onAddRestaurants, onComplete]);
+
+  // Pre-fill existing preferences if user has them
+  useEffect(() => {
+    if (user) {
+      if (Array.isArray(user.preferred_cuisines)) {
+        setSelectedCuisines(user.preferred_cuisines.map(c => c[0].toUpperCase() + c.slice(1)));
+      }
+      if (typeof user.spice_tolerance === 'number') setSpiceTolerance(user.spice_tolerance);
+      if (typeof user.price_preference === 'number') setPricePreferences([user.price_preference]);
+      if (Array.isArray(user.dietary_restrictions)) {
+        setDietaryRestrictions(user.dietary_restrictions.map(r => r[0].toUpperCase() + r.slice(1)));
+      }
+    }
+  }, [user]);
 
   const toggleCuisine = (cuisine: string) => {
     setSelectedCuisines(prev => 
@@ -126,11 +150,14 @@ export function OnboardingScreen({ onComplete, onBack, onAddRestaurants }: Props
       dietary_restrictions: dietaryRestrictions.map(r => r.toLowerCase()),
     };
 
+    console.log('🎯 Onboarding preferences to save:', preferences);
+
     // Use the actual user ID from the store
     if (userId) {
-      await setUser(preferences, userId);
+      console.log('💾 Saving preferences for user:', userId);
+      setUser(preferences, userId);
     } else {
-      console.log('No userId available for onboarding');
+      console.log('❌ No userId available for onboarding');
     }
     
     // If we have an onAddRestaurants callback, use it for restaurant selection

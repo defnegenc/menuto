@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useSignIn, useSignUp } from '@clerk/clerk-expo';
+import { useSignIn, useSignUp, useAuth } from '@clerk/clerk-expo';
 import { useStore } from '../store/useStore';
 import { api } from '../services/api';
 import { theme } from '../theme';
@@ -32,7 +32,43 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
   
   const { signIn, setActive } = useSignIn();
   const { signUp, setActive: setActiveSignUp } = useSignUp();
+  const { userId: authUserId } = useAuth();
   const { setUser } = useStore();
+  const [pendingUserPayload, setPendingUserPayload] = useState<any | null>(null);
+
+  // Persist to Supabase only when we actually HAVE a userId from Clerk
+  React.useEffect(() => {
+    if (!authUserId || !pendingUserPayload) return;
+    
+    (async () => {
+      try {
+        console.log('🔄 ClerkAuthScreen: Persisting user with Clerk ID:', authUserId);
+        
+        // Try to load existing user data first
+        try {
+          const userData = await api.getUserPreferences(authUserId);
+          if (userData) {
+            console.log('✅ ClerkAuthScreen: Found existing user data');
+            setUser(userData, authUserId);
+          } else {
+            console.log('🔄 ClerkAuthScreen: No existing data, creating new user');
+            // Make sure you include the id
+            setUser({ id: authUserId, ...pendingUserPayload }, authUserId);
+          }
+        } catch (error) {
+          console.log('❌ ClerkAuthScreen: Failed to load user data, creating new user');
+          // Make sure you include the id
+          setUser({ id: authUserId, ...pendingUserPayload }, authUserId);
+        }
+        
+        setPendingUserPayload(null);
+        onAuthComplete(); // now you can continue
+      } catch (e) {
+        console.log('❌ ClerkAuthScreen: Failed to upsert user in Supabase', e);
+        Alert.alert('Error', 'Failed to save user data. Please try again.');
+      }
+    })();
+  }, [authUserId, pendingUserPayload, setUser, onAuthComplete]);
 
   // Add null checks for Clerk hooks
   if (!signIn || !signUp || !setActive || !setActiveSignUp) {
@@ -83,11 +119,26 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
         favorite_dishes: []
       };
 
-      // Clerk user IDs are not UUIDs, so we need to handle this differently
-      // For now, let's use a UUID format or handle this in the backend
-      const userId = signUpAttempt.createdUserId || `user_${Date.now()}`;
-      console.log('Calling setUser with:', { newUser, userId });
-      await setUser(newUser, userId);
+      // Use the actual Clerk user ID - never fall back to generated IDs
+      const userId = signUpAttempt.createdUserId;
+      if (!userId) {
+        console.error('❌ No Clerk user ID available after verification');
+        Alert.alert('Error', 'Unable to create user profile. Please try again.');
+        return;
+      }
+      console.log('🔄 Email verification: Preparing user payload for Clerk ID:', userId);
+      // prepare the payload but DO NOT call setUser yet
+      setPendingUserPayload({
+        name: name.trim(),
+        email: email.trim(),
+        preferred_cuisines: [],
+        spice_tolerance: 3,
+        price_preference: 2,
+        dietary_restrictions: [],
+        favorite_restaurants: [],
+        favorite_dishes: [],
+      });
+      // effect above will fire once authUserId becomes truthy
       
       Alert.alert(
         'Success', 
@@ -164,8 +215,20 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
             favorite_dishes: []
           };
 
-          console.log('Calling setUser with:', { newUser, userId: result.createdUserId });
-          await setUser(newUser, result.createdUserId!);
+          console.log('🔄 Sign-up: Preparing user payload for Clerk ID:', result.createdUserId);
+          // prepare the payload but DO NOT call setUser yet
+          setPendingUserPayload({
+            name: name.trim(),
+            email: email.trim(),
+            preferred_cuisines: [],
+            spice_tolerance: 3,
+            price_preference: 2,
+            dietary_restrictions: [],
+            favorite_restaurants: [],
+            favorite_dishes: [],
+          });
+          // effect above will fire once authUserId becomes truthy
+          return;
           
           Alert.alert(
             'Success', 
@@ -204,47 +267,16 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
         if (result.status === 'complete') {
           await setActive({ session: result.createdSessionId });
           
-          // For sign-in, try to get the actual Clerk user ID from the session
-          // Since we can't easily get it from the session, we'll use a consistent ID format
-          const signInUserId = `user_${email.replace('@', '_').replace('.', '_')}`;
-          
-          // Try to load existing user data first
-          console.log('Loading user data for:', signInUserId);
-          
-          // Load user profile from Supabase
-          try {
-            const userData = await api.getUserPreferences(signInUserId);
-            if (userData) {
-              await setUser(userData, signInUserId);
-            } else {
-              // Create new user if not found
-              const newUser = {
-                name: email.trim(), // Use email as name for sign-in
-                email: email.trim(),
-                preferred_cuisines: [],
-                spice_tolerance: 3,
-                price_preference: 2,
-                dietary_restrictions: [],
-                favorite_restaurants: [],
-                favorite_dishes: []
-              };
-              await setUser(newUser, signInUserId);
-            }
-          } catch (error) {
-            console.log('Failed to load user data, creating new user');
-            // Create new user if loading fails
-            const newUser = {
-              name: email.trim(),
-              email: email.trim(),
-              preferred_cuisines: [],
-              spice_tolerance: 3,
-              price_preference: 2,
-              dietary_restrictions: [],
-              favorite_restaurants: [],
-              favorite_dishes: []
-            };
-            await setUser(newUser, signInUserId);
-          }
+          // For sign-in, prepare payload but wait for authUserId
+          setPendingUserPayload({
+            email: email.trim(),
+            preferred_cuisines: [],
+            spice_tolerance: 3,
+            price_preference: 2,
+            dietary_restrictions: [],
+            favorite_restaurants: [],
+            favorite_dishes: []
+          });
           
           Alert.alert(
             'Success', 

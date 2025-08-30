@@ -539,21 +539,54 @@ class MenutoAPI {
   // User Management
   async saveUserPreferences(userId: string, preferences: any): Promise<any> {
     try {
+      // Basic validation
+      if (!userId || userId === 'undefined') {
+        console.error('❌ Invalid user ID format:', userId);
+        throw new Error('Invalid user ID format - must be a proper Clerk user ID');
+      }
+      
+      console.log('🔍 API: Validating user ID:', userId);
+      
+      // Destructure to remove any incoming id/created_at/updated_at from prefs
+      const { id: _dropId, created_at: _c, updated_at: _u, ...cleanPrefs } = preferences || {};
+      
+      // Strip undefined values from arrays
+      const stripUndefined = (obj: any) =>
+        Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
+      
+      const sanitizeArray = (arr: any[]) => arr.map(stripUndefined);
+      
+      // Clean up arrays if they exist
+      if (cleanPrefs.favorite_dishes) {
+        cleanPrefs.favorite_dishes = sanitizeArray(cleanPrefs.favorite_dishes);
+      }
+      if (cleanPrefs.favorite_restaurants) {
+        cleanPrefs.favorite_restaurants = sanitizeArray(cleanPrefs.favorite_restaurants);
+      }
+      
+      // Make sure the *correct* id is last so it cannot be overridden
+      const payload = { ...cleanPrefs, id: userId };
+      console.log('💾 Saving user preferences:', { userId, payload });
+      
       const response = await fetch(`${API_BASE}/users/${userId}/preferences`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(preferences),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to save user preferences: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('❌ Save user preferences failed:', response.status, errorText);
+        throw new Error(`Failed to save user preferences: ${response.statusText} - ${errorText}`);
       }
 
-      return response.json();
+      const result = await response.json();
+      console.log('✅ User preferences saved successfully:', result);
+      return result;
     } catch (error) {
-      console.log('Backend not available - user preferences will be stored locally only');
+      console.error('❌ Save user preferences error:', error);
       // Return a mock response so the app continues working
       return { success: true, message: 'Stored locally only' };
     }
@@ -561,36 +594,70 @@ class MenutoAPI {
 
   async getUserPreferences(userId: string): Promise<any> {
     try {
+      console.log('📥 Getting user preferences for:', userId);
       const response = await fetch(`${API_BASE}/users/${userId}/preferences`);
 
+      if (response.status === 404) {
+        console.log('📥 User not found (404) - will create new profile');
+        return null; // Return null so the client knows to create one
+      }
+      
       if (!response.ok) {
-        throw new Error(`Failed to get user preferences: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('❌ Get user preferences failed:', response.status, errorText);
+        throw new Error(`Failed to get user preferences: ${response.statusText} - ${errorText}`);
       }
 
-      return response.json();
+      const result = await response.json();
+      console.log('✅ User preferences loaded successfully:', result);
+      return result;
     } catch (error) {
-      console.error('Get user preferences error:', error);
+      console.error('❌ Get user preferences error:', error);
       throw error;
     }
   }
 
   async updateUserPreferences(userId: string, preferences: any): Promise<any> {
     try {
+      // Use the same payload cleaning logic as saveUserPreferences
+      const { id: _dropId, created_at: _c, updated_at: _u, ...cleanPrefs } = preferences || {};
+      
+      // Strip undefined values from arrays
+      const stripUndefined = (obj: any) =>
+        Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
+      
+      const sanitizeArray = (arr: any[]) => arr.map(stripUndefined);
+      
+      // Clean up arrays if they exist
+      if (cleanPrefs.favorite_dishes) {
+        cleanPrefs.favorite_dishes = sanitizeArray(cleanPrefs.favorite_dishes);
+      }
+      if (cleanPrefs.favorite_restaurants) {
+        cleanPrefs.favorite_restaurants = sanitizeArray(cleanPrefs.favorite_restaurants);
+      }
+      
+      // Make sure the *correct* id is last so it cannot be overridden
+      const payload = { ...cleanPrefs, id: userId };
+      
       const response = await fetch(`${API_BASE}/users/${userId}/preferences`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(preferences),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to update user preferences: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error('❌ Update user preferences failed:', response.status, errorText);
+        throw new Error(`Failed to update user preferences: ${response.statusText} - ${errorText}`);
       }
 
-      return response.json();
+      const result = await response.json();
+      console.log('✅ User preferences updated successfully:', result);
+      return result;
     } catch (error) {
-      console.error('Update user preferences error:', error);
+      console.error('❌ Update user preferences error:', error);
       throw error;
     }
   }

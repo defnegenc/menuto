@@ -7,21 +7,19 @@ interface MenuItemCardProps {
   dish: ParsedDish;
   onAddToFavorites: (dish: ParsedDish) => void;
   isFavorite?: boolean;
-  lightPinkBg?: boolean; // New prop for light pink background
 }
 
 export const MenuItemCard: React.FC<MenuItemCardProps> = ({ 
   dish, 
   onAddToFavorites,
-  isFavorite = false,
-  lightPinkBg = false
+  isFavorite = false
 }) => {
   return (
     <View style={[
       styles.card, 
-      lightPinkBg && styles.lightPinkCard
+      isFavorite && styles.lightPinkCard
     ]}>
-      {isFavorite && lightPinkBg && (
+      {isFavorite && (
         <View style={styles.starContainer}>
           <Text style={styles.starText}>⭐</Text>
         </View>

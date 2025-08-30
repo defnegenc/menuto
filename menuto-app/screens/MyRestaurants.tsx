@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,8 +22,43 @@ interface Props {
 }
 
 export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
-  const { user, setUser, userId } = useStore();
-  const [isLoading, setIsLoading] = useState(false);
+  const { user, setUser, userId, debugState } = useStore();
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load user data when component mounts
+  useEffect(() => {
+    const loadUserData = async () => {
+      console.log('🔄 MyRestaurants: Loading data for user:', userId);
+      console.log('🔄 MyRestaurants: Current user state:', { 
+        hasUser: !!user, 
+        hasRestaurants: !!user?.favorite_restaurants?.length,
+        restaurantCount: user?.favorite_restaurants?.length || 0
+      });
+      
+      if (userId && !user?.favorite_restaurants) {
+        try {
+          setIsLoading(true);
+          console.log('🔄 MyRestaurants: Fetching from backend...');
+          const userData = await api.getUserPreferences(userId);
+          if (userData) {
+            console.log('✅ MyRestaurants: Backend data loaded:', userData);
+            setUser(userData, userId);
+          } else {
+            console.log('❌ MyRestaurants: No backend data found');
+          }
+        } catch (error) {
+          console.log('❌ MyRestaurants: Failed to load from backend:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        console.log('✅ MyRestaurants: Using existing local data');
+        setIsLoading(false);
+      }
+    };
+    
+    loadUserData();
+  }, [userId, user, setUser]);
 
   const favoriteRestaurants = user?.favorite_restaurants || [];
   const favoriteDishes = user?.favorite_dishes || [];
@@ -162,7 +197,12 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
     <View style={styles.container}>
       <ProfileHeader />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {favoriteRestaurants.length === 0 ? (
+        {isLoading ? (
+          <View style={styles.emptyState}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={styles.emptyStateText}>Loading your restaurants...</Text>
+          </View>
+        ) : favoriteRestaurants.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateIcon}>🍽️</Text>
             <Text style={styles.emptyStateTitle}>No Restaurants Yet</Text>
@@ -172,14 +212,35 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
             <TouchableOpacity style={styles.addTestButton} onPress={addTestRestaurant}>
               <Text style={styles.addTestButtonText}>+ Add Test Restaurant</Text>
             </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.addTestButton, { marginTop: 10, backgroundColor: theme.colors.secondary }]} 
+              onPress={() => {
+                console.log('🔍 DEBUG: Current user state:', user);
+                console.log('🔍 DEBUG: User ID:', userId);
+                console.log('🔍 DEBUG: Favorite restaurants:', user?.favorite_restaurants);
+                debugState(); // Call store debug function
+                Alert.alert('Debug Info', `User ID: ${userId}\nRestaurants: ${user?.favorite_restaurants?.length || 0}\n\nCheck console for store debug info`);
+              }}
+            >
+              <Text style={styles.addTestButtonText}>🔍 Debug User State</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.addTestButton, { marginTop: 10, backgroundColor: theme.colors.primary }]} 
+              onPress={() => {
+                // Force reload user data
+                console.log('🔄 Force reloading user data...');
+                setUser(null, 'SIGNED_OUT');
+                Alert.alert('Reload', 'User data cleared. Try signing in again.');
+              }}
+            >
+              <Text style={styles.addTestButtonText}>🔄 Force Reload</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.restaurantList}>
             {favoriteRestaurants.map(renderRestaurantCard)}
           </View>
         )}
-        
-
       </ScrollView>
     </View>
   );
@@ -242,7 +303,7 @@ const styles = StyleSheet.create({
     fontWeight: 400,
   },
   restaurantList: {
-    paddingHorizontal: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.xl,
   },
   restaurantCard: {

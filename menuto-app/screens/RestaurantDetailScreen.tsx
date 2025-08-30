@@ -622,7 +622,6 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                           dish={dish}
                           onAddToFavorites={handleAddDishToFavorites}
                           isFavorite={true}
-                          lightPinkBg={true}
                         />
                       ))}
                       {favoriteDishes.length === 0 && (

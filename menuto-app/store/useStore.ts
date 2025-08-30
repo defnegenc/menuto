@@ -12,7 +12,8 @@ interface AppState {
   currentRecommendations: RecommendationResponse | null;
   
   // Actions
-  setUser: (user: UserPreferences, userId: string) => void;
+  debugState: () => any;
+  setUser: (user: UserPreferences | null, userId: string) => void;
   setCurrentScan: (scan: MenuScanResult) => void;
   setRecommendations: (recommendations: RecommendationResponse) => void;
   clearSession: () => void;
@@ -25,15 +26,37 @@ export const useStore = create<AppState>((set, get) => ({
   currentScan: null,
   currentRecommendations: null,
   
+  // Debug function
+  debugState: () => {
+    const state = get();
+    console.log('🔍 Store Debug:', {
+      hasUser: !!state.user,
+      userId: state.userId,
+      userData: state.user
+    });
+    return state;
+  },
+  
   // Actions
-  setUser: async (user: UserPreferences, userId: string) => {
-    set({ user, userId });
-    // Save to backend API in background (optional - app works without it)
-    try {
-      await api.saveUserPreferences(userId, user);
-    } catch (error) {
-      console.log('Backend not available - continuing with local storage only');
-      // Don't throw - allow app to continue working locally
+  setUser: (user: UserPreferences | null, userId: string) => {
+    // Always save to local state first - merge with existing user data
+    set((state) => ({
+      user: user ? { ...(state.user ?? {}), ...user } : null,
+      userId: userId || null
+    }));
+    
+    if (user && userId && userId !== '' && userId !== 'SIGNED_OUT') {
+      console.log('💾 User saved to local state:', { userId, hasRestaurants: !!user.favorite_restaurants?.length });
+      
+      // Try to save to backend API in background (don't await)
+      api.saveUserPreferences(userId, user).then((result) => {
+        console.log('💾 User saved to backend:', result);
+      }).catch((error) => {
+        console.log('Backend not available - continuing with local storage only');
+        // Don't throw - allow app to continue working locally
+      });
+    } else {
+      console.log('💾 User cleared from local state');
     }
   },
     

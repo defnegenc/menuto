@@ -9,6 +9,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 db = SupabaseDB()
 
 class UserPreferences(BaseModel):
+    id: Optional[str] = None  # Add id field to match frontend expectations
     name: Optional[str] = None
     email: Optional[str] = None
     preferred_cuisines: List[str] = []
@@ -24,8 +25,12 @@ async def get_user_preferences(user_id: str):
     try:
         user = db.get_user_profile(user_id)
         if not user:
+            # Return 404 so the client knows to create one
             raise HTTPException(status_code=404, detail="User not found")
         return user
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 404) as-is
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -33,8 +38,9 @@ async def get_user_preferences(user_id: str):
 async def create_user_preferences(user_id: str, preferences: UserPreferences):
     """Create or update user preferences"""
     try:
-        # Use Clerk user ID directly (no conversion needed)
-        # The user_profiles table now accepts text IDs
+        # Validate that the payload includes the correct ID
+        if preferences.id and preferences.id != user_id:
+            raise HTTPException(status_code=400, detail="Payload id must match path user_id")
         
         user_data = {
             "id": user_id,
@@ -44,12 +50,15 @@ async def create_user_preferences(user_id: str, preferences: UserPreferences):
             "spice_tolerance": preferences.spice_tolerance,
             "price_preference": preferences.price_preference,
             "dietary_restrictions": preferences.dietary_restrictions,
-            "top_3_restaurants": preferences.favorite_restaurants,  # Use top_3_restaurants field
+            "favorite_restaurants": preferences.favorite_restaurants,  # Save to favorite_restaurants field
             "favorite_dishes": preferences.favorite_dishes
         }
         
         result = db.upsert_user_profile(user_data)
         return result
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -64,7 +73,7 @@ async def update_user_preferences(user_id: str, preferences: UserPreferences):
             "spice_tolerance": preferences.spice_tolerance,
             "price_preference": preferences.price_preference,
             "dietary_restrictions": preferences.dietary_restrictions,
-            "top_3_restaurants": preferences.favorite_restaurants,  # Use top_3_restaurants field
+            "favorite_restaurants": preferences.favorite_restaurants,  # Save to favorite_restaurants field
             "favorite_dishes": preferences.favorite_dishes
         }
         

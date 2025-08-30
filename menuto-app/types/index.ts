@@ -1,7 +1,7 @@
 // Type definitions for Menuto app
 
 export interface UserPreferences {
-  id?: number;
+  id?: string; // Changed from number to string to match Clerk user IDs
   name?: string;
   email?: string;
   preferred_cuisines: string[];
