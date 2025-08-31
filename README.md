@@ -63,4 +63,4 @@ npx expo start
 ✅ Frontend mobile app boilerplate  
 ✅ Photo + URL menu input support  
 🔄 Backend endpoint integration  
-⏳ Production deployment  
+⏳ Production deployment
