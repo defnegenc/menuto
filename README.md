@@ -1,4 +1,4 @@
-# 🍽️ Menuto - AI-Powered Menu Recommendations
+# 🍽️ Menuto
 
 Menuto is an intelligent restaurant recommendation system that uses AI to parse menus and provide personalized dish recommendations based on taste preferences, reviews, and collaborative filtering.
 
@@ -17,15 +17,11 @@ menuto-project/
     ├── package.json       # Node dependencies
     └── README.md         # Frontend setup instructions
 ```
-
-## 🚀 Quick Start
-
-### Backend (API Server)
+### Backend (API server)
 ```bash
 cd menuto-backend
 pip install -r requirements.txt
-python -m uvicorn app.main:app --reload --port 8080
-```
+uvicorn app.main:app --reload --port 8080
 
 ### Frontend (Mobile App)
 ```bash
@@ -34,13 +30,22 @@ npm install
 npx expo start
 ```
 
-## 🎯 Features
+# 🎯 Features
 
-- **📸 Menu Parsing**: Upload photos or website URLs of restaurant menus
-- **🤖 AI Recommendations**: Multi-factor recommendation engine with personal taste matching
-- **📱 Mobile App**: React Native app with camera integration
-- **⭐ Rating System**: Multi-dimensional dish rating (taste, spice, portion, etc.)
-- **🔍 Smart Filtering**: Budget, occasion, and dietary constraint filtering
+📸 Menu Parsing – photo, URL, or text → structured dishes
+
+🤖 AI Recommendations – matches to your taste, not just ratings
+
+📱 Mobile App – React Native app with camera + onboarding
+
+⭐ Favorites – save dishes to build your taste profile
+
+🔍 Smart Filters – budget, occasion, diet, etc.
+
+# Frontend (mobile app)
+cd menuto-app
+npm install
+npx expo start
 
 ## 🔧 Technology Stack
 
