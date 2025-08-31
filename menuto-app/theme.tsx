@@ -6,7 +6,7 @@ export const theme = {
     tertiary: '#B6465F',      // Muted rose - tertiary color
     
     // Neutral colors
-    background: '#F8F9FA',     // Light gray background
+    background: '#FEFEFE',     // Very light gray background (closer to white)
     surface: '#FFFFFF',       // White cards/surfaces
     
     // Text colors
