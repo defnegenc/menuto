@@ -13,7 +13,7 @@ import { useStore } from '../store/useStore';
 import { api } from '../services/api';
 import { FavoriteRestaurant, FavoriteDish } from '../types';
 import { theme } from '../theme';
-import { ProfileHeader } from '../components/ProfileHeader';
+import { UnifiedHeader } from '../components/UnifiedHeader';
 import { DishChip } from '../components/DishChip';
 
 interface Props {
@@ -195,7 +195,7 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
 
   return (
     <View style={styles.container}>
-      <ProfileHeader />
+      <UnifiedHeader title="My Restaurants" />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {isLoading ? (
           <View style={styles.emptyState}>

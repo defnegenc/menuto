@@ -14,7 +14,7 @@ import * as Location from 'expo-location';
 import { api } from '../services/api';
 import { theme } from '../theme';
 import { useStore } from '../store/useStore';
-import { SearchHeader } from '../components/SearchHeader';
+import { UnifiedHeader } from '../components/UnifiedHeader';
 import { LoadingScreen } from '../components/LoadingScreen';
 
 interface Restaurant {
@@ -227,7 +227,10 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, minSe
 
   return (
     <View style={styles.container}>
-      <SearchHeader />
+      <UnifiedHeader 
+        title="Add Restaurants" 
+        subtitle="Search and tap to add restaurants you love"
+      />
 
       <View style={styles.searchSection}>
         <View style={styles.searchContainer}>
