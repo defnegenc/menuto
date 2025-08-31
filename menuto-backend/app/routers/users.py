@@ -12,6 +12,7 @@ class UserPreferences(BaseModel):
     id: Optional[str] = None  # Add id field to match frontend expectations
     name: Optional[str] = None
     email: Optional[str] = None
+    profile_photo: Optional[str] = None  # URI of the profile photo
     preferred_cuisines: List[str] = []
     spice_tolerance: int = 3
     price_preference: int = 2
@@ -46,6 +47,7 @@ async def create_user_preferences(user_id: str, preferences: UserPreferences):
             "id": user_id,
             "name": preferences.name,
             "email": preferences.email,
+            "profile_photo": preferences.profile_photo,
             "preferred_cuisines": preferences.preferred_cuisines,
             "spice_tolerance": preferences.spice_tolerance,
             "price_preference": preferences.price_preference,
@@ -69,6 +71,7 @@ async def update_user_preferences(user_id: str, preferences: UserPreferences):
         user_data = {
             "name": preferences.name,
             "email": preferences.email,
+            "profile_photo": preferences.profile_photo,
             "preferred_cuisines": preferences.preferred_cuisines,
             "spice_tolerance": preferences.spice_tolerance,
             "price_preference": preferences.price_preference,

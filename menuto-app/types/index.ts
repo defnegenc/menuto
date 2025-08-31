@@ -4,6 +4,7 @@ export interface UserPreferences {
   id?: string; // Changed from number to string to match Clerk user IDs
   name?: string;
   email?: string;
+  profile_photo?: string; // URI of the profile photo
   preferred_cuisines: string[];
   spice_tolerance: number; // 1-5
   price_preference: number; // 1-4

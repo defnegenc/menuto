@@ -9,7 +9,7 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { useStore } from '../store/useStore';
 import { theme } from '../theme';
@@ -68,6 +68,7 @@ interface Props {
 }
 
 export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
+  const insets = useSafeAreaInsets();
   const { user, setUser, userId } = useStore();
   
   // Use favorite restaurants (first 3) for the top restaurants display
@@ -88,6 +89,14 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
   
   // Profile photo state
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+
+  // Load profile photo from user data when component mounts or user changes
+  React.useEffect(() => {
+    if (user?.profile_photo) {
+      console.log('📸 Loading profile photo from user data:', user.profile_photo);
+      setProfilePhoto(user.profile_photo);
+    }
+  }, [user?.profile_photo]);
   
   const getSpiceEmoji = (level: number) => {
     return '🌶️';
@@ -122,7 +131,27 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
               });
 
               if (!result.canceled && result.assets[0]) {
-                setProfilePhoto(result.assets[0].uri);
+                const photoUri = result.assets[0].uri;
+                setProfilePhoto(photoUri);
+                
+                // Save to backend
+                if (user && userId) {
+                  console.log('📸 Saving profile photo to backend:', photoUri);
+                  const updatedUser = {
+                    ...user,
+                    profile_photo: photoUri,
+                    preferred_cuisines: user.preferred_cuisines || [],
+                    spice_tolerance: user.spice_tolerance || 3,
+                    price_preference: user.price_preference || 2,
+                    dietary_restrictions: user.dietary_restrictions || [],
+                    favorite_restaurants: user.favorite_restaurants || [],
+                    favorite_dishes: user.favorite_dishes || [],
+                  };
+                  console.log('📸 Updated user object:', updatedUser);
+                  setUser(updatedUser, userId);
+                } else {
+                  console.log('❌ Cannot save profile photo - missing user or userId:', { user: !!user, userId });
+                }
               }
             } catch (error) {
               console.error('Camera error:', error);
@@ -149,7 +178,27 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
               });
 
               if (!result.canceled && result.assets[0]) {
-                setProfilePhoto(result.assets[0].uri);
+                const photoUri = result.assets[0].uri;
+                setProfilePhoto(photoUri);
+                
+                // Save to backend
+                if (user && userId) {
+                  console.log('📸 Saving profile photo to backend:', photoUri);
+                  const updatedUser = {
+                    ...user,
+                    profile_photo: photoUri,
+                    preferred_cuisines: user.preferred_cuisines || [],
+                    spice_tolerance: user.spice_tolerance || 3,
+                    price_preference: user.price_preference || 2,
+                    dietary_restrictions: user.dietary_restrictions || [],
+                    favorite_restaurants: user.favorite_restaurants || [],
+                    favorite_dishes: user.favorite_dishes || [],
+                  };
+                  console.log('📸 Updated user object:', updatedUser);
+                  setUser(updatedUser, userId);
+                } else {
+                  console.log('❌ Cannot save profile photo - missing user or userId:', { user: !!user, userId });
+                }
               }
             } catch (error) {
               console.error('Gallery error:', error);
@@ -322,8 +371,14 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.content}>
+        <ScrollView 
+          style={styles.scrollView} 
+          contentContainerStyle={[styles.scrollViewContent, { paddingBottom: insets.bottom + 8 }]}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
         {/* Header with Profile Pic and Name */}
         <View style={styles.header}>
           <View style={styles.profilePicContainer}>
@@ -656,13 +711,14 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
 
         {/* Sign Out Button */}
         {onSignOut && (
-          <View style={styles.signOutContainer}>
+          <View style={[styles.signOutContainer, { paddingBottom: 0 }]}>
             <TouchableOpacity style={styles.signOutButton} onPress={onSignOut}>
               <Text style={styles.signOutButtonText}>Sign Out</Text>
             </TouchableOpacity>
           </View>
         )}
-      </ScrollView>
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -672,8 +728,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
+  content: {
+    flex: 1,
+  },
   scrollView: {
     flex: 1,
+  },
+  scrollViewContent: {
+    flexGrow: 1,
   },
   header: {
     alignItems: 'center',
@@ -724,7 +786,7 @@ const styles = StyleSheet.create({
   },
   section: {
     paddingHorizontal: 20,
-    marginBottom: 32,
+    marginBottom: 0,
   },
   sectionTitle: {
     fontSize: 20,
