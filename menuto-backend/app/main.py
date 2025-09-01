@@ -8,9 +8,22 @@ load_dotenv()
 
 app = FastAPI(title="Menuto API", version="1.0.0")
 
+ALLOWED_ORIGINS = [
+    "http://localhost:19006",  # Expo web/dev
+    "http://localhost:8081",   # Metro
+    "exp://localhost",         # Expo
+    "http://localhost:3000",   # web dev (if any)
+    "https://*.onrender.com",  # during bring-up
+    "https://api.yourdomain.com",  # later custom domain
+]
+
+@app.get("/health")
+def health():
+    return {"ok": True}
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

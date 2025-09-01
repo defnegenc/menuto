@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: menuto-backend
+    env: docker
+    plan: starter        # free starts sleeping; starter keeps it awake
+    region: oregon       # or pick near your Supabase region for lower latency
+    rootDir: menuto-backend
+    dockerfilePath: menuto-backend/Dockerfile
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: API_ENV
+        value: staging
+      - key: DATABASE_URL
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
