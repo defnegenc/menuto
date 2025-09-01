@@ -4,7 +4,6 @@ services:
     env: docker
     plan: starter        # free starts sleeping; starter keeps it awake
     region: oregon       # or pick near your Supabase region for lower latency
-    rootDir: menuto-backend
     dockerfilePath: menuto-backend/Dockerfile
     autoDeploy: true
     healthCheckPath: /health
