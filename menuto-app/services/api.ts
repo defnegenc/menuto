@@ -1,7 +1,8 @@
 import { UserPreferences, RecommendationResponse, MenuScanResult } from '../types';
 
 // Change this to your backend URL
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080';
+const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8080';
+console.log('🔌 API_BASE =', API_BASE);
 
 // Helper function to get Clerk token
 let authTokenGetter: (() => Promise<string | null>) | null = null;
@@ -16,6 +17,23 @@ const getAuthToken = async (): Promise<string | null> => {
   }
   return null;
 };
+
+async function request(path: string, opts: RequestInit = {}) {
+  const token = await getAuthToken();
+  const headers = new Headers(opts.headers || {});
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+    console.log('🔐 sending auth header to', path);
+  } else {
+    console.log('⚠️ request(): no token for', path);
+  }
+  const res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`${res.status} ${body}`);
+  }
+  return res.json();
+}
 
 class MenutoAPI {
   // Upload menu image
@@ -568,23 +586,11 @@ class MenutoAPI {
       const payload = { ...cleanPrefs, id: userId };
       console.log('💾 Saving user preferences:', { userId, payload });
       
-      const response = await fetch(`${API_BASE}/users/${userId}/preferences`, {
+      return await request(`/users/${userId}/preferences`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Save user preferences failed:', response.status, errorText);
-        throw new Error(`Failed to save user preferences: ${response.statusText} - ${errorText}`);
-      }
-
-      const result = await response.json();
-      console.log('✅ User preferences saved successfully:', result);
-      return result;
     } catch (error) {
       console.error('❌ Save user preferences error:', error);
       // Return a mock response so the app continues working
@@ -595,23 +601,12 @@ class MenutoAPI {
   async getUserPreferences(userId: string): Promise<any> {
     try {
       console.log('📥 Getting user preferences for:', userId);
-      const response = await fetch(`${API_BASE}/users/${userId}/preferences`);
-
-      if (response.status === 404) {
+      return await request(`/users/${userId}/preferences`);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('404')) {
         console.log('📥 User not found (404) - will create new profile');
         return null; // Return null so the client knows to create one
       }
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Get user preferences failed:', response.status, errorText);
-        throw new Error(`Failed to get user preferences: ${response.statusText} - ${errorText}`);
-      }
-
-      const result = await response.json();
-      console.log('✅ User preferences loaded successfully:', result);
-      return result;
-    } catch (error) {
       console.error('❌ Get user preferences error:', error);
       throw error;
     }
@@ -639,23 +634,11 @@ class MenutoAPI {
       // Make sure the *correct* id is last so it cannot be overridden
       const payload = { ...cleanPrefs, id: userId };
       
-      const response = await fetch(`${API_BASE}/users/${userId}/preferences`, {
+      return await request(`/users/${userId}/preferences`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Update user preferences failed:', response.status, errorText);
-        throw new Error(`Failed to update user preferences: ${response.statusText} - ${errorText}`);
-      }
-
-      const result = await response.json();
-      console.log('✅ User preferences updated successfully:', result);
-      return result;
     } catch (error) {
       console.error('❌ Update user preferences error:', error);
       throw error;
@@ -722,3 +705,22 @@ class MenutoAPI {
 }
 
 export const api = new MenutoAPI();
+
+export async function ensureUserProfile(userId: string, email?: string) {
+  const payload = {
+    id: userId,
+    email,
+    preferred_cuisines: [],
+    spice_tolerance: 3,
+    price_preference: 2,
+    dietary_restrictions: [],
+    favorite_restaurants: [],
+    favorite_dishes: [],
+  };
+
+  return await request(`/users/${userId}/preferences`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}

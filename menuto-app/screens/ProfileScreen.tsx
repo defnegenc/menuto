@@ -1050,6 +1050,7 @@ const styles = StyleSheet.create({
   signOutContainer: {
     paddingHorizontal: 20,
     paddingBottom: 20,
+    marginTop: 20,
   },
   signOutButton: {
     backgroundColor: theme.colors.secondary,

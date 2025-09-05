@@ -2,11 +2,12 @@ services:
   - type: web
     name: menuto-backend
     env: docker
-    plan: starter        # free starts sleeping; starter keeps it awake
-    region: oregon       # or pick near your Supabase region for lower latency
+    region: oregon
+    plan: starter          # or free while testing
     dockerfilePath: menuto-backend/Dockerfile
-    autoDeploy: true
+    dockerContext: .
     healthCheckPath: /health
+    autoDeploy: true
     envVars:
       - key: API_ENV
         value: staging

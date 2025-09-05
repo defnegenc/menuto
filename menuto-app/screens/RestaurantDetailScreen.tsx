@@ -576,28 +576,27 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                           dish.name === favorite.dish_name
                         );
                         
-                        if (fullDish) {
-                          return (
-                            <MenuItemCard
-                              key={`${favorite.dish_name}-${index}`}
-                              dish={fullDish}
-                              onAddToFavorites={handleAddDishToFavorites}
-                              isFavorite={true}
-                            />
-                          );
-                        }
-
-                        // Fallback if dish not found in menu
+                        // Always create a proper dish object for consistent display
+                        const displayDish: ParsedDish = fullDish || {
+                          id: `favorite-${index}`,
+                          name: favorite.dish_name,
+                          description: '', // No description available for favorites without full dish data
+                          category: 'favorite',
+                          ingredients: [],
+                          dietary_tags: [],
+                          is_user_added: false,
+                          score: 0,
+                          explanation: '',
+                          restaurant_id: restaurant.place_id
+                        };
+                        
                         return (
-                          <View key={`${favorite.dish_name}-${index}`} style={styles.fallbackCard}>
-                            <Text style={styles.fallbackDishName}>{favorite.dish_name}</Text>
-                            <TouchableOpacity 
-                              style={styles.removeButton}
-                              onPress={() => removeFavoriteDish(favorite)}
-                            >
-                              <Text style={styles.removeButtonText}>Remove</Text>
-                            </TouchableOpacity>
-                          </View>
+                          <MenuItemCard
+                            key={`${favorite.dish_name}-${index}`}
+                            dish={displayDish}
+                            onAddToFavorites={handleAddDishToFavorites}
+                            isFavorite={true}
+                          />
                         );
                       })}
                     </View>

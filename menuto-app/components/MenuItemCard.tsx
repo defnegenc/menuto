@@ -16,8 +16,6 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({
 }) => {
   return (
     <View style={[styles.card, isFavorite && styles.lightPinkCard]}>
-      {/* removed starContainer badge */}
-
       <View style={styles.content}>
         <View style={styles.dishInfo}>
           <Text style={styles.dishName}>{dish.name}</Text>
@@ -31,15 +29,7 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({
           onPress={() => onAddToFavorites(dish)}
         >
           <Text style={[styles.addButtonText, isFavorite && styles.addButtonTextActive]}>
-            {isFavorite ? (
-  <TouchableOpacity style={[styles.addButton, styles.addButtonActive]} onPress={() => onAddToFavorites(dish)}>
-    <Text style={styles.addButtonTextActive}>⭐</Text>
-  </TouchableOpacity>
-) : (
-  <TouchableOpacity style={styles.addButton} onPress={() => onAddToFavorites(dish)}>
-    <Text style={styles.addButtonText}>+</Text>
-  </TouchableOpacity>
-)}
+            {isFavorite ? 'Remove' : '+ Add'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -50,9 +40,9 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: '#E9E6EA',
     shadowColor: '#000',
@@ -61,27 +51,51 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-  lightPinkCard: { backgroundColor: '#F7E8EB' }, // softer pink
-  content: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  dishInfo: { flex: 1, marginRight: 12 },
-  dishName: { fontSize: 18, fontWeight: '700', color: theme.colors.text.primary, marginBottom: 6 },
-  dishDescription: { fontSize: 15, color: theme.colors.text.secondary, lineHeight: 21 },
+  lightPinkCard: { 
+    backgroundColor: '#F7E8EB',
+    borderColor: theme.colors.secondary,
+  },
+  content: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between' 
+  },
+  dishInfo: { 
+    flex: 1, 
+    marginRight: 12 
+  },
+  dishName: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: theme.colors.text.primary, 
+    marginBottom: 4 
+  },
+  dishDescription: { 
+    fontSize: 14, 
+    color: theme.colors.text.secondary, 
+    lineHeight: 18 
+  },
 
   addButton: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: theme.colors.secondary + '20',
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: theme.colors.secondary,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    justifyContent: 'center', 
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.secondary,
   },
   addButtonActive: {
-    backgroundColor: theme.colors.secondary, borderColor: theme.colors.secondary,
+    backgroundColor: theme.colors.secondary, 
+    borderColor: theme.colors.secondary,
   },
-  addButtonText: { fontSize: 18, fontWeight: '700', color: theme.colors.secondary },
-  addButtonTextActive: { color: theme.colors.text.light },
-
-  starContainer: {
-    position: 'absolute', top: 10, right: 10, zIndex: 1,
-    backgroundColor: theme.colors.secondary, borderRadius: 14, paddingHorizontal: 6, paddingVertical: 4,
+  addButtonText: { 
+    fontSize: 14, 
+    fontWeight: '600', 
+    color: theme.colors.secondary 
   },
-  starText: { fontSize: 16, color: theme.colors.text.light },
+  addButtonTextActive: { 
+    color: '#FFFFFF' 
+  },
 });

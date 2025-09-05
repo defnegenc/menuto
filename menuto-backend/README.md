@@ -19,8 +19,23 @@ Upload a menu → AI analyzes it → blends web reviews, your taste history, and
 
 2. **Set up environment**:
    ```bash
-   cp .env.example .env
-   # Fill in your API keys
+   # Create .env file with the following variables:
+   # Required API Keys:
+   OPENAI_API_KEY=your-openai-api-key-here
+   GOOGLE_PLACES_API_KEY=your-google-places-api-key-here
+   YELP_API_KEY=your-yelp-api-key-here
+   
+   # Database:
+   DATABASE_URL=postgresql://user:password@localhost:5432/menuto
+   
+   # Supabase (if using):
+   SUPABASE_URL=https://your-project-id.supabase.co
+   SUPABASE_ANON_KEY=your-supabase-anon-key-here
+   SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key-here
+   
+   # Clerk Authentication:
+CLERK_ISSUER=https://your-project.clerk.accounts.dev
+CLERK_AUDIENCE=menuto-backend
    ```
 
 3. **Set up PostgreSQL database**:

@@ -3,7 +3,9 @@
     WORKDIR /app
     ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
     RUN apt-get update && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
-    COPY requirements.txt .
+    
+    # copy requirements from repo root path
+    COPY menuto-backend/requirements.txt .
     RUN pip install --prefix=/install -r requirements.txt
     
     # ---- runtime stage ----
@@ -16,13 +18,12 @@
         tesseract-ocr libtesseract-dev \
         && rm -rf /var/lib/apt/lists/*
     
-    # copy python deps from builder
+    # python deps from builder
     COPY --from=builder /install /usr/local
     
-    # app code
-    COPY . .
+    # app code from repo root path
+    COPY menuto-backend/ ./
     
     EXPOSE 8080
-    # uvicorn ASGI server (no --reload in prod)
-    CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+    CMD ["uvicorn","app.main:app","--host","0.0.0.0","--port","8080"]
     

@@ -31,11 +31,12 @@
       [
         "expo-font",
         {
-                  "fonts": [
-          "./assets/fonts/Artifact.otf"
-        ]
+          "fonts": [
+            "./assets/fonts/Artifact.otf"
+          ]
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }

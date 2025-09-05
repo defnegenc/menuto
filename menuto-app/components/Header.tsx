@@ -14,10 +14,20 @@ export const Header: React.FC<HeaderProps> = ({
   restaurantName, 
   restaurantAddress 
 }) => {
+  const handleBackPress = () => {
+    console.log('🔙 Back button pressed!');
+    onBack();
+  };
+
   return (
     <SafeAreaView style={styles.header}>
       {/* Back Button */}
-      <TouchableOpacity onPress={onBack} style={styles.backButton}>
+      <TouchableOpacity 
+        onPress={handleBackPress} 
+        style={styles.backButton}
+        activeOpacity={0.7}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
         <Text style={styles.backButtonText}>← Back</Text>
       </TouchableOpacity>
       
@@ -36,13 +46,17 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingTop: 32,
+    paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#E1E8ED',
   },
   backButton: {
-    marginBottom: 16,
+    marginTop: 10,
+    marginBottom: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 0,
+    alignSelf: 'flex-start',
   },
   backButtonText: {
     color: theme.colors.primary,
@@ -56,7 +70,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: theme.colors.text.primary,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   restaurantAddress: {
     fontSize: 16,
