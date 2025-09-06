@@ -158,10 +158,8 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
           >
             <View style={styles.restaurantHeader}>
               <Text style={[styles.restaurantName, theme.typography.h2.regular]}>{restaurant.name}</Text>
-              <Text style={styles.cuisineType}>{cuisineType}</Text>
             </View>
             <Text style={styles.vicinity}>{restaurant.vicinity}</Text>
-            <Text style={styles.tapHint}>Tap to scan menu or get recommendations</Text>
           </TouchableOpacity>
           
           {dishes.length > 0 && (

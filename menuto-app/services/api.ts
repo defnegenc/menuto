@@ -9,12 +9,19 @@ let authTokenGetter: (() => Promise<string | null>) | null = null;
 
 export const setAuthTokenGetter = (getter: () => Promise<string | null>) => {
   authTokenGetter = getter;
+  console.log('🧲 api.ts: authTokenGetter wired');
 };
 
+export const isAuthGetterWired = () => !!authTokenGetter;
+
 const getAuthToken = async (): Promise<string | null> => {
+  console.log('🔍 getAuthToken called, authTokenGetter exists:', !!authTokenGetter);
   if (authTokenGetter) {
-    return await authTokenGetter();
+    const token = await authTokenGetter();
+    console.log('🔍 getAuthToken result:', token ? `SUCCESS (${token.length} chars)` : 'NULL');
+    return token;
   }
+  console.log('❌ getAuthToken: No authTokenGetter available');
   return null;
 };
 
@@ -718,9 +725,46 @@ export async function ensureUserProfile(userId: string, email?: string) {
     favorite_dishes: [],
   };
 
-  return await request(`/users/${userId}/preferences`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+  async function request(path: string, opts: RequestInit = {}) {
+    // Get token directly from Clerk each time
+    const token = await getAuthToken();
+    const headers = new Headers(opts.headers || {});
+    
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+      console.log('🔐 sending auth header to', path);
+    } else {
+      console.log('⚠️ request(): no token available for', path);
+      
+      // If no token, try one more time with a small delay
+      await new Promise(resolve => setTimeout(resolve, 100));
+      const retryToken = await getAuthToken();
+      if (retryToken) {
+        headers.set('Authorization', `Bearer ${retryToken}`);
+        console.log('🔐 retry successful - sending auth header to', path);
+      } else {
+        console.log('⚠️ retry failed - no token for', path);
+      }
+    }
+    
+    const res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`${res.status} ${body}`);
+    }
+    return res.json();
+  }
+
+  try {
+    console.log('🔄 Creating user profile for:', userId);
+    return await request(`/users/${userId}/preferences`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    console.error('❌ Ensure user profile error:', error);
+    // Return the payload as fallback so the app can continue
+    return payload;
+  }
 }

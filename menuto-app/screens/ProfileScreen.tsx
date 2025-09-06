@@ -62,6 +62,30 @@ const DIETARY_RESTRICTIONS = [
   'Nut-Free', 'Keto', 'Pescatarian', 'Halal', 'Kosher'
 ];
 
+const HOME_BASE_CITIES = [
+  { name: 'New York', coordinates: '40.7128,-74.0060', country: 'USA' },
+  { name: 'San Francisco', coordinates: '37.7749,-122.4194', country: 'USA' },
+  { name: 'Los Angeles', coordinates: '34.0522,-118.2437', country: 'USA' },
+  { name: 'Chicago', coordinates: '41.8781,-87.6298', country: 'USA' },
+  { name: 'Seattle', coordinates: '47.6062,-122.3321', country: 'USA' },
+  { name: 'Boston', coordinates: '42.3601,-71.0589', country: 'USA' },
+  { name: 'Austin', coordinates: '30.2672,-97.7431', country: 'USA' },
+  { name: 'Miami', coordinates: '25.7617,-80.1918', country: 'USA' },
+  { name: 'Denver', coordinates: '39.7392,-104.9903', country: 'USA' },
+  { name: 'Portland', coordinates: '45.5152,-122.6784', country: 'USA' },
+  { name: 'Nashville', coordinates: '36.1627,-86.7816', country: 'USA' },
+  { name: 'London', coordinates: '51.5074,-0.1278', country: 'UK' },
+  { name: 'Paris', coordinates: '48.8566,2.3522', country: 'France' },
+  { name: 'Tokyo', coordinates: '35.6762,139.6503', country: 'Japan' },
+  { name: 'Sydney', coordinates: '-33.8688,151.2093', country: 'Australia' },
+  { name: 'Toronto', coordinates: '43.6532,-79.3832', country: 'Canada' },
+  { name: 'Vancouver', coordinates: '49.2827,-123.1207', country: 'Canada' },
+  { name: 'Berlin', coordinates: '52.5200,13.4050', country: 'Germany' },
+  { name: 'Amsterdam', coordinates: '52.3676,4.9041', country: 'Netherlands' },
+  { name: 'Barcelona', coordinates: '41.3851,2.1734', country: 'Spain' },
+  { name: 'Rome', coordinates: '41.9028,12.4964', country: 'Italy' },
+];
+
 interface Props {
   onSelectRestaurant: (restaurant: FavoriteRestaurant) => void;
   onSignOut?: () => void;
@@ -89,6 +113,12 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
   
   // Profile photo state
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  
+  // Home base location state
+  const [isEditingHomeBase, setIsEditingHomeBase] = useState(false);
+  const [selectedHomeBase, setSelectedHomeBase] = useState<string | null>(null);
+  const [homeBaseSearch, setHomeBaseSearch] = useState('');
+  const [showHomeBasePicker, setShowHomeBasePicker] = useState(false);
 
   // Load profile photo from user data when component mounts or user changes
   React.useEffect(() => {
@@ -97,6 +127,13 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
       setProfilePhoto(user.profile_photo);
     }
   }, [user?.profile_photo]);
+
+  // Load home base from user data
+  React.useEffect(() => {
+    if (user?.home_base) {
+      setSelectedHomeBase(user.home_base);
+    }
+  }, [user?.home_base]);
   
   const getSpiceEmoji = (level: number) => {
     return '🌶️';
@@ -339,6 +376,52 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
 
   const removeTop3Restaurant = (restaurant: FavoriteRestaurant) => {
     setSelectedTop3(prev => prev.filter(r => r.place_id !== restaurant.place_id));
+  };
+
+  // Home base editing functions
+  const startEditingHomeBase = () => {
+    setSelectedHomeBase(user?.home_base || null);
+    setIsEditingHomeBase(true);
+  };
+
+  const saveHomeBase = () => {
+    if (userId && user) {
+      const updatedUser = {
+        ...user,
+        home_base: selectedHomeBase,
+        preferred_cuisines: user.preferred_cuisines || [],
+        spice_tolerance: user.spice_tolerance || 3,
+        price_preference: user.price_preference || 2,
+        dietary_restrictions: user.dietary_restrictions || [],
+        favorite_restaurants: user.favorite_restaurants || [],
+        favorite_dishes: user.favorite_dishes || [],
+      };
+      setUser(updatedUser, userId);
+    }
+    setIsEditingHomeBase(false);
+    setShowHomeBasePicker(false);
+    setHomeBaseSearch('');
+  };
+
+  const cancelEditingHomeBase = () => {
+    setIsEditingHomeBase(false);
+    setShowHomeBasePicker(false);
+    setHomeBaseSearch('');
+  };
+
+  const selectHomeBaseCity = (cityName: string) => {
+    setSelectedHomeBase(cityName);
+    setShowHomeBasePicker(false);
+    setHomeBaseSearch('');
+  };
+
+  const getFilteredHomeBaseCities = () => {
+    if (!homeBaseSearch.trim()) return HOME_BASE_CITIES;
+    
+    return HOME_BASE_CITIES.filter(city =>
+      city.name.toLowerCase().includes(homeBaseSearch.toLowerCase()) ||
+      (city.country && city.country.toLowerCase().includes(homeBaseSearch.toLowerCase()))
+    );
   };
 
   const getFilteredTop3Restaurants = () => {
@@ -595,6 +678,95 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
               ) : (
                 <Text style={styles.emptyCuisinesText}>No dietary restrictions selected</Text>
               )
+            )}
+          </View>
+
+          {/* Home Base Location */}
+          <View style={styles.preferenceGroup}>
+            <View style={styles.preferenceHeader}>
+              <Text style={styles.preferenceLabel}>Home Base</Text>
+              {!isEditingHomeBase && (
+                <TouchableOpacity onPress={startEditingHomeBase}>
+                  <Text style={styles.editButton}>Edit</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            {isEditingHomeBase ? (
+              // Edit mode
+              <View>
+                <TouchableOpacity 
+                  style={styles.homeBaseSelector}
+                  onPress={() => setShowHomeBasePicker(!showHomeBasePicker)}
+                >
+                  <View style={styles.homeBaseSelectorContent}>
+                    <Text style={styles.homeBaseSelectorText}>
+                      {selectedHomeBase || 'Select your home base city'}
+                    </Text>
+                    <Text style={styles.homeBaseSelectorIcon}>
+                      {showHomeBasePicker ? '▲' : '▼'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+                
+                {/* City Picker */}
+                {showHomeBasePicker && (
+                  <View style={styles.homeBasePickerContainer}>
+                    <TextInput
+                      style={styles.homeBaseSearchInput}
+                      value={homeBaseSearch}
+                      onChangeText={setHomeBaseSearch}
+                      placeholder="Search cities..."
+                      placeholderTextColor={theme.colors.text.secondary}
+                    />
+                    
+                    <ScrollView style={styles.homeBaseCityList} showsVerticalScrollIndicator={false}>
+                      {getFilteredHomeBaseCities().map((city) => (
+                        <TouchableOpacity
+                          key={city.name}
+                          style={[
+                            styles.homeBaseCityItem,
+                            selectedHomeBase === city.name && styles.homeBaseCityItemSelected
+                          ]}
+                          onPress={() => selectHomeBaseCity(city.name)}
+                        >
+                          <View style={styles.homeBaseCityInfo}>
+                            <Text style={styles.homeBaseCityName}>{city.name}</Text>
+                            {city.country && (
+                              <Text style={styles.homeBaseCityCountry}>{city.country}</Text>
+                            )}
+                          </View>
+                          {selectedHomeBase === city.name && (
+                            <Text style={styles.homeBaseSelectedIcon}>✓</Text>
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+                
+                {/* Save/Cancel buttons */}
+                <View style={styles.editButtonsContainer}>
+                  <TouchableOpacity style={styles.cancelButton} onPress={cancelEditingHomeBase}>
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.saveButton} onPress={saveHomeBase}>
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              // Display mode
+              <View style={styles.homeBaseDisplay}>
+                <Text style={styles.homeBaseDisplayText}>
+                  {user?.home_base ? `🏠 ${user.home_base}` : 'No home base set'}
+                </Text>
+                {user?.home_base && (
+                  <Text style={styles.homeBaseDisplaySubtext}>
+                    This will be used as your default location for restaurant searches
+                  </Text>
+                )}
+              </View>
             )}
           </View>
         </View>
@@ -1062,5 +1234,94 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  homeBaseDisplay: {
+    paddingVertical: 8,
+  },
+  homeBaseDisplayText: {
+    fontSize: 16,
+    color: theme.colors.text.primary,
+    fontWeight: '500',
+  },
+  homeBaseDisplaySubtext: {
+    fontSize: 14,
+    color: theme.colors.text.secondary,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  homeBaseSelector: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginBottom: 16,
+  },
+  homeBaseSelectorContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  homeBaseSelectorText: {
+    fontSize: 16,
+    color: theme.colors.text.primary,
+    flex: 1,
+  },
+  homeBaseSelectorIcon: {
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+  },
+  homeBasePickerContainer: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginBottom: 16,
+    maxHeight: 200,
+  },
+  homeBaseSearchInput: {
+    backgroundColor: theme.colors.background,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    margin: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    color: theme.colors.text.primary,
+  },
+  homeBaseCityList: {
+    maxHeight: 150,
+  },
+  homeBaseCityItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  homeBaseCityItemSelected: {
+    backgroundColor: theme.colors.primary + '15',
+  },
+  homeBaseCityInfo: {
+    flex: 1,
+  },
+  homeBaseCityName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: theme.colors.text.primary,
+  },
+  homeBaseCityCountry: {
+    fontSize: 14,
+    color: theme.colors.text.secondary,
+    marginTop: 2,
+  },
+  homeBaseSelectedIcon: {
+    fontSize: 16,
+    color: theme.colors.primary,
+    fontWeight: 'bold',
   },
 });

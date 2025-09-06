@@ -25,6 +25,13 @@ interface Restaurant {
   rating?: number;
 }
 
+interface City {
+  name: string;
+  coordinates: string; // "lat,lng" format
+  country?: string;
+  isLocal?: boolean; // For user's home base or nearby cities
+}
+
 interface Props {
   isOnboarding?: boolean;
   onComplete?: (restaurants: Restaurant[]) => void;
@@ -40,7 +47,52 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, minSe
   const [locationStatus, setLocationStatus] = useState<'loading' | 'granted' | 'denied' | 'unavailable'>('loading');
   const [selectedRestaurants, setSelectedRestaurants] = useState<Restaurant[]>([]);
   
+  // City selection state
+  const [selectedCity, setSelectedCity] = useState<City | null>(null);
+  const [citySearchQuery, setCitySearchQuery] = useState('');
+  const [citySearchResults, setCitySearchResults] = useState<City[]>([]);
+  const [isSearchingCities, setIsSearchingCities] = useState(false);
+  const [showCityPicker, setShowCityPicker] = useState(false);
+  
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const citySearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Popular cities for quick selection
+  const POPULAR_CITIES: City[] = [
+    // Local/NYC area cities (prioritized)
+    { name: 'New York', coordinates: '40.7128,-74.0060', country: 'USA', isLocal: true },
+    { name: 'Brooklyn', coordinates: '40.6782,-73.9442', country: 'USA', isLocal: true },
+    { name: 'Queens', coordinates: '40.7282,-73.7949', country: 'USA', isLocal: true },
+    { name: 'Manhattan', coordinates: '40.7831,-73.9712', country: 'USA', isLocal: true },
+    { name: 'Bronx', coordinates: '40.8448,-73.8648', country: 'USA', isLocal: true },
+    { name: 'Staten Island', coordinates: '40.5795,-74.1502', country: 'USA', isLocal: true },
+    { name: 'Jersey City', coordinates: '40.7178,-74.0431', country: 'USA', isLocal: true },
+    { name: 'Hoboken', coordinates: '40.7439,-74.0324', country: 'USA', isLocal: true },
+    
+    // Other major US cities
+    { name: 'San Francisco', coordinates: '37.7749,-122.4194', country: 'USA' },
+    { name: 'Los Angeles', coordinates: '34.0522,-118.2437', country: 'USA' },
+    { name: 'Chicago', coordinates: '41.8781,-87.6298', country: 'USA' },
+    { name: 'Seattle', coordinates: '47.6062,-122.3321', country: 'USA' },
+    { name: 'Boston', coordinates: '42.3601,-71.0589', country: 'USA' },
+    { name: 'Austin', coordinates: '30.2672,-97.7431', country: 'USA' },
+    { name: 'Miami', coordinates: '25.7617,-80.1918', country: 'USA' },
+    { name: 'Denver', coordinates: '39.7392,-104.9903', country: 'USA' },
+    { name: 'Portland', coordinates: '45.5152,-122.6784', country: 'USA' },
+    { name: 'Nashville', coordinates: '36.1627,-86.7816', country: 'USA' },
+    
+    // International cities
+    { name: 'London', coordinates: '51.5074,-0.1278', country: 'UK' },
+    { name: 'Paris', coordinates: '48.8566,2.3522', country: 'France' },
+    { name: 'Tokyo', coordinates: '35.6762,139.6503', country: 'Japan' },
+    { name: 'Sydney', coordinates: '-33.8688,151.2093', country: 'Australia' },
+    { name: 'Toronto', coordinates: '43.6532,-79.3832', country: 'Canada' },
+    { name: 'Vancouver', coordinates: '49.2827,-123.1207', country: 'Canada' },
+    { name: 'Berlin', coordinates: '52.5200,13.4050', country: 'Germany' },
+    { name: 'Amsterdam', coordinates: '52.3676,4.9041', country: 'Netherlands' },
+    { name: 'Barcelona', coordinates: '41.3851,2.1734', country: 'Spain' },
+    { name: 'Rome', coordinates: '41.9028,12.4964', country: 'Italy' },
+  ];
 
   useEffect(() => {
     requestLocationPermission();
@@ -66,6 +118,27 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, minSe
       }
     };
   }, [searchQuery]);
+
+  // Debounced city search effect
+  useEffect(() => {
+    if (citySearchTimeoutRef.current) {
+      clearTimeout(citySearchTimeoutRef.current);
+    }
+    
+    if (citySearchQuery.trim().length >= 2) {
+      citySearchTimeoutRef.current = setTimeout(() => {
+        searchCities();
+      }, 300); // 300ms debounce
+    } else if (citySearchQuery.trim().length === 0) {
+      setCitySearchResults([]);
+    }
+    
+    return () => {
+      if (citySearchTimeoutRef.current) {
+        clearTimeout(citySearchTimeoutRef.current);
+      }
+    };
+  }, [citySearchQuery]);
 
   const requestLocationPermission = async () => {
     try {
@@ -102,6 +175,44 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, minSe
     }
   };
 
+  const searchCities = async () => {
+    if (!citySearchQuery.trim()) {
+      setCitySearchResults([]);
+      return;
+    }
+
+    setIsSearchingCities(true);
+    try {
+      // Filter popular cities based on search query
+      const filteredCities = POPULAR_CITIES.filter(city =>
+        city.name.toLowerCase().includes(citySearchQuery.toLowerCase()) ||
+        (city.country && city.country.toLowerCase().includes(citySearchQuery.toLowerCase()))
+      );
+      setCitySearchResults(filteredCities);
+    } catch (error) {
+      console.error('City search error:', error);
+      setCitySearchResults([]);
+    } finally {
+      setIsSearchingCities(false);
+    }
+  };
+
+  const getGroupedCities = () => {
+    const citiesToShow = citySearchQuery.trim() ? citySearchResults : POPULAR_CITIES;
+    
+    // Get user's home base and mark it as local
+    const homeBase = user?.home_base;
+    const citiesWithHomeBase = citiesToShow.map(city => ({
+      ...city,
+      isLocal: city.isLocal || !!(homeBase && city.name === homeBase)
+    }));
+    
+    const localCities = citiesWithHomeBase.filter(city => city.isLocal);
+    const otherCities = citiesWithHomeBase.filter(city => !city.isLocal);
+    
+    return { localCities, otherCities };
+  };
+
   const searchRestaurantsAutocomplete = async () => {
     if (!searchQuery.trim()) {
       setSearchResults([]);
@@ -110,9 +221,17 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, minSe
 
     setIsSearching(true);
     try {
-      // Use user's location if available, otherwise fallback to SF
+      // Priority: selected city > home base > user location > fallback to SF
       let locationParam = null;
-      if (userLocation) {
+      if (selectedCity) {
+        locationParam = selectedCity.coordinates;
+      } else if (user?.home_base) {
+        // Find home base coordinates
+        const homeBaseCity = POPULAR_CITIES.find(city => city.name === user.home_base);
+        if (homeBaseCity) {
+          locationParam = homeBaseCity.coordinates;
+        }
+      } else if (userLocation) {
         locationParam = `${userLocation.latitude},${userLocation.longitude}`;
       }
       
@@ -133,6 +252,23 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, minSe
     }
 
     await searchRestaurantsAutocomplete();
+  };
+
+  const selectCity = (city: City) => {
+    setSelectedCity(city);
+    setShowCityPicker(false);
+    setCitySearchQuery('');
+    setCitySearchResults([]);
+    
+    // Clear restaurant search results when city changes
+    setSearchResults([]);
+    setSearchQuery('');
+  };
+
+  const clearCitySelection = () => {
+    setSelectedCity(null);
+    setSearchResults([]);
+    setSearchQuery('');
   };
 
   const toggleRestaurantSelection = (restaurant: Restaurant) => {
@@ -263,28 +399,146 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, minSe
             }
           </Text>
           
-          <View style={styles.locationStatus}>
-            {locationStatus === 'loading' && (
+          <TouchableOpacity 
+            style={styles.locationStatus}
+            onPress={() => setShowCityPicker(!showCityPicker)}
+          >
+            {selectedCity ? (
+              <>
+                <Text style={styles.locationIcon}>🏙️</Text>
+                <Text style={styles.locationText}>{selectedCity.name}</Text>
+                <TouchableOpacity 
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    clearCitySelection();
+                  }}
+                  style={styles.clearButtonContainer}
+                >
+                  <Text style={styles.clearButton}>✕</Text>
+                </TouchableOpacity>
+              </>
+            ) : locationStatus === 'loading' ? (
               <>
                 <ActivityIndicator size="small" color="#FF6B35" />
                 <Text style={styles.locationText}>Getting location...</Text>
               </>
-            )}
-            {locationStatus === 'granted' && (
+            ) : user?.home_base ? (
+              <>
+                <Text style={styles.locationIcon}>🏠</Text>
+                <Text style={styles.locationText}>Using {user.home_base}</Text>
+              </>
+            ) : locationStatus === 'granted' ? (
               <>
                 <Text style={styles.locationIcon}>📍</Text>
                 <Text style={styles.locationText}>Using your location</Text>
               </>
-            )}
-            {(locationStatus === 'denied' || locationStatus === 'unavailable') && (
+            ) : (
               <>
                 <Text style={styles.locationIcon}>🌍</Text>
-                <Text style={styles.locationText}>Using San Francisco</Text>
+                <Text style={styles.locationText}>Tap to choose city</Text>
               </>
             )}
-          </View>
+          </TouchableOpacity>
         </View>
       </View>
+
+      {/* City Picker */}
+      {showCityPicker && (
+        <View style={styles.cityPickerContainer}>
+          <View style={styles.cityPickerHeader}>
+            <Text style={styles.cityPickerTitle}>Choose a City</Text>
+            <TouchableOpacity onPress={() => setShowCityPicker(false)}>
+              <Text style={styles.closeButton}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <TextInput
+            style={styles.citySearchInput}
+            value={citySearchQuery}
+            onChangeText={setCitySearchQuery}
+            placeholder="Search cities..."
+            placeholderTextColor={theme.colors.text.secondary}
+          />
+          
+          <ScrollView style={styles.cityList} showsVerticalScrollIndicator={false}>
+            {(() => {
+              const { localCities, otherCities } = getGroupedCities();
+              
+              return (
+                <>
+                  {/* Local Cities Section */}
+                  {localCities.length > 0 && (
+                    <>
+                      <View style={styles.citySectionHeader}>
+                        <Text style={styles.citySectionTitle}>🏠 Local Area</Text>
+                      </View>
+                      {localCities.map((city) => (
+                        <TouchableOpacity
+                          key={`${city.name}-${city.coordinates}`}
+                          style={[
+                            styles.cityItem,
+                            styles.localCityItem,
+                            selectedCity?.coordinates === city.coordinates && styles.cityItemSelected
+                          ]}
+                          onPress={() => selectCity(city)}
+                        >
+                          <View style={styles.cityInfo}>
+                            <View style={styles.cityNameRow}>
+                              <Text style={styles.cityName}>{city.name}</Text>
+                              <Text style={styles.localBadge}>🏠</Text>
+                            </View>
+                            {city.country && (
+                              <Text style={styles.cityCountry}>{city.country}</Text>
+                            )}
+                          </View>
+                          {selectedCity?.coordinates === city.coordinates && (
+                            <Text style={styles.selectedIcon}>✓</Text>
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </>
+                  )}
+                  
+                  {/* Other Cities Section */}
+                  {otherCities.length > 0 && (
+                    <>
+                      <View style={styles.citySectionHeader}>
+                        <Text style={styles.citySectionTitle}>🌍 Other Cities</Text>
+                      </View>
+                      {otherCities.map((city) => (
+                        <TouchableOpacity
+                          key={`${city.name}-${city.coordinates}`}
+                          style={[
+                            styles.cityItem,
+                            selectedCity?.coordinates === city.coordinates && styles.cityItemSelected
+                          ]}
+                          onPress={() => selectCity(city)}
+                        >
+                          <View style={styles.cityInfo}>
+                            <Text style={styles.cityName}>{city.name}</Text>
+                            {city.country && (
+                              <Text style={styles.cityCountry}>{city.country}</Text>
+                            )}
+                          </View>
+                          {selectedCity?.coordinates === city.coordinates && (
+                            <Text style={styles.selectedIcon}>✓</Text>
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </>
+                  )}
+                  
+                  {citySearchQuery.trim() && localCities.length === 0 && otherCities.length === 0 && !isSearchingCities && (
+                    <View style={styles.emptyCityState}>
+                      <Text style={styles.emptyCityText}>No cities found</Text>
+                    </View>
+                  )}
+                </>
+              );
+            })()}
+          </ScrollView>
+        </View>
+      )}
 
       <ScrollView style={styles.resultsContainer}>
         {searchResults.map(renderRestaurantCard)}
@@ -542,5 +796,119 @@ const styles = StyleSheet.create({
   },
   continueButtonDisabled: {
     backgroundColor: theme.colors.text.muted,
+  },
+  clearButtonContainer: {
+    padding: theme.spacing.xs,
+    marginLeft: theme.spacing.xs,
+  },
+  clearButton: {
+    color: theme.colors.text.secondary,
+    fontSize: 12,
+  },
+  cityPickerContainer: {
+    backgroundColor: theme.colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    maxHeight: 300,
+  },
+  cityPickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  cityPickerTitle: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text.primary,
+  },
+  closeButton: {
+    fontSize: theme.typography.sizes.lg,
+    color: theme.colors.text.secondary,
+    padding: theme.spacing.xs,
+  },
+  citySearchInput: {
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    fontSize: theme.typography.sizes.md,
+    marginHorizontal: theme.spacing.lg,
+    marginVertical: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    color: theme.colors.text.primary,
+  },
+  cityList: {
+    maxHeight: 200,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  cityItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.xs,
+  },
+  cityItemSelected: {
+    backgroundColor: theme.colors.primary + '15',
+  },
+  localCityItem: {
+    backgroundColor: theme.colors.primary + '08',
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.primary,
+  },
+  cityInfo: {
+    flex: 1,
+  },
+  cityNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cityName: {
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.weights.medium,
+    color: theme.colors.text.primary,
+    flex: 1,
+  },
+  localBadge: {
+    fontSize: 12,
+    marginLeft: theme.spacing.xs,
+  },
+  cityCountry: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.text.secondary,
+    marginTop: 2,
+  },
+  selectedIcon: {
+    fontSize: theme.typography.sizes.lg,
+    color: theme.colors.primary,
+    fontWeight: 'bold',
+  },
+  citySectionHeader: {
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+  },
+  citySectionTitle: {
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  emptyCityState: {
+    padding: theme.spacing.xl,
+    alignItems: 'center',
+  },
+  emptyCityText: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.secondary,
   },
 });

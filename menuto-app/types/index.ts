@@ -5,6 +5,7 @@ export interface UserPreferences {
   name?: string;
   email?: string;
   profile_photo?: string; // URI of the profile photo
+  home_base?: string; // User's home base city
   preferred_cuisines: string[];
   spice_tolerance: number; // 1-5
   price_preference: number; // 1-4

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet, Text } from 'react-native';
 import { ClerkProvider, useUser, useAuth } from '@clerk/clerk-expo';
+import { tokenCache } from './clerkTokenCache';
 import * as Linking from 'expo-linking';
 import { loadFonts } from './utils/fonts';
 import { theme } from './theme';
@@ -18,7 +19,7 @@ import { RestaurantSearchScreen } from './screens/RestaurantSearchScreen';
 // Store and Types
 import { useStore } from './store/useStore';
 import { ParsedDish, FavoriteRestaurant } from './types';
-import { api } from './services/api';
+import { api, setAuthTokenGetter, ensureUserProfile, isAuthGetterWired } from './services/api';
 
 // Onboarding completion helpers
 const hasTastePrefs = (u?: any) => {
@@ -41,14 +42,26 @@ const hasCompletedOnboarding = (u?: any) => {
 
 // Get Clerk publishable key
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
+console.log('🔑 Clerk publishable key:', publishableKey?.slice(0, 12) + '...');
+console.log('🌐 API URL:', process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8080');
 
 type AppScreen = 'signIn' | 'onboarding' | 'onboardingRestaurants' | 'mainTabs' | 'restaurantDetail' | 'recommendations' | 'dishDetail';
+
 
 function AppContent() {
   const { user, setUser } = useStore();
   const { user: clerkUser, isLoaded } = useUser();
-  const { signOut } = useAuth();
+  const { signOut, getToken, isSignedIn } = useAuth();
   const [fontsLoaded, setFontsLoaded] = useState(false);
+  
+  // Debug Clerk auth state - this should show on every render
+  console.log('🔍 Clerk auth state:', { 
+    isLoaded, 
+    isSignedIn, 
+    getTokenType: typeof getToken, 
+    hasGetToken: !!getToken,
+    clerkUserId: clerkUser?.id 
+  });
   
   // Load fonts on app startup
   useEffect(() => {
@@ -58,6 +71,18 @@ function AppContent() {
     };
     loadFontsAsync();
   }, []);
+
+  // Wire up Clerk token to API layer
+  useEffect(() => {
+    console.log('🔍 Token getter effect running, getToken:', typeof getToken, !!getToken);
+    if (!getToken) {
+      console.log('⏳ getToken not available yet');
+      return;
+    }
+    console.log('🔧 Setting up auth token getter...');
+    setAuthTokenGetter(() => getToken({ template: 'backend', skipCache: false }));
+    console.log('✅ Auth token getter configured');
+  }, [getToken]);
 
   // Load user data when Clerk user is available
   useEffect(() => {
@@ -78,6 +103,40 @@ function AppContent() {
       if (clerkUser && !user) {
         try {
           console.log('🔄 App.tsx: Loading user data for Clerk ID:', clerkUser.id);
+          
+          // Set up token getter immediately if not already set
+          if (!isAuthGetterWired()) {
+            console.log('🔧 Setting up token getter immediately...');
+            setAuthTokenGetter(() => getToken({ template: 'backend', skipCache: false }));
+          }
+          
+          // Wait for token to be available before making API calls
+          console.log('⏳ Waiting for authentication token...');
+          let token = null;
+          let attempts = 0;
+          const maxAttempts = 10;
+          
+          while (!token && attempts < maxAttempts) {
+            try {
+              token = await getToken({ template: 'backend', skipCache: false });
+              if (token) {
+                console.log('✅ Token obtained, making API call');
+                break;
+              }
+            } catch (e) {
+              console.log('⚠️ Token attempt failed:', e);
+            }
+            attempts++;
+            if (!token && attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms between attempts
+            }
+          }
+          
+          if (!token) {
+            console.log('❌ Could not obtain token after', maxAttempts, 'attempts');
+            // Continue without token - the app will handle the 401 gracefully
+          }
+          
           const userData = await api.getUserPreferences(clerkUser.id);
           if (userData) {
             console.log('✅ App.tsx: User data loaded successfully');
@@ -101,10 +160,18 @@ function AppContent() {
               setCurrentScreen('onboarding');
             }
           } else {
-            console.log('❌ App.tsx: No user data found for Clerk ID:', clerkUser.id);
+            console.log('↩️ No profile yet. Creating one…');
+            const email = clerkUser.primaryEmailAddress?.emailAddress ?? undefined;
+            const created = await ensureUserProfile(clerkUser.id, email);
+            setUser(created, clerkUser.id);
+            setCurrentScreen('onboarding');
+            return;
           }
         } catch (error) {
           console.log('❌ App.tsx: Failed to load user data:', error);
+          // If we can't load user data, assume it's a new user
+          console.log('↩️ Assuming new user due to error, going to onboarding');
+          setCurrentScreen('onboarding');
         }
       } else if (!clerkUser) {
         console.log('❌ App.tsx: No Clerk user available - user needs to sign in');
@@ -116,7 +183,7 @@ function AppContent() {
     };
     
     loadUserData();
-  }, [clerkUser, user, setUser, isLoaded]);
+  }, [clerkUser, user, setUser, isLoaded, getToken]);
 
   // Set userId in store when Clerk user changes
   useEffect(() => {
@@ -132,9 +199,9 @@ function AppContent() {
     // If Clerk not ready, keep sign-in UI
     if (!clerkUser) return 'signIn';
 
-    // If we haven't loaded the user profile yet, show a neutral screen
-    // (We'll jump to the right screen once loadUserData resolves)
-    if (!user) return 'signIn';
+    // If we haven't loaded the user profile yet, show onboarding
+    // (We'll create/fetch and redirect)
+    if (!user) return 'onboarding';
 
     if (hasCompletedOnboarding(user)) return 'mainTabs';
     if (hasTastePrefs(user)) return 'onboardingRestaurants';
@@ -144,7 +211,6 @@ function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<AppScreen>(getInitialScreen());
   const [selectedDish, setSelectedDish] = useState<ParsedDish | null>(null);
   const [selectedRestaurant, setSelectedRestaurant] = useState<FavoriteRestaurant | null>(null);
-
 
   const handleAuthComplete = () => {
     // Wait for user data to be available before routing
@@ -169,7 +235,7 @@ function AppContent() {
   const handleSignOut = async () => {
     try {
       console.log('🔄 Signing out...');
-      await signOut({ redirectUrl: Linking.createURL('/') });
+      await signOut(); // No parameters at all
       console.log('✅ Sign out successful');
     } catch (error) {
       console.error('❌ Sign out error:', error);
@@ -294,7 +360,7 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ClerkProvider publishableKey={publishableKey}>
+    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <AppContent />
     </ClerkProvider>
   );
