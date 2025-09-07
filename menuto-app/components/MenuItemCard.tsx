@@ -3,6 +3,19 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { theme } from '../theme';
 import { ParsedDish } from '../types';
 
+// Utility function to properly capitalize text
+const capitalizeText = (text: string): string => {
+  if (!text) return text;
+  
+  // If text is all caps, convert to title case
+  if (text === text.toUpperCase() && text.length > 1) {
+    return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+  }
+  
+  // Otherwise, just capitalize first letter
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};
+
 interface MenuItemCardProps {
   dish: ParsedDish;
   onAddToFavorites: (dish: ParsedDish) => void;
@@ -18,9 +31,9 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({
     <View style={[styles.card, isFavorite && styles.lightPinkCard]}>
       <View style={styles.content}>
         <View style={styles.dishInfo}>
-          <Text style={styles.dishName}>{dish.name}</Text>
+          <Text style={styles.dishName}>{capitalizeText(dish.name)}</Text>
           {dish.description ? (
-            <Text style={styles.dishDescription}>{dish.description}</Text>
+            <Text style={styles.dishDescription}>{capitalizeText(dish.description)}</Text>
           ) : null}
         </View>
 

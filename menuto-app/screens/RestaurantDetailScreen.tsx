@@ -51,6 +51,9 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
   
   // Track current request to cancel it when switching restaurants
   const currentRequestRef = useRef<AbortController | null>(null);
+  
+  // ScrollView ref for scrolling to favorites
+  const scrollViewRef = useRef<ScrollView>(null);
 
   // Load menu when restaurant changes
   useEffect(() => {
@@ -388,6 +391,10 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
       (fav.restaurant_id === restaurant.place_id || fav.restaurant_id === restaurant.name)
     );
 
+    // Check if this dish was added from search results
+    const wasFromSearch = searchText.trim() && filteredDishes.some(fd => fd.name === dish.name);
+    const wasOnlySearchResult = wasFromSearch && filteredDishes.length === 1;
+
     if (isAlreadyFavorite) {
       console.log('🗑️ Removing dish from favorites');
       // Remove from favorites
@@ -427,8 +434,22 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
         console.log('💾 Saving updated user (added):', updatedUser);
         setUser(updatedUser, userId);
       }
+
+      // If added from search results, scroll to favorites and handle search clearing
+      if (wasFromSearch) {
+        // Scroll to favorites section after a short delay to allow state update
+        setTimeout(() => {
+          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        }, 100);
+        
+        // Clear search if it was the only result
+        if (wasOnlySearchResult) {
+          setSearchText('');
+          setFilteredDishes([]);
+        }
+      }
     }
-  }, [user, userId, restaurant.place_id, restaurant.name, setUser]);
+  }, [user, userId, restaurant.place_id, restaurant.name, setUser, searchText, filteredDishes]);
 
   const isDishFavorite = useCallback((dish: ParsedDish) => {
     return (user?.favorite_dishes || []).some(fav => 
@@ -486,7 +507,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
       )}
 
       {!isLoading && !isParsing && (
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        <ScrollView ref={scrollViewRef} style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {menuDishes.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No Menu Yet</Text>
