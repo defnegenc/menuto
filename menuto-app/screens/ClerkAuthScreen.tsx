@@ -8,6 +8,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSignIn, useSignUp, useAuth } from '@clerk/clerk-expo';
@@ -22,6 +23,7 @@ interface Props {
 export function ClerkAuthScreen({ onAuthComplete }: Props) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -51,18 +53,29 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
             console.log('✅ ClerkAuthScreen: Found existing user data');
             setUser(userData, authUserId);
           } else {
-            console.log('🔄 ClerkAuthScreen: No existing data, creating new user');
-            // Make sure you include the id
-            setUser({ id: authUserId, ...pendingUserPayload }, authUserId);
+            console.log('🔄 ClerkAuthScreen: No existing data, creating new user in Supabase');
+            // Create user in Supabase with the pending payload
+            const userToCreate = { id: authUserId, ...pendingUserPayload };
+            await api.saveUserPreferences(authUserId, userToCreate);
+            console.log('✅ ClerkAuthScreen: User created in Supabase');
+            setUser(userToCreate, authUserId);
           }
         } catch (error) {
-          console.log('❌ ClerkAuthScreen: Failed to load user data, creating new user');
-          // Make sure you include the id
-          setUser({ id: authUserId, ...pendingUserPayload }, authUserId);
+          console.log('❌ ClerkAuthScreen: Failed to load user data, creating new user in Supabase');
+          // Create user in Supabase with the pending payload
+          const userToCreate = { id: authUserId, ...pendingUserPayload };
+          await api.saveUserPreferences(authUserId, userToCreate);
+          console.log('✅ ClerkAuthScreen: User created in Supabase');
+          setUser(userToCreate, authUserId);
         }
         
         setPendingUserPayload(null);
-        onAuthComplete(); // now you can continue
+        
+        // Add a small delay to ensure the user data is properly set in the store
+        // before calling onAuthComplete
+        setTimeout(() => {
+          onAuthComplete();
+        }, 100);
       } catch (e) {
         console.log('❌ ClerkAuthScreen: Failed to upsert user in Supabase', e);
         Alert.alert('Error', 'Failed to save user data. Please try again.');
@@ -92,6 +105,12 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
     return password.length >= 6;
   };
 
+  const validateUsername = (username: string) => {
+    // Username should be 3-20 characters, alphanumeric and underscores only
+    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+    return usernameRegex.test(username);
+  };
+
   const handleVerification = async () => {
     if (!verificationCode.trim()) {
       Alert.alert('Error', 'Please enter the verification code');
@@ -107,17 +126,9 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
 
       console.log('Email verified, completing signup...');
       
-      // Create user profile in Supabase
-      const newUser = {
-        name: name.trim(),
-        email: email.trim(),
-        preferred_cuisines: [],
-        spice_tolerance: 3,
-        price_preference: 2,
-        dietary_restrictions: [],
-        favorite_restaurants: [],
-        favorite_dishes: []
-      };
+      // Activate the Clerk session first
+      await setActiveSignUp({ session: signUpAttempt.createdSessionId });
+      console.log('✅ Clerk session activated after email verification');
 
       // Use the actual Clerk user ID - never fall back to generated IDs
       const userId = signUpAttempt.createdUserId;
@@ -130,7 +141,9 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
       // prepare the payload but DO NOT call setUser yet
       setPendingUserPayload({
         name: name.trim(),
+        username: username.trim(),
         email: email.trim(),
+        home_base: undefined,
         preferred_cuisines: [],
         spice_tolerance: 3,
         price_preference: 2,
@@ -138,12 +151,11 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
         favorite_restaurants: [],
         favorite_dishes: [],
       });
-      // effect above will fire once authUserId becomes truthy
+      // effect above will fire once authUserId becomes truthy and handle onAuthComplete
       
       Alert.alert(
         'Success', 
-        'Account created successfully!',
-        [{ text: 'Continue', onPress: onAuthComplete }]
+        'Account created successfully!'
       );
     } catch (error: any) {
       console.error('Verification error:', error);
@@ -154,9 +166,28 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
   };
 
   const handleAuth = async () => {
+    // Check if user is already signed in
+    if (authUserId && !isSignUp) {
+      console.log('🔄 User already signed in, proceeding with auth complete');
+      // User is already signed in, just proceed - no need to set pending payload
+      // The App.tsx will handle loading existing user data
+      onAuthComplete();
+      return;
+    }
+
     // Validate inputs
     if (isSignUp && !name.trim()) {
       Alert.alert('Error', 'Please enter your name');
+      return;
+    }
+
+    if (isSignUp && !username.trim()) {
+      Alert.alert('Error', 'Please enter a username');
+      return;
+    }
+
+    if (isSignUp && !validateUsername(username)) {
+      Alert.alert('Error', 'Username must be 3-20 characters, letters, numbers, and underscores only');
       return;
     }
 
@@ -206,6 +237,7 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
           // Create user profile in Supabase
           const newUser = {
             name: name.trim(),
+            username: username.trim(),
             email: email.trim(),
             preferred_cuisines: [],
             spice_tolerance: 3,
@@ -219,7 +251,9 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
           // prepare the payload but DO NOT call setUser yet
           setPendingUserPayload({
             name: name.trim(),
+            username: username.trim(),
             email: email.trim(),
+            home_base: undefined,
             preferred_cuisines: [],
             spice_tolerance: 3,
             price_preference: 2,
@@ -227,13 +261,11 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
             favorite_restaurants: [],
             favorite_dishes: [],
           });
-          // effect above will fire once authUserId becomes truthy
-          return;
+          // effect above will fire once authUserId becomes truthy and handle onAuthComplete
           
           Alert.alert(
             'Success', 
-            'Account created successfully!',
-            [{ text: 'Continue', onPress: onAuthComplete }]
+            'Account created successfully!'
           );
         } else if (result.status === 'missing_requirements') {
           console.log('Sign up needs email verification...');
@@ -267,21 +299,13 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
         if (result.status === 'complete') {
           await setActive({ session: result.createdSessionId });
           
-          // For sign-in, prepare payload but wait for authUserId
-          setPendingUserPayload({
-            email: email.trim(),
-            preferred_cuisines: [],
-            spice_tolerance: 3,
-            price_preference: 2,
-            dietary_restrictions: [],
-            favorite_restaurants: [],
-            favorite_dishes: []
-          });
+          // For sign-in, don't set pending payload - let App.tsx load existing user data
+          // The App.tsx useEffect will detect the new authUserId and load user data
+          console.log('✅ Sign-in complete, App.tsx will handle loading user data');
           
           Alert.alert(
             'Success', 
-            'Signed in successfully!',
-            [{ text: 'Continue', onPress: onAuthComplete }]
+            'Signed in successfully!'
           );
         }
       }
@@ -353,8 +377,14 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
       <KeyboardAvoidingView 
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <View style={styles.content}>
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.header}>
             <Text style={styles.title}>Welcome to Menuto!</Text>
             <Text style={styles.subtitle}>
@@ -377,6 +407,22 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
               </View>
             )}
 
+            {isSignUp && (
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Username</Text>
+                <TextInput
+                  style={styles.input}
+                  value={username}
+                  onChangeText={setUsername}
+                  placeholder="Choose a username"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!isLoading}
+                />
+              </View>
+            )}
+
+
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Email</Text>
               <TextInput
@@ -386,6 +432,9 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
                 placeholder="Enter your email"
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                textContentType="emailAddress"
                 editable={!isLoading}
               />
             </View>
@@ -399,6 +448,9 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
                 placeholder="Enter your password"
                 secureTextEntry
                 editable={!isLoading}
+                autoComplete={isSignUp ? "new-password" : "current-password"}
+                textContentType={isSignUp ? "newPassword" : "password"}
+                passwordRules={isSignUp ? "minlength: 6;" : undefined}
               />
             </View>
 
@@ -412,6 +464,8 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
                   placeholder="Confirm your password"
                   secureTextEntry
                   editable={!isLoading}
+                  autoComplete="new-password"
+                  textContentType="newPassword"
                 />
               </View>
             )}
@@ -436,7 +490,7 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -450,10 +504,15 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  content: {
+    flexGrow: 1,
     paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.xl,
     justifyContent: 'center',
+    minHeight: '100%',
   },
   header: {
     alignItems: 'center',

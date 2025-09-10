@@ -8,14 +8,14 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  InteractionManager,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
-import { api } from '../services/api';
-import { theme } from '../theme';
-import { useStore } from '../store/useStore';
-import { UnifiedHeader } from '../components/UnifiedHeader';
-import { LoadingScreen } from '../components/LoadingScreen';
+import { api } from '../../services/api';
+import { useStore } from '../../store/useStore';
+import { theme } from '../../theme';
+import { UnifiedHeader } from '../../components/UnifiedHeader';
 
 interface Restaurant {
   place_id: string;
@@ -32,21 +32,65 @@ interface City {
   isLocal?: boolean; // For user's home base or nearby cities
 }
 
+// Popular cities for quick selection
+const POPULAR_CITIES: City[] = [
+  // Major US cities
+  { name: 'New York', coordinates: '40.7128,-74.0060', country: 'USA', isLocal: true },
+  { name: 'San Francisco', coordinates: '37.7749,-122.4194', country: 'USA' },
+  { name: 'Los Angeles', coordinates: '34.0522,-118.2437', country: 'USA' },
+  { name: 'Chicago', coordinates: '41.8781,-87.6298', country: 'USA' },
+  { name: 'Seattle', coordinates: '47.6062,-122.3321', country: 'USA' },
+  { name: 'Boston', coordinates: '42.3601,-71.0589', country: 'USA' },
+  { name: 'Austin', coordinates: '30.2672,-97.7431', country: 'USA' },
+  { name: 'Miami', coordinates: '25.7617,-80.1918', country: 'USA' },
+  { name: 'Denver', coordinates: '39.7392,-104.9903', country: 'USA' },
+  { name: 'Portland', coordinates: '45.5152,-122.6784', country: 'USA' },
+  { name: 'Nashville', coordinates: '36.1627,-86.7816', country: 'USA' },
+  { name: 'Atlanta', coordinates: '33.7490,-84.3880', country: 'USA' },
+  { name: 'Dallas', coordinates: '32.7767,-96.7970', country: 'USA' },
+  { name: 'Houston', coordinates: '29.7604,-95.3698', country: 'USA' },
+  { name: 'Phoenix', coordinates: '33.4484,-112.0740', country: 'USA' },
+  { name: 'Las Vegas', coordinates: '36.1699,-115.1398', country: 'USA' },
+  
+  // International cities
+  { name: 'London', coordinates: '51.5074,-0.1278', country: 'UK' },
+  { name: 'Paris', coordinates: '48.8566,2.3522', country: 'France' },
+  { name: 'Tokyo', coordinates: '35.6762,139.6503', country: 'Japan' },
+  { name: 'Sydney', coordinates: '-33.8688,151.2093', country: 'Australia' },
+  { name: 'Toronto', coordinates: '43.6532,-79.3832', country: 'Canada' },
+  { name: 'Vancouver', coordinates: '49.2827,-123.1207', country: 'Canada' },
+  { name: 'Berlin', coordinates: '52.5200,13.4050', country: 'Germany' },
+  { name: 'Amsterdam', coordinates: '52.3676,4.9041', country: 'Netherlands' },
+  { name: 'Barcelona', coordinates: '41.3851,2.1734', country: 'Spain' },
+  { name: 'Rome', coordinates: '41.9028,12.4964', country: 'Italy' },
+  { name: 'Madrid', coordinates: '40.4168,-3.7038', country: 'Spain' },
+  { name: 'Milan', coordinates: '45.4642,9.1900', country: 'Italy' },
+  { name: 'Zurich', coordinates: '47.3769,8.5417', country: 'Switzerland' },
+  { name: 'Vienna', coordinates: '48.2082,16.3738', country: 'Austria' },
+  { name: 'Prague', coordinates: '50.0755,14.4378', country: 'Czech Republic' },
+  { name: 'Warsaw', coordinates: '52.2297,21.0122', country: 'Poland' },
+  { name: 'Stockholm', coordinates: '59.3293,18.0686', country: 'Sweden' },
+  { name: 'Copenhagen', coordinates: '55.6761,12.5683', country: 'Denmark' },
+  { name: 'Oslo', coordinates: '59.9139,10.7522', country: 'Norway' },
+  { name: 'Helsinki', coordinates: '60.1699,24.9384', country: 'Finland' },
+];
+
 interface Props {
-  isOnboarding?: boolean;
-  onComplete?: (restaurants: Restaurant[]) => void;
+  onComplete: () => void;
   onBack?: () => void;
-  minSelection?: number;
 }
 
-export function RestaurantSearchScreen({ isOnboarding = false, onComplete, onBack, minSelection = 3 }: Props) {
+export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
   const { user, setUser, userId } = useStore();
+  const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Restaurant[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [userLocation, setUserLocation] = useState<{latitude: number, longitude: number} | null>(null);
   const [locationStatus, setLocationStatus] = useState<'loading' | 'granted' | 'denied' | 'unavailable'>('loading');
   const [selectedRestaurants, setSelectedRestaurants] = useState<Restaurant[]>([]);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [isInteractionComplete, setIsInteractionComplete] = useState(false);
   
   // City selection state
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
@@ -57,52 +101,54 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, onBac
   
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const citySearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
 
-  // Popular cities for quick selection
-  const POPULAR_CITIES: City[] = [
-    // Major US cities
-    { name: 'New York', coordinates: '40.7128,-74.0060', country: 'USA', isLocal: true },
-    { name: 'San Francisco', coordinates: '37.7749,-122.4194', country: 'USA' },
-    { name: 'Los Angeles', coordinates: '34.0522,-118.2437', country: 'USA' },
-    { name: 'Chicago', coordinates: '41.8781,-87.6298', country: 'USA' },
-    { name: 'Seattle', coordinates: '47.6062,-122.3321', country: 'USA' },
-    { name: 'Boston', coordinates: '42.3601,-71.0589', country: 'USA' },
-    { name: 'Austin', coordinates: '30.2672,-97.7431', country: 'USA' },
-    { name: 'Miami', coordinates: '25.7617,-80.1918', country: 'USA' },
-    { name: 'Denver', coordinates: '39.7392,-104.9903', country: 'USA' },
-    { name: 'Portland', coordinates: '45.5152,-122.6784', country: 'USA' },
-    { name: 'Nashville', coordinates: '36.1627,-86.7816', country: 'USA' },
-    { name: 'Atlanta', coordinates: '33.7490,-84.3880', country: 'USA' },
-    { name: 'Dallas', coordinates: '32.7767,-96.7970', country: 'USA' },
-    { name: 'Houston', coordinates: '29.7604,-95.3698', country: 'USA' },
-    { name: 'Phoenix', coordinates: '33.4484,-112.0740', country: 'USA' },
-    { name: 'Las Vegas', coordinates: '36.1699,-115.1398', country: 'USA' },
-    
-    // International cities
-    { name: 'London', coordinates: '51.5074,-0.1278', country: 'UK' },
-    { name: 'Paris', coordinates: '48.8566,2.3522', country: 'France' },
-    { name: 'Tokyo', coordinates: '35.6762,139.6503', country: 'Japan' },
-    { name: 'Sydney', coordinates: '-33.8688,151.2093', country: 'Australia' },
-    { name: 'Toronto', coordinates: '43.6532,-79.3832', country: 'Canada' },
-    { name: 'Vancouver', coordinates: '49.2827,-123.1207', country: 'Canada' },
-    { name: 'Berlin', coordinates: '52.5200,13.4050', country: 'Germany' },
-    { name: 'Amsterdam', coordinates: '52.3676,4.9041', country: 'Netherlands' },
-    { name: 'Barcelona', coordinates: '41.3851,2.1734', country: 'Spain' },
-    { name: 'Rome', coordinates: '41.9028,12.4964', country: 'Italy' },
-    { name: 'Madrid', coordinates: '40.4168,-3.7038', country: 'Spain' },
-    { name: 'Milan', coordinates: '45.4642,9.1900', country: 'Italy' },
-    { name: 'Zurich', coordinates: '47.3769,8.5417', country: 'Switzerland' },
-    { name: 'Vienna', coordinates: '48.2082,16.3738', country: 'Austria' },
-    { name: 'Prague', coordinates: '50.0755,14.4378', country: 'Czech Republic' },
-    { name: 'Warsaw', coordinates: '52.2297,21.0122', country: 'Poland' },
-    { name: 'Stockholm', coordinates: '59.3293,18.0686', country: 'Sweden' },
-    { name: 'Copenhagen', coordinates: '55.6761,12.5683', country: 'Denmark' },
-    { name: 'Oslo', coordinates: '59.9139,10.7522', country: 'Norway' },
-    { name: 'Helsinki', coordinates: '60.1699,24.9384', country: 'Finland' },
-  ];
-
+  // InteractionManager for layout timing
   useEffect(() => {
-    requestLocationPermission();
+    const handle = InteractionManager.runAfterInteractions(() => {
+      setIsInteractionComplete(true);
+    });
+    
+    return () => handle.cancel();
+  }, []);
+
+  // Reset state when component mounts
+  useEffect(() => {
+    isMountedRef.current = true;
+    setIsInitializing(true);
+    
+    // Reset all state to initial values
+    setSearchQuery('');
+    setSearchResults([]);
+    setIsSearching(false);
+    setUserLocation(null);
+    setLocationStatus('loading');
+    setSelectedRestaurants([]);
+    setSelectedCity(null);
+    setCitySearchQuery('');
+    setCitySearchResults([]);
+    setIsSearchingCities(false);
+    setShowCityPicker(false);
+    
+    // Clear any existing timeouts
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    if (citySearchTimeoutRef.current) {
+      clearTimeout(citySearchTimeoutRef.current);
+    }
+    
+    // Initialize location after a brief delay to ensure UI is ready
+    const initTimer = setTimeout(() => {
+      if (isMountedRef.current) {
+        requestLocationPermission();
+      }
+    }, 100);
+    
+    return () => {
+      isMountedRef.current = false;
+      clearTimeout(initTimer);
+    };
   }, []);
 
   // Debounced search effect
@@ -148,11 +194,16 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, onBac
   }, [citySearchQuery]);
 
   const requestLocationPermission = async () => {
+    if (!isMountedRef.current) return;
+    
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       
+      if (!isMountedRef.current) return;
+      
       if (status !== 'granted') {
         setLocationStatus('denied');
+        setIsInitializing(false);
         Alert.alert(
           'Location Permission',
           'Location access was denied. We\'ll search restaurants in San Francisco instead. You can still search by city name.',
@@ -165,15 +216,21 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, onBac
         accuracy: Location.Accuracy.Balanced,
       });
       
+      if (!isMountedRef.current) return;
+      
       setUserLocation({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude
       });
       setLocationStatus('granted');
+      setIsInitializing(false);
       
     } catch (error) {
       console.error('Location error:', error);
+      if (!isMountedRef.current) return;
+      
       setLocationStatus('unavailable');
+      setIsInitializing(false);
       Alert.alert(
         'Location Unavailable',
         'Could not get your location. We\'ll search restaurants in San Francisco instead.',
@@ -188,6 +245,8 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, onBac
       return;
     }
 
+    if (!isMountedRef.current) return;
+    
     setIsSearchingCities(true);
     try {
       // Filter popular cities based on search query
@@ -195,12 +254,18 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, onBac
         city.name.toLowerCase().includes(citySearchQuery.toLowerCase()) ||
         (city.country && city.country.toLowerCase().includes(citySearchQuery.toLowerCase()))
       );
+      
+      if (!isMountedRef.current) return;
+      
       setCitySearchResults(filteredCities);
     } catch (error) {
       console.error('City search error:', error);
+      if (!isMountedRef.current) return;
       setCitySearchResults([]);
     } finally {
-      setIsSearchingCities(false);
+      if (isMountedRef.current) {
+        setIsSearchingCities(false);
+      }
     }
   };
 
@@ -226,6 +291,8 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, onBac
       return;
     }
 
+    if (!isMountedRef.current) return;
+    
     setIsSearching(true);
     try {
       // Priority: selected city > home base > user location > fallback to SF
@@ -243,24 +310,19 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, onBac
       }
       
       const results = await api.searchPlaces(searchQuery.trim(), locationParam);
-      console.log('🔍 Search results:', results);
-      console.log('🔍 Restaurants found:', results.restaurants?.length || 0);
+      
+      if (!isMountedRef.current) return;
+      
       setSearchResults(results.restaurants || []);
     } catch (error) {
       console.error('Search error:', error);
+      if (!isMountedRef.current) return;
       setSearchResults([]);
     } finally {
-      setIsSearching(false);
+      if (isMountedRef.current) {
+        setIsSearching(false);
+      }
     }
-  };
-
-  const searchRestaurants = async () => {
-    if (!searchQuery.trim()) {
-      Alert.alert('Please enter a restaurant name or cuisine type');
-      return;
-    }
-
-    await searchRestaurantsAutocomplete();
   };
 
   const selectCity = (city: City) => {
@@ -290,42 +352,40 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, onBac
     }
   };
 
-  const confirmSelectedRestaurants = async () => {
-    if (!user || !userId) return;
-
-    // Check for duplicates
-    const existingRestaurants = user.favorite_restaurants || [];
-    const newRestaurants = selectedRestaurants.filter(restaurant => 
-      !existingRestaurants.some(existing => existing.place_id === restaurant.place_id)
-    );
-
-    if (newRestaurants.length === 0) {
-      Alert.alert('No new restaurants to add', 'All selected restaurants are already in your list.');
+  const handleComplete = async () => {
+    if (selectedRestaurants.length === 0) {
+      Alert.alert('Please select at least one restaurant');
       return;
     }
 
-    // Add all selected restaurants
-    const updatedRestaurants = [...existingRestaurants, ...newRestaurants.map(restaurant => ({
-      place_id: restaurant.place_id,
-      name: restaurant.name,
-      vicinity: restaurant.vicinity,
-      cuisine_type: restaurant.cuisine_type || 'Restaurant',
-      rating: restaurant.rating || 4.0
-    }))];
+    console.log('🎯 Selected restaurants:', selectedRestaurants);
 
-    // Update user and save to Supabase
-    const updatedUser = { ...user, favorite_restaurants: updatedRestaurants };
-    setUser(updatedUser, userId);
+    // Save selected restaurants to user preferences
+    if (userId) {
+      console.log('💾 Saving favorite restaurants for user:', userId);
+      const existingRestaurants = user?.favorite_restaurants || [];
+      const newRestaurants = selectedRestaurants.map(restaurant => ({
+        place_id: restaurant.place_id,
+        name: restaurant.name,
+        vicinity: restaurant.vicinity,
+        cuisine_type: restaurant.cuisine_type || 'Restaurant',
+        rating: restaurant.rating || 4.0
+      }));
+      
+      const updatedRestaurants = [...existingRestaurants, ...newRestaurants];
+      const updatedUser = { 
+        ...user, 
+        favorite_restaurants: updatedRestaurants,
+        preferred_cuisines: user?.preferred_cuisines || [],
+        spice_tolerance: user?.spice_tolerance || 3,
+        price_preference: user?.price_preference || 2,
+        dietary_restrictions: user?.dietary_restrictions || [],
+        home_base: user?.home_base || 'New York'
+      };
+      setUser(updatedUser, userId);
+    }
     
-    // Clear selection
-    setSelectedRestaurants([]);
-    
-    // Show success message
-    Alert.alert(
-      'Restaurants Added!', 
-      `Added ${newRestaurants.length} restaurant${newRestaurants.length > 1 ? 's' : ''} to your list.`,
-      [{ text: 'Great!' }]
-    );
+    onComplete();
   };
 
   const renderRestaurantCard = (restaurant: Restaurant) => {
@@ -370,13 +430,32 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, onBac
     );
   };
 
+  // Wait for interactions to complete before rendering
+  if (!isInteractionComplete) {
+    return <View style={{ flex: 1, backgroundColor: theme.colors.background }} />;
+  }
+
+  // Show loading screen while initializing
+  if (isInitializing) {
+    return (
+      <View style={[styles.fixedContainer, { paddingTop: insets.top }]}>
+        <UnifiedHeader 
+          title="Add Restaurants" 
+          subtitle="Search and tap to add restaurants you love"
+        />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loadingText}>Setting up location services...</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.fixedContainer, { paddingTop: insets.top }]}>
       <UnifiedHeader 
         title="Add Restaurants" 
         subtitle="Search and tap to add restaurants you love"
-        showBackButton={!isOnboarding}
-        onBack={onBack}
       />
 
       <View style={styles.searchSection}>
@@ -387,11 +466,9 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, onBac
             onChangeText={setSearchQuery}
             placeholder="Type restaurant name or cuisine (e.g., Sushi, Pizza)..."
             placeholderTextColor={theme.colors.text.secondary}
-            onSubmitEditing={searchRestaurants}
           />
           <TouchableOpacity 
             style={styles.searchButton}
-            onPress={searchRestaurants}
             disabled={isSearching}
           >
             {isSearching ? (
@@ -404,10 +481,7 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, onBac
         
         <View style={styles.statusRow}>
           <Text style={styles.selectedCount}>
-            {isOnboarding 
-              ? `Selected: ${selectedRestaurants.length}/${minSelection}`
-              : `Selected: ${selectedRestaurants.length}`
-            }
+            Selected: {selectedRestaurants.length}/3
           </Text>
           
           <TouchableOpacity 
@@ -563,82 +637,37 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, onBac
         )}
       </ScrollView>
 
-      {isOnboarding && (
-        <View style={styles.footer}>
-          <TouchableOpacity 
-            style={[
-              styles.continueButton,
-              selectedRestaurants.length < minSelection && styles.continueButtonDisabled
-            ]}
-            onPress={async () => {
-              console.log('Continue button pressed, selected:', selectedRestaurants.length, 'min:', minSelection);
-              if (onComplete && selectedRestaurants.length >= minSelection) {
-                console.log('Calling onComplete with', selectedRestaurants.length, 'restaurants');
-                // Add selected restaurants to user's favorites
-                if (user && userId) {
-                  const existingRestaurants = user.favorite_restaurants || [];
-                  const newRestaurants = selectedRestaurants.map(restaurant => ({
-                    place_id: restaurant.place_id,
-                    name: restaurant.name,
-                    vicinity: restaurant.vicinity,
-                    cuisine_type: restaurant.cuisine_type || 'Restaurant',
-                    rating: restaurant.rating || 4.0
-                  }));
-                  
-                  const updatedRestaurants = [...existingRestaurants, ...newRestaurants];
-                  console.log('🍽️ Saving restaurants to user:', {
-                    userId,
-                    existingCount: existingRestaurants.length,
-                    newCount: newRestaurants.length,
-                    totalCount: updatedRestaurants.length,
-                    restaurants: newRestaurants.map(r => r.name)
-                  });
-                  
-                  // Update user's favorite restaurants
-                  const updatedUser = { ...user, favorite_restaurants: updatedRestaurants };
-                  setUser(updatedUser, userId);
-                }
-                onComplete(selectedRestaurants);
-              } else {
-                console.log('Continue button conditions not met');
-              }
-            }}
-            disabled={selectedRestaurants.length < minSelection}
-          >
-            <Text style={styles.continueButtonText}>
-              Continue ({selectedRestaurants.length}/{minSelection})
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {!isOnboarding && selectedRestaurants.length > 0 && (
-        <View style={styles.footer}>
-          <TouchableOpacity 
-            style={styles.continueButton}
-            onPress={confirmSelectedRestaurants}
-          >
-            <Text style={styles.continueButtonText}>
-              Add {selectedRestaurants.length} Restaurant{selectedRestaurants.length > 1 ? 's' : ''}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
+      <View style={styles.footer}>
+        <TouchableOpacity 
+          style={[
+            styles.continueButton,
+            selectedRestaurants.length < 3 && styles.continueButtonDisabled
+          ]}
+          onPress={handleComplete}
+          disabled={selectedRestaurants.length < 3}
+        >
+          <Text style={styles.continueButtonText}>
+            Continue ({selectedRestaurants.length}/3)
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  fixedContainer: {
     flex: 1,
     backgroundColor: theme.colors.background,
+    margin: 0,
+    padding: 0,
   },
+
   searchSection: {
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.lg,
     backgroundColor: theme.colors.surface,
-    marginBottom: theme.spacing.sm,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -693,7 +722,7 @@ const styles = StyleSheet.create({
   resultsContainer: {
     flex: 1,
     paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.xl,
+    paddingTop: theme.spacing.md,
   },
   restaurantCard: {
     backgroundColor: theme.colors.surface,
@@ -758,22 +787,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
-  checkmark: {
-    color: theme.colors.text.light,
-    fontWeight: theme.typography.weights.bold,
-  },
   addedText: {
     color: theme.colors.text.secondary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  selectedText: {
-    color: theme.colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  addButton: {
-    color: theme.colors.secondary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -919,5 +934,17 @@ const styles = StyleSheet.create({
   emptyCityText: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text.secondary,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.xl,
+  },
+  loadingText: {
+    fontSize: theme.typography.sizes.lg,
+    color: theme.colors.text.secondary,
+    marginTop: theme.spacing.lg,
+    textAlign: 'center',
   },
 });

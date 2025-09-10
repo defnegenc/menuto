@@ -8,12 +8,11 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store/useStore';
 import { api } from '../services/api';
 import { FavoriteRestaurant, FavoriteDish } from '../types';
 import { theme } from '../theme';
-import { UnifiedHeader } from '../components/UnifiedHeader';
 import { DishChip } from '../components/DishChip';
 
 interface Props {
@@ -24,6 +23,7 @@ interface Props {
 export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
   const { user, setUser, userId, debugState } = useStore();
   const [isLoading, setIsLoading] = useState(true);
+  const insets = useSafeAreaInsets();
 
   // Load user data when component mounts
   useEffect(() => {
@@ -192,9 +192,24 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
   };
 
   return (
-    <View style={styles.container}>
-      <UnifiedHeader title="My Restaurants" />
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Inline Header Section */}
+        <View style={[styles.inlineHeader, { paddingTop: insets.top }]}>
+          <Text style={[styles.inlineTitle, theme.typography.h1.fancy]}>My restaurants</Text>
+          {onAddRestaurant && (
+            <TouchableOpacity 
+              style={styles.addMoreButton}
+              onPress={onAddRestaurant}
+            >
+              <Text style={styles.addMoreButtonText}>+ Add</Text>
+            </TouchableOpacity>
+          )}
+        </View>
         {isLoading ? (
           <View style={styles.emptyState}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -240,7 +255,7 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
           </View>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -249,9 +264,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-
+  inlineHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.sm,
+  },
+  inlineTitle: {
+    flex: 1,
+  },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   emptyState: {
     flex: 1,
@@ -387,32 +414,16 @@ const styles = StyleSheet.create({
     fontWeight: 600,
   },
   addMoreButton: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.lg,
-    alignItems: 'center',
-    marginHorizontal: theme.spacing.xl,
-    marginVertical: theme.spacing.xl,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    borderStyle: 'dashed',
+    backgroundColor: theme.colors.secondary,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.secondary,
   },
   addMoreButtonText: {
-    color: theme.colors.primary,
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: 400,
-  },
-  addRestaurantButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.lg,
-    marginHorizontal: theme.spacing.xl,
-    marginVertical: theme.spacing.lg,
-    alignItems: 'center',
-  },
-  addRestaurantButtonText: {
-    color: theme.colors.text.light,
-    fontSize: theme.typography.sizes.lg,
+    color: '#FFFFFF',
+    fontSize: theme.typography.sizes.sm,
     fontWeight: 600,
   },
 });

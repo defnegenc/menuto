@@ -423,7 +423,7 @@ class MenutoAPI {
       }
       
       const placeIdParam = placeId || restaurantName;
-      const response = await fetch(`${API_BASE}/menu/restaurant/${encodeURIComponent(placeIdParam)}?restaurant_name=${encodeURIComponent(restaurantName)}`, {
+      const response = await fetch(`${API_BASE}/menu/menu/restaurant/${encodeURIComponent(placeIdParam)}?restaurant_name=${encodeURIComponent(restaurantName)}`, {
         signal: controller.signal
       });
       
@@ -717,6 +717,7 @@ export async function ensureUserProfile(userId: string, email?: string) {
   const payload = {
     id: userId,
     email,
+    home_base: undefined,
     preferred_cuisines: [],
     spice_tolerance: 3,
     price_preference: 2,

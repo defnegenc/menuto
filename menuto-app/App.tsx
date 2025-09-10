@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet, Text } from 'react-native';
 import { ClerkProvider, useUser, useAuth } from '@clerk/clerk-expo';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { tokenCache } from './clerkTokenCache';
 import * as Linking from 'expo-linking';
 import { loadFonts } from './utils/fonts';
@@ -9,11 +10,14 @@ import { theme } from './theme';
 
 // Screens
 import { ClerkAuthScreen } from './screens/ClerkAuthScreen';
-import { OnboardingScreen } from './screens/OnboardingScreen';
 import { MainTabScreen } from './screens/MainTabScreen';
 import { RecommendationsScreen } from './screens/RecommendationsScreen';
 import { DishDetailScreen } from './screens/DishDetailScreen';
 import { RestaurantDetailScreen } from './screens/RestaurantDetailScreen';
+// Onboarding screens
+import { TastePreferencesScreen, RestaurantSelectionScreen } from './screens/onboarding';
+
+// Main app screens
 import { RestaurantSearchScreen } from './screens/RestaurantSearchScreen';
 
 // Store and Types
@@ -45,7 +49,7 @@ const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 console.log('🔑 Clerk publishable key:', publishableKey?.slice(0, 12) + '...');
 console.log('🌐 API URL:', process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8080');
 
-type AppScreen = 'signIn' | 'onboarding' | 'onboardingRestaurants' | 'mainTabs' | 'restaurantDetail' | 'recommendations' | 'dishDetail';
+type AppScreen = 'signIn' | 'onboarding' | 'onboardingRestaurants' | 'mainTabs' | 'restaurantSearch' | 'restaurantDetail' | 'recommendations' | 'dishDetail';
 
 
 function AppContent() {
@@ -169,6 +173,12 @@ function AppContent() {
           }
         } catch (error) {
           console.log('❌ App.tsx: Failed to load user data:', error);
+          // Check if it's a 500 error (server issue) vs 404 (user doesn't exist)
+          if (error instanceof Error && error.message.includes('500')) {
+            console.log('⚠️ Server error (500) - backend may be down, staying on current screen');
+            // Don't change screens on server errors, let user retry
+            return;
+          }
           // If we can't load user data, assume it's a new user
           console.log('↩️ Assuming new user due to error, going to onboarding');
           setCurrentScreen('onboarding');
@@ -213,10 +223,27 @@ function AppContent() {
   const [selectedRestaurant, setSelectedRestaurant] = useState<FavoriteRestaurant | null>(null);
 
   const handleAuthComplete = () => {
+    console.log('🔄 handleAuthComplete called, user state:', { 
+      hasUser: !!user, 
+      userId: user?.id,
+      hasTastePrefs: hasTastePrefs(user),
+      hasRestaurants: hasRestaurants(user),
+      hasCompletedOnboarding: hasCompletedOnboarding(user)
+    });
+    
     // Wait for user data to be available before routing
     if (!user) {
       console.log('⏳ handleAuthComplete: Waiting for user data to load...');
-      return; // Don't route yet, let the loadUserData effect handle routing
+      // Add a small delay and try again
+      setTimeout(() => {
+        if (user) {
+          handleAuthComplete();
+        } else {
+          console.log('⚠️ handleAuthComplete: Still no user data after delay, routing to onboarding');
+          setCurrentScreen('onboarding');
+        }
+      }, 200);
+      return;
     }
     
     // If the user object already exists (e.g., returning user), route correctly
@@ -252,6 +279,15 @@ function AppContent() {
 
   const handleOnboardingRestaurantsComplete = () => {
     console.log('handleOnboardingRestaurantsComplete called');
+    setCurrentScreen('mainTabs');
+  };
+
+  const handleRestaurantSearchComplete = () => {
+    console.log('handleRestaurantSearchComplete called');
+    setCurrentScreen('mainTabs');
+  };
+
+  const handleBackToMainTabs = () => {
     setCurrentScreen('mainTabs');
   };
 
@@ -291,19 +327,16 @@ function AppContent() {
         return <ClerkAuthScreen onAuthComplete={handleAuthComplete} />;
       
       case 'onboarding':
-        return <OnboardingScreen onComplete={handleOnboardingComplete} onAddRestaurants={handleOnboardingComplete} />;
+        return <TastePreferencesScreen onComplete={handleOnboardingComplete} />;
       
       case 'onboardingRestaurants':
-        return (
-          <RestaurantSearchScreen 
-            isOnboarding={true}
-            onComplete={handleOnboardingRestaurantsComplete}
-            minSelection={3}
-          />
-        );
+        return <RestaurantSelectionScreen onComplete={handleOnboardingRestaurantsComplete} />;
       
       case 'mainTabs':
-        return <MainTabScreen onSelectRestaurant={handleSelectRestaurant} onAddRestaurant={() => setCurrentScreen('onboardingRestaurants')} onSignOut={handleSignOut} />;
+        return <MainTabScreen onSelectRestaurant={handleSelectRestaurant} onAddRestaurant={() => setCurrentScreen('restaurantSearch')} onSignOut={handleSignOut} />;
+      
+      case 'restaurantSearch':
+        return <RestaurantSearchScreen onComplete={handleRestaurantSearchComplete} onBack={handleBackToMainTabs} />;
       
       case 'restaurantDetail':
         return selectedRestaurant ? (
@@ -360,9 +393,11 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <AppContent />
-    </ClerkProvider>
+    <SafeAreaProvider>
+      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+        <AppContent />
+      </ClerkProvider>
+    </SafeAreaProvider>
   );
 }
 

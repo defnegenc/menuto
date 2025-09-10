@@ -3,6 +3,7 @@
 export interface UserPreferences {
   id?: string; // Changed from number to string to match Clerk user IDs
   name?: string;
+  username?: string; // Unique username for the user
   email?: string;
   profile_photo?: string; // URI of the profile photo
   home_base?: string; // User's home base city

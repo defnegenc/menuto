@@ -14,12 +14,20 @@ print("[auth] PyJWT validator -> iss:", ISSUER, "aud:", AUDIENCE)
 _jwk_client = PyJWKClient(JWKS_URL) if JWKS_URL else None
 
 async def require_user(authorization: str = Header(None)):
+    # In dev mode, allow requests without proper auth for testing
+    if DEV and (not authorization or not authorization.startswith("Bearer ")):
+        print("⚠️ Dev mode: Allowing request without auth")
+        return {"sub": "dev-user", "email": "dev@example.com"}
+    
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing token")
 
     token = authorization.split(" ", 1)[1]
     try:
         if not _jwk_client:
+            if DEV:
+                print("⚠️ Dev mode: JWKS not configured, allowing request")
+                return {"sub": "dev-user", "email": "dev@example.com"}
             raise HTTPException(status_code=500, detail="JWKS not configured")
 
         signing_key = _jwk_client.get_signing_key_from_jwt(token)
@@ -35,6 +43,12 @@ async def require_user(authorization: str = Header(None)):
         return payload
 
     except InvalidTokenError as e:
+        if DEV:
+            print(f"⚠️ Dev mode: Invalid token error: {e}, allowing request")
+            return {"sub": "dev-user", "email": "dev@example.com"}
         raise HTTPException(status_code=401, detail=(str(e) if DEV else "Invalid token"))
     except Exception as e:
+        if DEV:
+            print(f"⚠️ Dev mode: Auth error: {e}, allowing request")
+            return {"sub": "dev-user", "email": "dev@example.com"}
         raise HTTPException(status_code=401, detail=(str(e) if DEV else "Invalid token"))

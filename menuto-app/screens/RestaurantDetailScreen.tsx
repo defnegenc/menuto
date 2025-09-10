@@ -621,9 +621,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                         );
                       })}
                     </View>
-                  ) : (
-                    <Text style={styles.emptyFavoritesText}>Add your favorites!</Text>
-                  );
+                  ) : null;
                 })()}
               </View>
 

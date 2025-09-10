@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 
 interface HeaderProps {
@@ -14,13 +14,15 @@ export const Header: React.FC<HeaderProps> = ({
   restaurantName, 
   restaurantAddress 
 }) => {
+  const insets = useSafeAreaInsets();
+  
   const handleBackPress = () => {
     console.log('🔙 Back button pressed!');
     onBack();
   };
 
   return (
-    <SafeAreaView style={styles.header}>
+    <View style={[styles.header, { paddingTop: 10}]}>
       {/* Back Button */}
       <TouchableOpacity 
         onPress={handleBackPress} 
@@ -38,7 +40,7 @@ export const Header: React.FC<HeaderProps> = ({
           <Text style={styles.restaurantAddress}>{restaurantAddress}</Text>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -46,15 +48,14 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
-    paddingTop: 32,
     paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#E1E8ED',
   },
   backButton: {
-    marginTop: 10,
-    marginBottom: 10,
-    paddingVertical: 12,
+    marginTop: 0,
+    marginBottom: 8,
+    paddingVertical: 8,
     paddingHorizontal: 0,
     alignSelf: 'flex-start',
   },

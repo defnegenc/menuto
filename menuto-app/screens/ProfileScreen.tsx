@@ -63,6 +63,7 @@ const DIETARY_RESTRICTIONS = [
 ];
 
 const HOME_BASE_CITIES = [
+  // Major US cities
   { name: 'New York', coordinates: '40.7128,-74.0060', country: 'USA' },
   { name: 'San Francisco', coordinates: '37.7749,-122.4194', country: 'USA' },
   { name: 'Los Angeles', coordinates: '34.0522,-118.2437', country: 'USA' },
@@ -74,6 +75,13 @@ const HOME_BASE_CITIES = [
   { name: 'Denver', coordinates: '39.7392,-104.9903', country: 'USA' },
   { name: 'Portland', coordinates: '45.5152,-122.6784', country: 'USA' },
   { name: 'Nashville', coordinates: '36.1627,-86.7816', country: 'USA' },
+  { name: 'Atlanta', coordinates: '33.7490,-84.3880', country: 'USA' },
+  { name: 'Dallas', coordinates: '32.7767,-96.7970', country: 'USA' },
+  { name: 'Houston', coordinates: '29.7604,-95.3698', country: 'USA' },
+  { name: 'Phoenix', coordinates: '33.4484,-112.0740', country: 'USA' },
+  { name: 'Las Vegas', coordinates: '36.1699,-115.1398', country: 'USA' },
+  
+  // International cities
   { name: 'London', coordinates: '51.5074,-0.1278', country: 'UK' },
   { name: 'Paris', coordinates: '48.8566,2.3522', country: 'France' },
   { name: 'Tokyo', coordinates: '35.6762,139.6503', country: 'Japan' },
@@ -84,6 +92,16 @@ const HOME_BASE_CITIES = [
   { name: 'Amsterdam', coordinates: '52.3676,4.9041', country: 'Netherlands' },
   { name: 'Barcelona', coordinates: '41.3851,2.1734', country: 'Spain' },
   { name: 'Rome', coordinates: '41.9028,12.4964', country: 'Italy' },
+  { name: 'Madrid', coordinates: '40.4168,-3.7038', country: 'Spain' },
+  { name: 'Milan', coordinates: '45.4642,9.1900', country: 'Italy' },
+  { name: 'Zurich', coordinates: '47.3769,8.5417', country: 'Switzerland' },
+  { name: 'Vienna', coordinates: '48.2082,16.3738', country: 'Austria' },
+  { name: 'Prague', coordinates: '50.0755,14.4378', country: 'Czech Republic' },
+  { name: 'Warsaw', coordinates: '52.2297,21.0122', country: 'Poland' },
+  { name: 'Stockholm', coordinates: '59.3293,18.0686', country: 'Sweden' },
+  { name: 'Copenhagen', coordinates: '55.6761,12.5683', country: 'Denmark' },
+  { name: 'Oslo', coordinates: '59.9139,10.7522', country: 'Norway' },
+  { name: 'Helsinki', coordinates: '60.1699,24.9384', country: 'Finland' },
 ];
 
 interface Props {
@@ -388,7 +406,7 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
     if (userId && user) {
       const updatedUser = {
         ...user,
-        home_base: selectedHomeBase,
+        home_base: selectedHomeBase || undefined,
         preferred_cuisines: user.preferred_cuisines || [],
         spice_tolerance: user.spice_tolerance || 3,
         price_preference: user.price_preference || 2,
@@ -833,7 +851,7 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
               
               {selectedTop3.length >= 3 && (
                 <Text style={styles.emptyCuisinesText}>
-                  Maximum 3 restaurants selected
+                  Maximum number of restaurants selected
                 </Text>
               )}
               
@@ -1108,6 +1126,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.text.secondary,
     fontStyle: 'italic',
+    marginTop: 10,
   },
   chipsContainer: {
     flexDirection: 'row',

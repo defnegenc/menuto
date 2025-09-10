@@ -20,6 +20,7 @@ interface Props {
 export function AuthScreen({ onAuthComplete }: Props) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -34,10 +35,26 @@ export function AuthScreen({ onAuthComplete }: Props) {
     return password.length >= 6;
   };
 
+  const validateUsername = (username: string) => {
+    // Username should be 3-20 characters, alphanumeric and underscores only
+    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+    return usernameRegex.test(username);
+  };
+
   const handleAuth = async () => {
     // Validate inputs
-    if (!name.trim()) {
+    if (isSignUp && !name.trim()) {
       Alert.alert('Error', 'Please enter your name');
+      return;
+    }
+
+    if (isSignUp && !username.trim()) {
+      Alert.alert('Error', 'Please enter a username');
+      return;
+    }
+
+    if (isSignUp && !validateUsername(username)) {
+      Alert.alert('Error', 'Username must be 3-20 characters, letters, numbers, and underscores only');
       return;
     }
 
@@ -71,6 +88,7 @@ export function AuthScreen({ onAuthComplete }: Props) {
     const userId = `user_${Date.now()}`;
     const newUser = {
       name: name.trim(),
+      username: username.trim(),
       email: email.trim(),
       preferred_cuisines: [],
       spice_tolerance: 3,
@@ -104,17 +122,35 @@ export function AuthScreen({ onAuthComplete }: Props) {
           </View>
 
           <View style={styles.form}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Name</Text>
-              <TextInput
-                style={styles.input}
-                value={name}
-                onChangeText={setName}
-                placeholder="Enter your name"
-                placeholderTextColor={theme.colors.text.secondary}
-                autoCapitalize="words"
-              />
-            </View>
+            {isSignUp && (
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Name</Text>
+                <TextInput
+                  style={styles.input}
+                  value={name}
+                  onChangeText={setName}
+                  placeholder="Enter your name"
+                  placeholderTextColor={theme.colors.text.secondary}
+                  autoCapitalize="words"
+                />
+              </View>
+            )}
+
+            {isSignUp && (
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Username</Text>
+                <TextInput
+                  style={styles.input}
+                  value={username}
+                  onChangeText={setUsername}
+                  placeholder="Choose a username"
+                  placeholderTextColor={theme.colors.text.secondary}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+            )}
+
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Email</Text>
@@ -157,9 +193,9 @@ export function AuthScreen({ onAuthComplete }: Props) {
             )}
 
             <TouchableOpacity 
-              style={[styles.authButton, (!name.trim() || !email.trim() || !password) && styles.authButtonDisabled]} 
+              style={[styles.authButton, (isSignUp && (!name.trim() || !username.trim() || !email.trim() || !password)) && styles.authButtonDisabled]} 
               onPress={handleAuth}
-              disabled={!name.trim() || !email.trim() || !password}
+              disabled={isSignUp && (!name.trim() || !username.trim() || !email.trim() || !password)}
             >
               <Text style={styles.authButtonText}>
                 {isSignUp ? 'Create Account' : 'Sign In'}

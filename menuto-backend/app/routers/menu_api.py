@@ -20,11 +20,12 @@ def _get_latest_menu_by_place_or_name(place_id: str, restaurant_name: str):
       1) Try to find menu where restaurant_url == place_id (you store place_id here from the app)
       2) Fallback to case-insensitive name match
     """
+        
     # 1) by place_id in restaurant_url
     menus = supabase.table("parsed_menus") \
         .select("*") \
         .eq("restaurant_url", place_id) \
-        .order("created_at", desc=True) \
+        .order("parsed_at", desc=True) \
         .limit(1) \
         .execute()
 
@@ -35,7 +36,7 @@ def _get_latest_menu_by_place_or_name(place_id: str, restaurant_name: str):
     menus = supabase.table("parsed_menus") \
         .select("*") \
         .ilike("restaurant_name", f"%{restaurant_name}%") \
-        .order("created_at", desc=True) \
+        .order("parsed_at", desc=True) \
         .limit(1) \
         .execute()
 
@@ -54,20 +55,22 @@ async def get_restaurant_menu(place_id: str, restaurant_name: str):
         logger.info(f"🍽️ Fetching menu for: {restaurant_name} ({place_id})")
 
         menu = _get_latest_menu_by_place_or_name(place_id, restaurant_name)
-        if not menu:
-            return {
-                "restaurant": {"place_id": place_id, "name": restaurant_name, "cuisine_type": "restaurant"},
-                "dishes": [],
-                "total_items": 0,
-                "sources": ["supabase"],
-                "success": False,
-                "message": "No menu found",
-            }
-
-        menu_id = menu["id"]
-        cuisine_type = menu.get("cuisine_type", "restaurant")
-
-        dishes = supabase.table("parsed_dishes").select("*").eq("menu_id", menu_id).execute().data or []
+        dishes = []
+        
+        if menu:
+            # Found menu entry, get dishes by menu_id
+            menu_id = menu["id"]
+            dishes = supabase.table("parsed_dishes").select("*").eq("menu_id", menu_id).execute().data or []
+        else:
+            # No menu entry found, try to find dishes directly by restaurant name
+            # This handles cases where dishes exist but no menu entry was created
+            logger.info(f"No menu entry found, searching dishes directly for: {restaurant_name}")
+            dishes = supabase.table("parsed_dishes").select("*").ilike("name", f"%{restaurant_name}%").execute().data or []
+            
+            # If still no dishes, return empty list (no fallback to random dishes)
+            if not dishes:
+                logger.info(f"No dishes found for restaurant: {restaurant_name}")
+                dishes = []
 
         # Normalize to what the app expects
         out = []
@@ -83,8 +86,11 @@ async def get_restaurant_menu(place_id: str, restaurant_name: str):
                 "is_user_added": bool(d.get("is_user_added", False)),
             })
 
+        cuisine_type = menu.get("cuisine_type", "restaurant") if menu else "restaurant"
+        restaurant_display_name = menu["restaurant_name"] if menu else restaurant_name
+        
         return {
-            "restaurant": {"place_id": place_id, "name": menu["restaurant_name"], "cuisine_type": cuisine_type},
+            "restaurant": {"place_id": place_id, "name": restaurant_display_name, "cuisine_type": cuisine_type},
             "dishes": out,
             "total_items": len(out),
             "sources": ["supabase"],
