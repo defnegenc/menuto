@@ -71,15 +71,15 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: theme.colors.background,
     paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.xl, // Increased bottom padding
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
   headerContent: {
     flexDirection: 'row',
-    alignItems: 'flex-start', // Changed from center to flex-start
-    minHeight: 44,
+    alignItems: 'center',
+    minHeight: 50,
   },
   leftSection: {
     width: 80, // Increased width

@@ -341,7 +341,7 @@ function AppContent() {
       case 'restaurantDetail':
         return selectedRestaurant ? (
           <RestaurantDetailScreen
-            key={selectedRestaurant.place_id}
+            key={`${selectedRestaurant.place_id}-${Date.now()}`} // Force fresh instance
             restaurant={selectedRestaurant}
             onBack={handleBackToMain}
             onGetRecommendations={handleGetRecommendations}

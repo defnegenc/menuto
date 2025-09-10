@@ -480,10 +480,10 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    paddingHorizontal: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.lg,
   },
   section: {
-    marginBottom: theme.spacing.xxxl,
+    marginBottom: theme.spacing.xl,
   },
   sectionTitle: {
     fontSize: theme.typography.sizes.xxl,

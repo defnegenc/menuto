@@ -66,25 +66,27 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
       currentRequestRef.current = null;
     }
     
-    // Reset all state for this restaurant
-    setMenuDishes([]);
+    // IMMEDIATELY reset loading states for the new restaurant
     setIsLoading(false);
     setIsParsing(false);
+    
+    // Reset all state for this restaurant
+    setMenuDishes([]);
     setShowAddOptions(false);
     setShowPasteModal(false);
-
     setMenuText('');
     setSearchText('');
     setFilteredDishes([]);
     setSelectedCategory('all');
-
     setLoadingMessageIndex(0);
     
     // Reset the loaded flag when restaurant changes
     hasLoadedRef.current = false;
     
-    // Load the menu for this specific restaurant
-    loadRestaurantMenu();
+    // Load the menu after a small delay to ensure state is reset
+    setTimeout(() => {
+      loadRestaurantMenu();
+    }, 50);
   }, [restaurant.place_id, restaurant.name]);
 
 
