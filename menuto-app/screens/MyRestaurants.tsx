@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,15 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store/useStore';
 import { api } from '../services/api';
 import { FavoriteRestaurant, FavoriteDish } from '../types';
 import { theme } from '../theme';
 import { DishChip } from '../components/DishChip';
+import { UnifiedHeader } from '../components/UnifiedHeader';
 
 interface Props {
   onSelectRestaurant: (restaurant: FavoriteRestaurant) => void;
@@ -23,6 +25,7 @@ interface Props {
 export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
   const { user, setUser, userId, debugState } = useStore();
   const [isLoading, setIsLoading] = useState(true);
+  const [searchText, setSearchText] = useState('');
   const insets = useSafeAreaInsets();
 
   // Load user data when component mounts
@@ -62,6 +65,110 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
 
   const favoriteRestaurants = user?.favorite_restaurants || [];
   const favoriteDishes = user?.favorite_dishes || [];
+
+  // Filter restaurants based on search text
+  const filteredRestaurants = favoriteRestaurants.filter(restaurant =>
+    restaurant.name.toLowerCase().includes(searchText.toLowerCase()) ||
+    restaurant.vicinity.toLowerCase().includes(searchText.toLowerCase()) ||
+    restaurant.cuisine_type?.toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  // Search state for external restaurants
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedRestaurants, setSelectedRestaurants] = useState<any[]>([]);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounced search effect for external restaurants
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    if (searchText.trim().length >= 2) {
+      searchTimeoutRef.current = setTimeout(() => {
+        searchExternalRestaurants();
+      }, 300); // 300ms debounce
+    } else {
+      setSearchResults([]);
+      setSelectedRestaurants([]);
+    }
+    
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchText]);
+
+  const searchExternalRestaurants = async () => {
+    if (!searchText.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const results = await api.searchPlaces(searchText.trim());
+      console.log('🔍 External search results:', results);
+      
+      // Filter out restaurants that are already in favorites
+      const existingPlaceIds = new Set(favoriteRestaurants.map(r => r.place_id));
+      const newRestaurants = (results.restaurants || []).filter(restaurant => 
+        !existingPlaceIds.has(restaurant.place_id)
+      );
+      
+      setSearchResults(newRestaurants);
+    } catch (error) {
+      console.error('External search error:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const toggleRestaurantSelection = (restaurant: any) => {
+    const isSelected = selectedRestaurants.some(r => r.place_id === restaurant.place_id);
+    
+    if (isSelected) {
+      setSelectedRestaurants(selectedRestaurants.filter(r => r.place_id !== restaurant.place_id));
+    } else {
+      setSelectedRestaurants([...selectedRestaurants, restaurant]);
+    }
+  };
+
+  const confirmSelectedRestaurants = async () => {
+    if (!user || !userId) return;
+
+    if (selectedRestaurants.length === 0) {
+      Alert.alert('No restaurants selected');
+      return;
+    }
+
+    // Add selected restaurants to favorites
+    const newRestaurants = selectedRestaurants.map(restaurant => ({
+      place_id: restaurant.place_id,
+      name: restaurant.name,
+      vicinity: restaurant.vicinity,
+      cuisine_type: restaurant.cuisine_type || 'Restaurant',
+      rating: restaurant.rating || 4.0
+    }));
+
+    const updatedRestaurants = [...favoriteRestaurants, ...newRestaurants];
+    const updatedUser = { ...user, favorite_restaurants: updatedRestaurants };
+    setUser(updatedUser, userId);
+    
+    // Clear selection and search
+    setSelectedRestaurants([]);
+    setSearchResults([]);
+    setSearchText('');
+    
+    Alert.alert(
+      'Restaurants Added!', 
+      `Added ${newRestaurants.length} restaurant${newRestaurants.length > 1 ? 's' : ''} to your list.`,
+      [{ text: 'Great!' }]
+    );
+  };
 
   const getFavoriteDishesForRestaurant = (restaurant: FavoriteRestaurant): FavoriteDish[] => {
     // Match by restaurant name since we don't have a proper restaurant_id mapping
@@ -191,71 +298,173 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
     );
   };
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <ScrollView 
-        style={styles.scrollView} 
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
-        showsVerticalScrollIndicator={false}
+  const renderExternalRestaurantCard = (restaurant: any) => {
+    const isSelected = selectedRestaurants.some(r => r.place_id === restaurant.place_id);
+    
+    return (
+      <TouchableOpacity
+        key={restaurant.place_id}
+        style={[
+          styles.externalRestaurantCard,
+          isSelected && styles.externalRestaurantCardSelected
+        ]}
+        onPress={() => toggleRestaurantSelection(restaurant)}
       >
-        {/* Inline Header Section */}
-        <View style={[styles.inlineHeader, { paddingTop: insets.top }]}>
-          <Text style={[styles.inlineTitle, theme.typography.h1.fancy]}>My restaurants</Text>
-          {onAddRestaurant && (
-            <TouchableOpacity 
-              style={styles.addMoreButton}
-              onPress={onAddRestaurant}
-            >
-              <Text style={styles.addMoreButtonText}>+ Add</Text>
-            </TouchableOpacity>
+        <View style={styles.externalRestaurantInfo}>
+          <Text style={styles.externalRestaurantName}>{restaurant.name}</Text>
+          <Text style={styles.externalRestaurantVicinity}>{restaurant.vicinity}</Text>
+          {restaurant.cuisine_type && (
+            <Text style={styles.externalRestaurantCuisine}>{restaurant.cuisine_type}</Text>
           )}
         </View>
+        <View style={styles.externalSelectionIndicator}>
+          <View style={[
+            styles.externalRadioButton,
+            isSelected && styles.externalRadioButtonSelected
+          ]}>
+            {isSelected && <Text style={styles.externalRadioButtonInner}>●</Text>}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      <UnifiedHeader title="My Restaurants" />
+      
+      {/* Search Bar */}
+      <View style={styles.searchSection}>
+        <TextInput
+          style={styles.searchInput}
+          value={searchText}
+          onChangeText={setSearchText}
+          placeholder="Search restaurants..."
+          placeholderTextColor={theme.colors.text.secondary}
+        />
+      </View>
+
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 50}]}
+        showsVerticalScrollIndicator={false}
+      >
         {isLoading ? (
           <View style={styles.emptyState}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
             <Text style={styles.emptyStateText}>Loading your restaurants...</Text>
           </View>
-        ) : favoriteRestaurants.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateIcon}>🍽️</Text>
-            <Text style={styles.emptyStateTitle}>No Restaurants Yet</Text>
-            <Text style={styles.emptyStateText}>
-              Use the "Add Restaurant" tab to find your favorite places and get personalized recommendations.
-            </Text>
-            <TouchableOpacity style={styles.addTestButton} onPress={addTestRestaurant}>
-              <Text style={styles.addTestButtonText}>+ Add Test Restaurant</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.addTestButton, { marginTop: 10, backgroundColor: theme.colors.secondary }]} 
-              onPress={() => {
-                console.log('🔍 DEBUG: Current user state:', user);
-                console.log('🔍 DEBUG: User ID:', userId);
-                console.log('🔍 DEBUG: Favorite restaurants:', user?.favorite_restaurants);
-                debugState(); // Call store debug function
-                Alert.alert('Debug Info', `User ID: ${userId}\nRestaurants: ${user?.favorite_restaurants?.length || 0}\n\nCheck console for store debug info`);
-              }}
-            >
-              <Text style={styles.addTestButtonText}>🔍 Debug User State</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.addTestButton, { marginTop: 10, backgroundColor: theme.colors.primary }]} 
-              onPress={() => {
-                // Force reload user data
-                console.log('🔄 Force reloading user data...');
-                setUser(null, 'SIGNED_OUT');
-                Alert.alert('Reload', 'User data cleared. Try signing in again.');
-              }}
-            >
-              <Text style={styles.addTestButtonText}>🔄 Force Reload</Text>
-            </TouchableOpacity>
-          </View>
         ) : (
-          <View style={styles.restaurantList}>
-            {favoriteRestaurants.map(renderRestaurantCard)}
-          </View>
+          <>
+            {/* Your Restaurants Section */}
+            {!searchText && favoriteRestaurants.length > 0 && (
+              <View style={styles.restaurantList}>
+                {favoriteRestaurants.map(renderRestaurantCard)}
+              </View>
+            )}
+            
+            {/* Search Results - Your Restaurants */}
+            {searchText && filteredRestaurants.length > 0 && (
+              <>
+                <Text style={styles.sectionTitle}>Your Restaurants</Text>
+                <View style={styles.restaurantList}>
+                  {filteredRestaurants.map(renderRestaurantCard)}
+                </View>
+              </>
+            )}
+            
+            {/* Search Results - External Restaurants */}
+            {searchText && searchResults.length > 0 && (
+              <>
+                <Text style={styles.sectionTitle}>Add New Restaurants</Text>
+                <View style={styles.externalRestaurantList}>
+                  {searchResults.map(renderExternalRestaurantCard)}
+                </View>
+              </>
+            )}
+            
+            {/* Loading State */}
+            {searchText && isSearching && (
+              <View style={styles.loadingState}>
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+                <Text style={styles.loadingText}>Searching restaurants...</Text>
+              </View>
+            )}
+            
+            {/* No Results */}
+            {searchText && !isSearching && filteredRestaurants.length === 0 && searchResults.length === 0 && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateIcon}>🔍</Text>
+                <Text style={styles.emptyStateTitle}>No Results</Text>
+                <Text style={styles.emptyStateText}>
+                  No restaurants found for "{searchText}". Try a different search term.
+                </Text>
+              </View>
+            )}
+            
+            {/* No Restaurants Yet */}
+            {!searchText && favoriteRestaurants.length === 0 && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateIcon}>🍽️</Text>
+                <Text style={styles.emptyStateTitle}>No Restaurants Yet</Text>
+                <Text style={styles.emptyStateText}>
+                  Use the "Add Restaurant" tab to find your favorite places and get personalized recommendations.
+                </Text>
+                <TouchableOpacity style={styles.addTestButton} onPress={addTestRestaurant}>
+                  <Text style={styles.addTestButtonText}>+ Add Test Restaurant</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.addTestButton, { marginTop: 10, backgroundColor: theme.colors.secondary }]} 
+                  onPress={() => {
+                    console.log('🔍 DEBUG: Current user state:', user);
+                    console.log('🔍 DEBUG: User ID:', userId);
+                    console.log('🔍 DEBUG: Favorite restaurants:', user?.favorite_restaurants);
+                    debugState(); // Call store debug function
+                    Alert.alert('Debug Info', `User ID: ${userId}\nRestaurants: ${user?.favorite_restaurants?.length || 0}\n\nCheck console for store debug info`);
+                  }}
+                >
+                  <Text style={styles.addTestButtonText}>🔍 Debug User State</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.addTestButton, { marginTop: 10, backgroundColor: theme.colors.primary }]} 
+                  onPress={() => {
+                    // Force reload user data
+                    console.log('🔄 Force reloading user data...');
+                    setUser(null, 'SIGNED_OUT');
+                    Alert.alert('Reload', 'User data cleared. Try signing in again.');
+                  }}
+                >
+                  <Text style={styles.addTestButtonText}>🔄 Force Reload</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </>
         )}
       </ScrollView>
-    </SafeAreaView>
+
+      {/* Fixed Footer Add Button */}
+      {selectedRestaurants.length > 0 ? (
+        <View style={[styles.footer, { paddingBottom: 10 }]}>
+          <TouchableOpacity 
+            style={styles.footerAddButton}
+            onPress={confirmSelectedRestaurants}
+          >
+            <Text style={styles.footerAddButtonText}>
+              Add {selectedRestaurants.length} Restaurant{selectedRestaurants.length > 1 ? 's' : ''}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : onAddRestaurant && (
+        <View style={[styles.footer, { paddingBottom: 10 }]}>
+          <TouchableOpacity 
+            style={styles.footerAddButton}
+            onPress={onAddRestaurant}
+          >
+            <Text style={styles.footerAddButtonText}>+ Add restaurant</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -264,15 +473,122 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  inlineHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  searchSection: {
     paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.sm,
+    paddingVertical: theme.spacing.lg,
+    paddingBottom: theme.spacing.xs,
+    backgroundColor: theme.colors.background,
   },
-  inlineTitle: {
+  searchInput: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    fontSize: theme.typography.sizes.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    color: theme.colors.text.primary,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  footerAddButton: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.lg,
+    paddingVertical: theme.spacing.lg,
+    alignItems: 'center',
+  },
+  footerAddButtonText: {
+    color: theme.colors.text.light,
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.semibold,
+  },
+  sectionTitle: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text.primary,
+    marginHorizontal: theme.spacing.lg,
+    marginVertical: theme.spacing.md,
+  },
+  loadingState: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.lg,
+    gap: theme.spacing.sm,
+  },
+  loadingText: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.secondary,
+  },
+  externalRestaurantList: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+  },
+  externalRestaurantCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    ...theme.shadows.sm,
+  },
+  externalRestaurantCardSelected: {
+    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.primary + '15',
+  },
+  externalRestaurantInfo: {
     flex: 1,
+  },
+  externalRestaurantName: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.xs,
+  },
+  externalRestaurantVicinity: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.xs,
+  },
+  externalRestaurantCuisine: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.tertiary,
+    fontWeight: theme.typography.weights.medium,
+    textTransform: 'capitalize',
+  },
+  externalSelectionIndicator: {
+    marginLeft: theme.spacing.md,
+  },
+  externalRadioButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: theme.colors.secondary,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  externalRadioButtonSelected: {
+    backgroundColor: theme.colors.secondary,
+    borderColor: theme.colors.secondary,
+  },
+  externalRadioButtonInner: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   scrollView: {
     flex: 1,
@@ -411,19 +727,6 @@ const styles = StyleSheet.create({
   removeButtonText: {
     fontSize: theme.typography.sizes.xl,
     color: theme.colors.primary,
-    fontWeight: 600,
-  },
-  addMoreButton: {
-    backgroundColor: theme.colors.secondary,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.secondary,
-  },
-  addMoreButtonText: {
-    color: '#FFFFFF',
-    fontSize: theme.typography.sizes.sm,
     fontWeight: 600,
   },
 });

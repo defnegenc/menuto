@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 
 interface Props {
@@ -23,100 +23,100 @@ export const UnifiedHeader: React.FC<Props> = ({
   showBackButton = false,
   rightButton
 }) => {
+  const insets = useSafeAreaInsets();
+  
   return (
-    <SafeAreaView style={styles.header}>
-      <View style={styles.headerContent}>
-        {/* Left side - Back button or spacer */}
-        <View style={styles.leftSection}>
-          {showBackButton && onBack && (
-            <TouchableOpacity style={styles.backButton} onPress={onBack}>
-              <Text style={styles.backButtonText}>←</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.header}>
+        {/* Back button if needed */}
+        {showBackButton && onBack && (
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => {
+              console.log('🔙 UnifiedHeader: Back button pressed');
+              onBack();
+            }}
+          >
+            <Text style={styles.backButtonText}>←</Text>
+          </TouchableOpacity>
+        )}
         
-        {/* Center - Title */}
-        <View style={styles.titleContainer}>
-          <Text style={[styles.title, theme.typography.h1.fancy]}>{title}</Text>
-          {subtitle && (
-            <Text style={styles.subtitle}>{subtitle}</Text>
-          )}
-        </View>
+        {/* Title and subtitle centered */}
+        <Text style={styles.headerTitle}>{title}</Text>
+        {subtitle && (
+          <Text style={styles.headerSubtitle}>{subtitle}</Text>
+        )}
         
-        {/* Right side - Optional button or spacer */}
-        <View style={styles.rightSection}>
-          {rightButton && (
-            <TouchableOpacity 
-              style={[
-                styles.rightButton,
-                rightButton.variant === 'text' ? styles.rightButtonText : styles.rightButtonPrimary
-              ]} 
-              onPress={rightButton.onPress}
-            >
-              <Text style={[
-                styles.rightButtonLabel,
-                rightButton.variant === 'text' ? styles.rightButtonLabelText : styles.rightButtonLabelPrimary
-              ]}>
-                {rightButton.text}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        {/* Right button if needed */}
+        {rightButton && (
+          <TouchableOpacity 
+            style={[
+              styles.rightButton,
+              rightButton.variant === 'text' ? styles.rightButtonText : styles.rightButtonPrimary
+            ]} 
+            onPress={rightButton.onPress}
+          >
+            <Text style={[
+              styles.rightButtonLabel,
+              rightButton.variant === 'text' ? styles.rightButtonLabelText : styles.rightButtonLabelPrimary
+            ]}>
+              {rightButton.text}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  header: {
+  container: {
     backgroundColor: theme.colors.background,
+  },
+  header: {
     paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.sm,
-    paddingBottom: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 50,
-  },
-  leftSection: {
-    width: 80, // Increased width
-    justifyContent: 'flex-start',
+    position: 'relative',
   },
   backButton: {
-    padding: theme.spacing.sm,
-    marginLeft: -theme.spacing.sm,
+    position: 'absolute',
+    left: theme.spacing.lg,
+    top: theme.spacing.md,
+    padding: theme.spacing.xs,
+    minWidth: 44,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   backButtonText: {
     fontSize: theme.typography.sizes.xl,
     color: theme.colors.primary,
     fontWeight: 'bold',
   },
-  titleContainer: {
-    flex: 1,
-    alignItems: 'center',
-    paddingTop: theme.spacing.xs, // Add slight top padding to align with button
+  headerTitle: {
+    fontSize: theme.typography.sizes.heading,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.secondary,
+    textAlign: 'center',
+    marginBottom: theme.spacing.xs,
+    fontFamily: 'Artifact',
   },
-  title: {
-    marginBottom: theme.spacing.sm, // Increased space below title
-  },
-  subtitle: {
+  headerSubtitle: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text.secondary,
     textAlign: 'center',
     fontFamily: 'DMSans-Regular',
-    marginBottom: theme.spacing.xs, // Add bottom margin to subtitle
-  },
-  rightSection: {
-    width: 80, // Increased width to match left
-    alignItems: 'flex-end',
   },
   rightButton: {
-    borderRadius: theme.borderRadius.lg, // Larger radius
-    paddingHorizontal: theme.spacing.md, // Increased padding
-    paddingVertical: theme.spacing.sm, // Increased padding
+    position: 'absolute',
+    right: theme.spacing.lg,
+    top: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
   },
   rightButtonPrimary: {
     backgroundColor: theme.colors.primary,

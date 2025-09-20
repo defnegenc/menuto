@@ -288,6 +288,7 @@ function AppContent() {
   };
 
   const handleBackToMainTabs = () => {
+    console.log('🔙 App: handleBackToMainTabs called');
     setCurrentScreen('mainTabs');
   };
 
