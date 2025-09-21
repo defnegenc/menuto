@@ -33,6 +33,7 @@ class UserPreferences(BaseModel):
     favorite_restaurants: List[Dict] = []
     favorite_dishes: List[Dict] = []
     top_3_restaurants: List[Dict] = []
+    home_base: Optional[str] = None
 
 def _get_user(user_id: str):
     if not sb:

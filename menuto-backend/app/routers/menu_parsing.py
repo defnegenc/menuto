@@ -113,23 +113,8 @@ async def parse_and_store_menu(
                     cuisine_type = cuisine
                     break
         
-        # Create or update restaurant record in Supabase
-        restaurant_data = {
-            "name": restaurant_name,
-            "address": "",  # We don't have address from menu parsing
-            "cuisine_type": cuisine_type,
-            "google_place_id": None,  # We don't have this from menu parsing
-            "yelp_business_id": None,
-            "avg_rating": None,
-            "price_level": None
-        }
-        
-        # Upsert restaurant to avoid duplicates
-        try:
-            supabase.table("restaurants").upsert(restaurant_data, on_conflict="name").execute()
-        except Exception as e:
-            logger.exception("Supabase restaurant upsert failed")
-            raise
+        # Skip restaurant table creation - we only use parsed_menus and parsed_dishes
+        logger.info(f"📝 Skipping restaurant table creation - using parsed_menus/parsed_dishes only")
         
         # Create menu record in Supabase
         supabase_menu_data = {
@@ -445,27 +430,37 @@ async def store_parsed_dishes(dishes_data: List[Dict], restaurant_name: str, res
             # Update existing menu
             menu_id = existing_menus.data[0]["id"]
             
-            # Update menu record
+            # Get current dish count to update total
+            current_dishes = supabase.table("parsed_dishes").select("*").eq("menu_id", menu_id).execute()
+            current_count = len(current_dishes.data) if current_dishes.data else 0
+            
+            # Update menu record with new total count
             supabase.table("parsed_menus").update({
-                "dish_count": len(dishes_data)
+                "dish_count": current_count + len(dishes_data)
             }).eq("id", menu_id).execute()
             
-            # Clear existing dishes
-            supabase.table("parsed_dishes").delete().eq("menu_id", menu_id).execute()
+            # DON'T clear existing dishes - append new ones instead
+            logger.info(f"📝 Appending {len(dishes_data)} new dishes to existing menu (current: {current_count})")
             
-            # Add new dishes
+            # Add new dishes (append, don't replace)
             for dish_data in dishes_data:
-                supabase_dish_data = {
-                    "menu_id": menu_id,
-                    "name": dish_data['name'],
-                    "description": dish_data.get('description'),
-                    "category": dish_data.get('category', 'main'),
-                    "ingredients": dish_data.get('ingredients', []),
-                    "dietary_tags": dish_data.get('dietary_tags', []),
-                    "preparation_style": dish_data.get('preparation_style', []),
-                    "is_user_added": False
-                }
-                supabase.table("parsed_dishes").insert(supabase_dish_data).execute()
+                # Check if dish already exists to avoid duplicates
+                existing_dish = supabase.table("parsed_dishes").select("*").eq("menu_id", menu_id).eq("name", dish_data['name']).execute()
+                
+                if not existing_dish.data:
+                    supabase_dish_data = {
+                        "menu_id": menu_id,
+                        "name": dish_data['name'],
+                        "description": dish_data.get('description'),
+                        "category": dish_data.get('category', 'main'),
+                        "ingredients": dish_data.get('ingredients', []),
+                        "dietary_tags": dish_data.get('dietary_tags', []),
+                        "preparation_style": dish_data.get('preparation_style', []),
+                        "is_user_added": False
+                    }
+                    supabase.table("parsed_dishes").insert(supabase_dish_data).execute()
+                else:
+                    logger.info(f"⚠️ Skipping duplicate dish: {dish_data['name']}")
         else:
             # Create new menu
             supabase_menu_data = {

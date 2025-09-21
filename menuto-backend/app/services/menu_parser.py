@@ -91,24 +91,34 @@ class MenuParser:
     def extract_pdf_text(self, url: str) -> str:
         """Extract text from PDF with layout preservation"""
         try:
+            logger.info(f"📄 Starting PDF extraction for URL: {url}")
             import fitz  # PyMuPDF
             import tempfile
             
             # Download PDF
+            logger.info(f"📥 Downloading PDF from: {url}")
             response = requests.get(url, headers=self.headers, timeout=30)
             response.raise_for_status()
+            logger.info(f"✅ PDF downloaded successfully, size: {len(response.content)} bytes")
             
             with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp_file:
                 tmp_file.write(response.content)
                 tmp_path = tmp_file.name
+                logger.info(f"📁 PDF saved to temporary file: {tmp_path}")
             
             try:
                 doc = fitz.open(tmp_path)
+                logger.info(f"📖 Opened PDF document with {doc.page_count} pages")
                 text_content = []
                 
-                for page in doc:
+                for page_num in range(doc.page_count):
+                    page = doc[page_num]
+                    logger.info(f"📄 Processing page {page_num + 1}")
+                    
                     # Extract text with layout info
                     blocks = page.get_text("dict")["blocks"]
+                    page_text = []
+                    
                     for block in blocks:
                         if "lines" in block:
                             for line in block["lines"]:
@@ -116,19 +126,27 @@ class MenuParser:
                                 for span in line["spans"]:
                                     line_text += span["text"]
                                 if line_text.strip():
-                                    text_content.append(line_text.strip())
+                                    page_text.append(line_text.strip())
+                    
+                    text_content.extend(page_text)
+                    logger.info(f"📝 Extracted {len(page_text)} text lines from page {page_num + 1}")
                 
                 doc.close()
-                return "\n".join(text_content)
+                full_text = "\n".join(text_content)
+                logger.info(f"✅ PDF extraction complete. Total text length: {len(full_text)} characters")
+                logger.info(f"📝 First 200 characters: {full_text[:200]}...")
+                return full_text
                 
             finally:
                 os.unlink(tmp_path)
+                logger.info(f"🗑️ Cleaned up temporary file: {tmp_path}")
                 
         except ImportError:
             logger.warning("PyMuPDF not available, falling back to basic PDF handling")
             return "PDF content detected but PyMuPDF not installed for proper extraction"
         except Exception as e:
-            logger.error(f"PDF extraction failed: {e}")
+            logger.error(f"❌ PDF extraction failed: {e}")
+            logger.exception("PDF extraction exception details")
             raise Exception(f"PDF extraction failed: {str(e)}")
     
     def extract_image_text(self, url: str) -> str:
@@ -470,35 +488,50 @@ def parse_menu_url(url: str, restaurant_name: str = "") -> List[Dict]:
     parser = MenuParser()
     
     try:
+        logger.info(f"🚀 Starting menu parsing for restaurant: {restaurant_name}")
+        logger.info(f"🔗 URL: {url}")
+        
         # Step 0: Detect content type
         content_info = parser.detect_content_type(url)
         content_type = content_info['type']
         
-        logger.info(f"Detected content type: {content_type} for {url}")
+        logger.info(f"📋 Detected content type: {content_type} for {url}")
         
         if content_type == 'pdf':
+            logger.info(f"📄 Processing PDF for {restaurant_name}")
             # Handle PDF
             raw_text = parser.extract_pdf_text(url)
+            logger.info(f"📝 PDF text extracted, length: {len(raw_text)}")
+            
+            if len(raw_text.strip()) < 10:
+                logger.warning(f"⚠️ Very little text extracted from PDF: '{raw_text[:100]}'")
+                raise Exception("Very little text extracted")
+            
             dishes = parser.parse_with_llm_strict(raw_text, restaurant_name)
+            logger.info(f"🤖 LLM parsing completed, got {len(dishes)} dishes")
             
         elif content_type == 'image':
+            logger.info(f"🖼️ Processing image for {restaurant_name}")
             # Handle image
             raw_text = parser.extract_image_text(url)
             dishes = parser.parse_with_llm_strict(raw_text, restaurant_name)
             
         else:
+            logger.info(f"🌐 Processing HTML for {restaurant_name}")
             # Handle HTML
             structured_content = parser.scrape_structured_html(url)
             dishes = parser.parse_with_llm_strict(structured_content, restaurant_name)
         
         # Step 5: Post-process
+        logger.info(f"🧹 Post-processing {len(dishes)} dishes")
         cleaned_dishes = parser.post_process_dishes(dishes)
         
-        logger.info(f"Successfully parsed {len(cleaned_dishes)} dishes from {url}")
+        logger.info(f"✅ Successfully parsed {len(cleaned_dishes)} dishes from {url}")
         return cleaned_dishes
             
-        except Exception as e:
-        logger.error(f"Menu parsing failed for {url}: {e}")
+    except Exception as e:
+        logger.error(f"❌ Menu parsing failed for {url}: {e}")
+        logger.exception("Menu parsing exception details")
         raise Exception(f"Menu parsing failed: {str(e)}")
 
 def parse_menu_image(image_path: str, restaurant_name: str = "") -> List[Dict]:

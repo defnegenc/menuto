@@ -33,7 +33,7 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({
         <View style={styles.dishInfo}>
           <Text style={styles.dishName}>{capitalizeText(dish.name)}</Text>
           {dish.description ? (
-            <Text style={styles.dishDescription}>{capitalizeText(dish.description)}</Text>
+            <Text style={[styles.dishDescription, isFavorite && styles.dishDescriptionFavorited]}>{capitalizeText(dish.description)}</Text>
           ) : null}
         </View>
 
@@ -87,6 +87,9 @@ const styles = StyleSheet.create({
     fontSize: 14, 
     color: theme.colors.text.secondary, 
     lineHeight: 18 
+  },
+  dishDescriptionFavorited: {
+    color: '#666666', // Darker grey for favorited dishes
   },
 
   addButton: {

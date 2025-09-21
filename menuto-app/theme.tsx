@@ -30,6 +30,7 @@ export const theme = {
     // Special colors
     gold: '#FFD700',           // For ratings/stars
     overlay: 'rgba(44, 7, 3, 0.8)', // Semi-transparent primary
+    chipDefault: '#F0E0E3',    // Light pink for unselected chips
   },
   
   // Typography
@@ -46,24 +47,40 @@ export const theme = {
       display: 32,
     },
     weights: {
+      thin: '100' as const,
       normal: '400' as const,
       medium: '500' as const,
       semibold: '600' as const,
       bold: '700' as const,
     },
-    // Default font family for all text (system font)
-    fontFamily: undefined,
-    // Fancy fonts (Artifact.otf)
+    // Default font family for all text (DM Sans)
+    fontFamily: 'DMSans-Regular',
+    
+    // Font families for different weights and styles
+    fontFamilies: {
+      thin: 'DMSans-Thin',
+      thinItalic: 'DMSans-Thin-Italic',
+      regular: 'DMSans-Regular',
+      medium: 'DMSans-Medium',
+      mediumItalic: 'DMSans-Medium-Italic',
+      semibold: 'DMSans-SemiBold',
+      bold: 'DMSans-Bold',
+      boldItalic: 'DMSans-Bold-Italic',
+    },
+    
+    // Heading styles
     h1: {
       fancy: {
         fontSize: 30,
         fontFamily: 'Artifact',
         fontWeight: '700' as const,
-        color: '#890620', // Darker pink (primary color)
+        color: '#890620', // Secondary color
       },
       regular: {
         fontSize: 24,
         fontWeight: '700' as const,
+        fontFamily: 'DMSans-Bold',
+        color: '#2C0703',
       },
     },
     h2: {
@@ -71,11 +88,13 @@ export const theme = {
         fontSize: 28,
         fontFamily: 'Artifact',
         fontWeight: '700' as const,
-        color: '#890620', // Darker pink (primary color)
+        color: '#890620', // Secondary color
       },
       regular: {
         fontSize: 20,
         fontWeight: '600' as const,
+        fontFamily: 'DMSans-SemiBold',
+        color: '#2C0703',
       },
     },
     h3: {
@@ -83,11 +102,13 @@ export const theme = {
         fontSize: 20,
         fontFamily: 'Artifact',
         fontWeight: '700' as const,
-        color: '#2C0703', // Darker pink (primary color)
+        color: '#2C0703', // Primary color
       },
       regular: {
         fontSize: 18,
         fontWeight: '500' as const,
+        fontFamily: 'DMSans-Medium',
+        color: '#2C0703',
       },
     },
   },
@@ -191,13 +212,55 @@ export const getButtonStyle = (variant: 'primary' | 'secondary' | 'tertiary' | '
   borderRadius: theme.borderRadius.lg,
   paddingVertical: theme.spacing.md,
   paddingHorizontal: theme.spacing.xl,
+  fontFamily: theme.typography.fontFamilies.medium,
 });
 
-export const getTextStyle = (size: keyof typeof theme.typography.sizes, weight?: keyof typeof theme.typography.weights) => ({
-  fontSize: theme.typography.sizes[size],
-  fontWeight: weight ? theme.typography.weights[weight] : theme.typography.weights.normal,
-  color: theme.colors.text.primary,
-});
+export const getTextStyle = (
+  size: keyof typeof theme.typography.sizes, 
+  weight?: 'thin' | 'regular' | 'medium' | 'semibold' | 'bold',
+  italic?: boolean
+) => {
+  let fontFamily = theme.typography.fontFamilies.regular;
+  
+  if (weight && italic) {
+    switch (weight) {
+      case 'thin':
+        fontFamily = theme.typography.fontFamilies.thinItalic;
+        break;
+      case 'medium':
+        fontFamily = theme.typography.fontFamilies.mediumItalic;
+        break;
+      case 'bold':
+        fontFamily = theme.typography.fontFamilies.boldItalic;
+        break;
+      default:
+        fontFamily = theme.typography.fontFamilies.regular;
+    }
+  } else if (weight) {
+    switch (weight) {
+      case 'thin':
+        fontFamily = theme.typography.fontFamilies.thin;
+        break;
+      case 'medium':
+        fontFamily = theme.typography.fontFamilies.medium;
+        break;
+      case 'semibold':
+        fontFamily = theme.typography.fontFamilies.semibold;
+        break;
+      case 'bold':
+        fontFamily = theme.typography.fontFamilies.bold;
+        break;
+      default:
+        fontFamily = theme.typography.fontFamilies.regular;
+    }
+  }
+
+  return {
+    fontSize: theme.typography.sizes[size],
+    fontFamily,
+    color: theme.colors.text.primary,
+  };
+};
 
 export const getCardStyle = () => ({
   backgroundColor: theme.colors.surface,

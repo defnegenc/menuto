@@ -63,6 +63,7 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: theme.typography.fontFamilies.semibold,
   },
   restaurantInfo: {
     // No margin needed since backButton has bottom margin
@@ -72,10 +73,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: theme.colors.text.primary,
     marginBottom: 6,
+    fontFamily: theme.typography.fontFamilies.bold,
   },
   restaurantAddress: {
     fontSize: 16,
     color: theme.colors.text.secondary,
     fontWeight: '400',
+    fontFamily: theme.typography.fontFamilies.regular,
   },
 });

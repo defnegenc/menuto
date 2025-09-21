@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../store/useStore';
 import { UserPreferences } from '../../types';
 import { theme } from '../../theme';
+import { SearchBar } from '../../components/SearchBar';
 
 const POPULAR_CUISINES = [
   'Italian', 'Japanese', 'Mexican', 'Chinese', 'Indian', 
@@ -214,12 +215,10 @@ export function TastePreferencesScreen({ onComplete, onBack }: Props) {
           <Text style={styles.sectionTitle}>Favorite Cuisines</Text>
           <Text style={styles.sectionSubtitle}>Select all that you enjoy</Text>
           
-          <TextInput
-            style={styles.searchInput}
+          <SearchBar
             value={cuisineSearch}
             onChangeText={setCuisineSearch}
             placeholder="Search cuisines (e.g., Turkish, Georgian, Persian...)"
-            placeholderTextColor={theme.colors.text.secondary}
           />
           
           <View style={styles.chipsContainer}>
@@ -380,17 +379,6 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing.lg,
-  },
-  searchInput: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    fontSize: theme.typography.sizes.lg,
-    marginBottom: theme.spacing.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    color: theme.colors.text.primary,
   },
   chipsContainer: {
     flexDirection: 'row',

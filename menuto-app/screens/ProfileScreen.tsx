@@ -14,6 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useStore } from '../store/useStore';
 import { theme } from '../theme';
 import { FavoriteRestaurant } from '../types';
+import { SearchBar } from '../components/SearchBar';
 
 const POPULAR_CUISINES = [
   'Italian', 'Japanese', 'Mexican', 'Chinese', 'Indian', 
@@ -517,12 +518,10 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
             {isEditingCuisines ? (
               // Edit mode
               <View>
-                <TextInput
-                  style={styles.searchInput}
+                <SearchBar
                   value={cuisineSearch}
                   onChangeText={setCuisineSearch}
                   placeholder="Search cuisines (e.g., Turkish, Georgian, Persian...)"
-                  placeholderTextColor={theme.colors.text.secondary}
                 />
                 
                 {showAllCuisines && !cuisineSearch.trim() && (
@@ -730,12 +729,11 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
                 {/* City Picker */}
                 {showHomeBasePicker && (
                   <View style={styles.homeBasePickerContainer}>
-                    <TextInput
-                      style={styles.homeBaseSearchInput}
+                    <SearchBar
                       value={homeBaseSearch}
                       onChangeText={setHomeBaseSearch}
                       placeholder="Search cities..."
-                      placeholderTextColor={theme.colors.text.secondary}
+                      style={styles.homeBaseSearchInput}
                     />
                     
                     <ScrollView style={styles.homeBaseCityList} showsVerticalScrollIndicator={false}>
@@ -779,11 +777,6 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
                 <Text style={styles.homeBaseDisplayText}>
                   {user?.home_base ? `🏠 ${user.home_base}` : 'No home base set'}
                 </Text>
-                {user?.home_base && (
-                  <Text style={styles.homeBaseDisplaySubtext}>
-                    This will be used as your default location for restaurant searches
-                  </Text>
-                )}
               </View>
             )}
           </View>
@@ -803,12 +796,10 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
           {isEditingTop3 ? (
             // Edit mode
             <View>
-              <TextInput
-                style={styles.searchInput}
+              <SearchBar
                 value={top3Search}
                 onChangeText={setTop3Search}
                 placeholder="Search your restaurants..."
-                placeholderTextColor={theme.colors.text.secondary}
               />
               
               {/* Selected restaurants with X buttons */}
@@ -1002,17 +993,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.primary,
     fontWeight: '600',
-  },
-  searchInput: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    color: theme.colors.text.primary,
   },
   selectedCuisinesContainer: {
     flexDirection: 'row',
@@ -1300,15 +1280,7 @@ const styles = StyleSheet.create({
     maxHeight: 200,
   },
   homeBaseSearchInput: {
-    backgroundColor: theme.colors.background,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 14,
     margin: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    color: theme.colors.text.primary,
   },
   homeBaseCityList: {
     maxHeight: 150,

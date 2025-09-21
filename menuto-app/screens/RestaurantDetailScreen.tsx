@@ -24,6 +24,7 @@ import { Header } from '../components/Header';
 import { MenuItemCard } from '../components/MenuItemCard';
 import { DishChip } from '../components/DishChip';
 import { LoadingScreen } from '../components/LoadingScreen';
+import { SearchBar } from '../components/SearchBar';
 
 interface Props {
   restaurant: FavoriteRestaurant;
@@ -346,12 +347,6 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
     parseMenuFromText();
   };
 
-
-
-
-
-
-
   const removeFavoriteDish = (favoriteDish: any) => {
     Alert.alert(
       'Remove Favorite',
@@ -460,8 +455,6 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
     );
   }, [user, restaurant.place_id, restaurant.name]);
 
-  
-
   const getFavoriteDishesForRestaurant = useCallback(() => {
     return (user?.favorite_dishes || []).filter(dish => 
       dish.restaurant_id === restaurant.place_id || 
@@ -491,7 +484,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
       <Header 
         onBack={onBack}
         restaurantName={restaurant.name}
-        restaurantAddress={restaurant.vicinity}
+        restaurantAddress={restaurant.vicinity.split(',').slice(0, 3).join(', ')}
       />
 
       {isLoading && (
@@ -535,7 +528,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
               </View>
             </View>
           ) : (
-                        <View style={styles.menuContainer}>
+            <View style={styles.menuContainer}>
               {/* Search Results - Show above favorites when searching */}
               {searchText.trim() && (
                 <View style={styles.searchResultsSection}>
@@ -545,15 +538,11 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                   
                   {/* Search Bar */}
                   <View style={styles.searchContainer}>
-                    <View style={styles.searchInputContainer}>
-                      <TextInput
-                        style={styles.searchInput}
-                        placeholder="Search the menu!"
-                        placeholderTextColor={theme.colors.text.secondary}
-                        value={searchText}
-                        onChangeText={handleSearchMenu}
-                      />
-                    </View>
+                    <SearchBar
+                      value={searchText}
+                      onChangeText={handleSearchMenu}
+                      placeholder="Search the menu..."
+                    />
                   </View>
                   
                   {filteredDishes.map((dish, index) => (
@@ -577,15 +566,11 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                 {/* Search Bar - Only show when not searching */}
                 {!searchText.trim() && (
                   <View style={styles.searchContainer}>
-                    <View style={styles.searchInputContainer}>
-                      <TextInput
-                        style={styles.searchInput}
-                        placeholder="Search the menu!"
-                        placeholderTextColor={theme.colors.text.secondary}
-                        value={searchText}
-                        onChangeText={handleSearchMenu}
-                      />
-                    </View>
+                    <SearchBar
+                      value={searchText}
+                      onChangeText={handleSearchMenu}
+                      placeholder="Search the menu..."
+                    />
                   </View>
                 )}
                 {(() => {
@@ -672,7 +657,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                 // Show all dishes grouped by category
                 Object.entries(groupedDishes).map(([category, dishes]) => (
                   <View key={category} style={styles.categorySection}>
-                    <Text style={styles.categoryTitle}>{category.toUpperCase()} ({dishes.length})</Text>
+                    <Text style={styles.categoryTitle}>{category.toUpperCase()} ({dishes.length} items)</Text>
                     {dishes.map((dish, index) => (
                       <MenuItemCard
                         key={dish.id || `dish-${index}`}
@@ -687,7 +672,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                 // Show dishes for selected category only
                 groupedDishes[selectedCategory] && (
                   <View style={styles.categorySection}>
-                    <Text style={styles.categoryTitle}>{selectedCategory.toUpperCase()} ({groupedDishes[selectedCategory].length} dishes total)</Text>
+                    <Text style={styles.categoryTitle}>{selectedCategory.toUpperCase()} ({groupedDishes[selectedCategory].length} items)</Text>
                     {groupedDishes[selectedCategory].map((dish, index) => (
                       <MenuItemCard
                         key={dish.id || `dish-${index}`}
@@ -772,8 +757,6 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
           </View>
         </SafeAreaView>
       </Modal>
-
-
     </SafeAreaView>
   );
 }
@@ -783,7 +766,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  // Header styles removed - now using Header component
   scrollView: {
     flex: 1,
   },
@@ -798,12 +780,14 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.weights.bold,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.sm,
+    fontFamily: theme.typography.fontFamilies.bold,
   },
   emptySubtitle: {
     fontSize: theme.typography.sizes.lg,
     color: theme.colors.text.secondary,
     textAlign: 'center',
     marginBottom: theme.spacing.huge,
+    fontFamily: theme.typography.fontFamilies.regular,
   },
   addOptions: {
     width: '100%',
@@ -826,6 +810,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: theme.colors.primary,
+    fontFamily: theme.typography.fontFamilies.semibold,
   },
   menuContainer: {
     padding: 20,
@@ -840,28 +825,11 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text.secondary,
     fontStyle: 'italic',
+    fontFamily: theme.typography.fontFamilies.regular,
   },
+  // Search container matching MyRestaurants exactly
   searchContainer: {
-    marginBottom: 10,
-  },
-  searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E1E8ED',
-    paddingHorizontal: 16,
-  },
-  searchIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 16,
-    fontSize: 16,
-    color: theme.colors.text.primary,
+    marginBottom: 16,
   },
   noResultsText: {
     fontSize: theme.typography.sizes.md,
@@ -869,14 +837,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
     padding: 20,
+    fontFamily: theme.typography.fontFamilies.regular,
   },
   sectionTitle: {
     marginBottom: 12,
+    fontFamily: 'Artifact', // Uses fancy heading style
   },
   favoritesTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: theme.colors.text.primary,
+    fontFamily: theme.typography.fontFamilies.bold,
   },
   favoritesCards: {
     marginBottom: 16,
@@ -896,6 +867,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: theme.colors.text.primary,
+    fontFamily: theme.typography.fontFamilies.semibold,
   },
   removeButton: {
     backgroundColor: theme.colors.secondary,
@@ -907,8 +879,8 @@ const styles = StyleSheet.create({
     color: theme.colors.text.light,
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: theme.typography.fontFamilies.semibold,
   },
-
   menuHeader: {
     marginBottom: 20,
   },
@@ -927,22 +899,20 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: theme.colors.text.primary,
+    fontFamily: theme.typography.fontFamilies.bold,
   },
-
   addMoreButton: {
-    backgroundColor: theme.colors.secondary, // Secondary color background
+    backgroundColor: theme.colors.secondary,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.secondary,
   },
   addMoreButtonText: {
-    color: '#FFFFFF', // White text
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: theme.typography.fontFamilies.semibold,
   },
-
   categorySection: {
     marginBottom: 24,
   },
@@ -951,8 +921,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: theme.colors.text.primary,
     marginBottom: 12,
+    fontFamily: theme.typography.fontFamilies.bold,
   },
-  // Dish card styles removed - now using MenuItemCard component
   modalContainer: {
     flex: 1,
     backgroundColor: theme.colors.background,
@@ -968,16 +938,19 @@ const styles = StyleSheet.create({
   modalCloseButton: {
     color: theme.colors.text.secondary,
     fontSize: 16,
+    fontFamily: theme.typography.fontFamilies.regular,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: theme.colors.text.primary,
+    fontFamily: theme.typography.fontFamilies.bold,
   },
   modalDoneButton: {
     color: theme.colors.primary,
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: theme.typography.fontFamilies.semibold,
   },
   menuTextInput: {
     flex: 1,
@@ -985,8 +958,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.text.primary,
     textAlignVertical: 'top',
+    fontFamily: theme.typography.fontFamilies.regular,
   },
-
   addOptionsContainer: {
     flex: 1,
     padding: 20,
@@ -1010,7 +983,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: theme.colors.primary,
+    fontFamily: theme.typography.fontFamilies.semibold,
   },
+  // Updated category filter styles to match the Figma design
   categoryFilterContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1018,23 +993,24 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   categoryFilterButton: {
-    backgroundColor: theme.colors.secondary + '20',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: theme.colors.secondary,
+    backgroundColor: theme.colors.chipDefault, // Light pink background
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25, // Very rounded corners like in the image
+    borderWidth: 0, // No border for unselected state
   },
   categoryFilterButtonActive: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+    backgroundColor: theme.colors.secondary, // Dark red when selected
+    borderWidth: 0,
   },
   categoryFilterText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
+    fontWeight: '500',
+    color: theme.colors.text.primary, // Black text for unselected
+    fontFamily: theme.typography.fontFamilies.medium,
   },
   categoryFilterTextActive: {
-    color: '#FFFFFF',
+    color: '#FFFFFF', // White text when selected
+    fontFamily: theme.typography.fontFamilies.medium,
   },
 });

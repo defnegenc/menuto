@@ -16,6 +16,8 @@ import { FavoriteRestaurant, FavoriteDish } from '../types';
 import { theme } from '../theme';
 import { DishChip } from '../components/DishChip';
 import { UnifiedHeader } from '../components/UnifiedHeader';
+import { SearchBar } from '../components/SearchBar';
+import { RestaurantCard } from '../components/RestaurantCard';
 
 interface Props {
   onSelectRestaurant: (restaurant: FavoriteRestaurant) => void;
@@ -114,7 +116,7 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
       
       // Filter out restaurants that are already in favorites
       const existingPlaceIds = new Set(favoriteRestaurants.map(r => r.place_id));
-      const newRestaurants = (results.restaurants || []).filter(restaurant => 
+      const newRestaurants = (results.restaurants || []).filter((restaurant: any) => 
         !existingPlaceIds.has(restaurant.place_id)
       );
       
@@ -246,60 +248,25 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
   const renderRestaurantCard = (restaurant: FavoriteRestaurant) => {
     const dishes = getFavoriteDishesForRestaurant(restaurant);
     
-    // Fix any restaurants that have "Restaurant" as cuisine_type
-    const cuisineType = restaurant.cuisine_type === 'Restaurant' ? 'American' : restaurant.cuisine_type;
-    
     return (
-      <View key={restaurant.place_id} style={styles.restaurantCard}>
-        <TouchableOpacity
-          style={styles.removeButton}
-          onPress={() => handleRemoveRestaurant(restaurant.place_id)}
-        >
-          <Text style={styles.removeButtonText}>✕</Text>
-        </TouchableOpacity>
-        
-        <View style={styles.restaurantContent}>
-          <TouchableOpacity 
-            style={styles.restaurantInfo}
-            onPress={() => onSelectRestaurant(restaurant)}
-          >
-            <View style={styles.restaurantHeader}>
-              <Text style={[styles.restaurantName, theme.typography.h2.regular]}>{restaurant.name}</Text>
-            </View>
-            <Text style={styles.vicinity}>{restaurant.vicinity}</Text>
-          </TouchableOpacity>
-          
-          {dishes.length > 0 && (
-            <View style={styles.favoriteDishesSection}>
-              <Text style={styles.favoriteDishesTitle}>Your Favorite Dishes:</Text>
-              <View style={styles.dishesContainer}>
-                {dishes.map((dish, index) => (
-                  <DishChip
-                    key={`${dish.dish_name}-${index}`}
-                    dishName={dish.dish_name}
-                  />
-                ))}
-              </View>
-            </View>
-          )}
-          
-          <View style={styles.actionButtons}>
-            <TouchableOpacity 
-              style={styles.addDishButton}
-              onPress={() => onSelectRestaurant(restaurant)}
-            >
-              <Text style={styles.addDishButtonText}>
-                {dishes.length > 0 ? '+ Add Another Favorite' : '+ Add Favorite Dish'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
+      <RestaurantCard
+        key={restaurant.place_id}
+        restaurant={restaurant}
+        dishes={dishes}
+        onSelectRestaurant={onSelectRestaurant}
+        onRemoveRestaurant={handleRemoveRestaurant}
+      />
     );
   };
 
   const renderExternalRestaurantCard = (restaurant: any) => {
     const isSelected = selectedRestaurants.some(r => r.place_id === restaurant.place_id);
+    
+    // Parse address to show street, city, and state (exclude zip and country)
+    const parseAddress = (vicinity: string) => {
+      const parts = vicinity.split(',').map(part => part.trim());
+      return parts.slice(0, 3).join(', ');
+    };
     
     return (
       <TouchableOpacity
@@ -312,7 +279,7 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
       >
         <View style={styles.externalRestaurantInfo}>
           <Text style={styles.externalRestaurantName}>{restaurant.name}</Text>
-          <Text style={styles.externalRestaurantVicinity}>{restaurant.vicinity}</Text>
+          <Text style={styles.externalRestaurantVicinity}>{parseAddress(restaurant.vicinity)}</Text>
           {restaurant.cuisine_type && (
             <Text style={styles.externalRestaurantCuisine}>{restaurant.cuisine_type}</Text>
           )}
@@ -335,12 +302,10 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
       
       {/* Search Bar */}
       <View style={styles.searchSection}>
-        <TextInput
-          style={styles.searchInput}
+        <SearchBar
           value={searchText}
           onChangeText={setSearchText}
           placeholder="Search restaurants..."
-          placeholderTextColor={theme.colors.text.secondary}
         />
       </View>
 
@@ -442,8 +407,8 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
         )}
       </ScrollView>
 
-      {/* Fixed Footer Add Button */}
-      {selectedRestaurants.length > 0 ? (
+      {/* Fixed Footer Add Button - Only show when restaurants are selected */}
+      {selectedRestaurants.length > 0 && (
         <View style={[styles.footer, { paddingBottom: 10 }]}>
           <TouchableOpacity 
             style={styles.footerAddButton}
@@ -452,15 +417,6 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
             <Text style={styles.footerAddButtonText}>
               Add {selectedRestaurants.length} Restaurant{selectedRestaurants.length > 1 ? 's' : ''}
             </Text>
-          </TouchableOpacity>
-        </View>
-      ) : onAddRestaurant && (
-        <View style={[styles.footer, { paddingBottom: 10 }]}>
-          <TouchableOpacity 
-            style={styles.footerAddButton}
-            onPress={onAddRestaurant}
-          >
-            <Text style={styles.footerAddButtonText}>+ Add restaurant</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -478,16 +434,6 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.lg,
     paddingBottom: theme.spacing.xs,
     backgroundColor: theme.colors.background,
-  },
-  searchInput: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    fontSize: theme.typography.sizes.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    color: theme.colors.text.primary,
   },
   footer: {
     position: 'absolute',
@@ -510,6 +456,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.light,
     fontSize: theme.typography.sizes.lg,
     fontWeight: theme.typography.weights.semibold,
+    fontFamily: theme.typography.fontFamilies.semibold, // Added DM Sans
   },
   sectionTitle: {
     fontSize: theme.typography.sizes.lg,
@@ -517,6 +464,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     marginHorizontal: theme.spacing.lg,
     marginVertical: theme.spacing.md,
+    fontFamily: theme.typography.fontFamilies.semibold, // Added DM Sans
   },
   loadingState: {
     flexDirection: 'row',
@@ -528,6 +476,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text.secondary,
+    fontFamily: theme.typography.fontFamilies.regular, // Added DM Sans
   },
   externalRestaurantList: {
     paddingHorizontal: theme.spacing.lg,
@@ -556,17 +505,20 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.xs,
+    fontFamily: theme.typography.fontFamilies.semibold, // Added DM Sans
   },
   externalRestaurantVicinity: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing.xs,
+    fontFamily: theme.typography.fontFamilies.regular, // Added DM Sans
   },
   externalRestaurantCuisine: {
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.tertiary,
     fontWeight: theme.typography.weights.medium,
     textTransform: 'capitalize',
+    fontFamily: theme.typography.fontFamilies.medium, // Added DM Sans
   },
   externalSelectionIndicator: {
     marginLeft: theme.spacing.md,
@@ -589,6 +541,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: 'bold',
+    fontFamily: theme.typography.fontFamilies.bold, // Added DM Sans
   },
   scrollView: {
     flex: 1,
@@ -612,6 +565,7 @@ const styles = StyleSheet.create({
     fontWeight: 600,
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.md,
+    fontFamily: theme.typography.fontFamilies.semibold, // Added DM Sans
   },
   emptyStateText: {
     fontSize: theme.typography.sizes.lg,
@@ -619,6 +573,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: theme.spacing.xxxl,
+    fontFamily: theme.typography.fontFamilies.regular, // Added DM Sans
   },
   addFirstButton: {
     backgroundColor: theme.colors.primary,
@@ -630,6 +585,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.light,
     fontSize: theme.typography.sizes.lg,
     fontWeight: 400,
+    fontFamily: theme.typography.fontFamilies.regular, // Added DM Sans
   },
   addTestButton: {
     backgroundColor: theme.colors.primary,
@@ -642,91 +598,10 @@ const styles = StyleSheet.create({
     color: theme.colors.text.light,
     fontSize: theme.typography.sizes.lg,
     fontWeight: 400,
+    fontFamily: theme.typography.fontFamilies.regular, // Added DM Sans
   },
   restaurantList: {
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.xl,
-  },
-  restaurantCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    marginBottom: theme.spacing.md,
-    position: 'relative',
-    ...theme.shadows.md,
-  },
-  restaurantContent: {
-    flex: 1,
-    padding: theme.spacing.lg,
-  },
-  restaurantInfo: {
-    marginBottom: theme.spacing.md,
-  },
-  restaurantHeader: {
-    marginBottom: theme.spacing.xs,
-  },
-  restaurantName: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: 600,
-    color: theme.colors.text.primary,
-  },
-  cuisineType: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.tertiary,
-    textTransform: 'capitalize',
-    fontWeight: '500' as const,
-  },
-  vicinity: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.sm,
-  },
-  tapHint: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.text.muted,
-    fontStyle: 'italic',
-  },
-  favoriteDishesSection: {
-    marginBottom: theme.spacing.md,
-  },
-  favoriteDishesTitle: {
-    fontSize: theme.typography.sizes.md,
-    fontWeight: 400,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
-  },
-  dishesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.xs,
-  },
-
-  actionButtons: {
-    flexDirection: 'row',
-  },
-  addDishButton: {
-    backgroundColor: theme.colors.tertiary + '15',
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.tertiary,
-    borderStyle: 'dashed',
-  },
-  addDishButtonText: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.tertiary,
-    fontWeight: 300,
-  },
-  removeButton: {
-    position: 'absolute',
-    top: theme.spacing.sm,
-    right: theme.spacing.sm,
-    padding: theme.spacing.xs,
-    zIndex: 1,
-  },
-  removeButtonText: {
-    fontSize: theme.typography.sizes.xl,
-    color: theme.colors.primary,
-    fontWeight: 600,
   },
 });

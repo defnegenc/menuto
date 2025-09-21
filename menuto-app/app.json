@@ -32,7 +32,11 @@
         "expo-font",
         {
           "fonts": [
-            "./assets/fonts/Artifact.otf"
+            "./assets/fonts/Artifact.otf",
+            "./assets/fonts/DMSans-folder/DMSans-Regular.ttf",
+            "./assets/fonts/DMSans-folder/DMSans-Medium.ttf",
+            "./assets/fonts/DMSans-folder/DMSans-SemiBold.ttf",
+            "./assets/fonts/DMSans-folder/DMSans-Bold.ttf"
           ]
         }
       ],
