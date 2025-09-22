@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { FavoriteRestaurant, FavoriteDish } from '../types';
 import { theme } from '../theme';
-import { DishChip } from './DishChip';
+import { Chip } from './Chip';
 
 interface Props {
   restaurant: FavoriteRestaurant;
@@ -51,9 +51,12 @@ export const RestaurantCard: React.FC<Props> = ({
             <Text style={styles.favoriteDishesTitle}>Your Favorite Dishes:</Text>
             <View style={styles.dishesContainer}>
               {dishes.map((dish, index) => (
-                <View key={`${dish.dish_name}-${index}`} style={styles.modernDishChip}>
-                  <Text style={styles.dishChipText}>{dish.dish_name}</Text>
-                </View>
+                <Chip
+                  key={`${dish.dish_name}-${index}`}
+                  text={dish.dish_name}
+                  size="small"
+                  variant="light"
+                />
               ))}
             </View>
           </View>
@@ -78,34 +81,33 @@ const styles = StyleSheet.create({
   restaurantCard: {
     backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
     position: 'relative',
-    ...theme.shadows.md,
+    ...theme.shadows.sm,
   },
   restaurantContent: {
     flex: 1,
     padding: 16,
     paddingHorizontal: 16,
-    gap: 4,
     alignItems: 'flex-start',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
   restaurantInfo: {
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
   restaurantHeader: {
     marginBottom: 0,
   },
   restaurantName: {
-    fontSize: 20,
-    fontWeight: '900',
+    fontSize: theme.typography.sizes.xl,
+    fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.primary,
-    fontFamily: theme.typography.fontFamilies.bold,
-    marginBottom: 4,
+    marginBottom: theme.spacing.xs,
+    fontFamily: theme.typography.fontFamilies.semibold,
   },
   vicinity: {
     fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.primary,
+    color: theme.colors.text.secondary,
     fontFamily: theme.typography.fontFamilies.regular,
     marginBottom: 0,
   },
@@ -113,30 +115,17 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   favoriteDishesTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: '600',
+    fontSize: theme.typography.sizes.md,
+    fontWeight: '400',
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.xs,
-    fontFamily: theme.typography.fontFamilies.semibold,
+    fontFamily: theme.typography.fontFamilies.regular,
   },
   dishesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
     marginBottom: theme.spacing.md,
-  },
-  modernDishChip: {
-    backgroundColor: theme.colors.chipDefault, // #F0E0E3
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: 25,
-    borderWidth: 0,
-  },
-  dishChipText: {
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: '500',
-    color: theme.colors.secondary, // Black text
-    fontFamily: theme.typography.fontFamilies.medium,
   },
   modernAddButton: {
     backgroundColor: theme.colors.secondary, // Dark red

@@ -25,6 +25,7 @@ import { MenuItemCard } from '../components/MenuItemCard';
 import { DishChip } from '../components/DishChip';
 import { LoadingScreen } from '../components/LoadingScreen';
 import { SearchBar } from '../components/SearchBar';
+import { NoMenuState } from '../components/NoMenuState';
 
 interface Props {
   restaurant: FavoriteRestaurant;
@@ -504,29 +505,11 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
       {!isLoading && !isParsing && (
         <ScrollView ref={scrollViewRef} style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {menuDishes.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>No Menu Yet</Text>
-              <Text style={styles.emptySubtitle}>
-                Add a menu to see dishes and get recommendations
-              </Text>
-              
-              <View style={styles.addOptions}>
-                <TouchableOpacity style={styles.addButton} onPress={handleAddMenuPDF}>
-                  <Text style={styles.addButtonIcon}>📄</Text>
-                  <Text style={styles.addButtonText}>Add Menu PDF</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.addButton} onPress={handlePasteMenuText}>
-                  <Text style={styles.addButtonIcon}>📝</Text>
-                  <Text style={styles.addButtonText}>Paste Menu Text</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.addButton} onPress={handleAddPhoto}>
-                  <Text style={styles.addButtonIcon}>📸</Text>
-                  <Text style={styles.addButtonText}>Add Menu Photo</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+            <NoMenuState
+              onAddMenuPDF={handleAddMenuPDF}
+              onPasteMenuText={handlePasteMenuText}
+              onAddPhoto={handleAddPhoto}
+            />
           ) : (
             <View style={styles.menuContainer}>
               {/* Search Results - Show above favorites when searching */}
@@ -768,49 +751,6 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: theme.spacing.huge,
-  },
-  emptyTitle: {
-    fontSize: theme.typography.sizes.title,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
-    fontFamily: theme.typography.fontFamilies.bold,
-  },
-  emptySubtitle: {
-    fontSize: theme.typography.sizes.lg,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-    marginBottom: theme.spacing.huge,
-    fontFamily: theme.typography.fontFamilies.regular,
-  },
-  addOptions: {
-    width: '100%',
-    gap: 16,
-  },
-  addButton: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: 12,
-    padding: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-  },
-  addButtonIcon: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  addButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.primary,
-    fontFamily: theme.typography.fontFamilies.semibold,
   },
   menuContainer: {
     padding: 20,

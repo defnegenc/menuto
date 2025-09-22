@@ -15,6 +15,7 @@ import { useStore } from '../store/useStore';
 import { theme } from '../theme';
 import { FavoriteRestaurant } from '../types';
 import { SearchBar } from '../components/SearchBar';
+import { Chip } from '../components/Chip';
 
 const POPULAR_CUISINES = [
   'Italian', 'Japanese', 'Mexican', 'Chinese', 'Indian', 
@@ -467,9 +468,7 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
   };
 
   const renderChip = (text: string) => (
-    <View key={text} style={styles.chip}>
-      <Text style={styles.chipText}>{text}</Text>
-    </View>
+    <Chip key={text} text={text} size="small" variant="light" />
   );
 
   return (
@@ -498,6 +497,7 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
             </TouchableOpacity>
           </View>
           <Text style={styles.userName}>{user?.name || 'User'}</Text>
+          <Text style={styles.userHandle}>@{user?.username || 'unknown'}</Text>
         </View>
 
         {/* Preferences Section */}
@@ -559,10 +559,9 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
                     .map(cuisine => (
                       <TouchableOpacity
                         key={cuisine}
-                        style={styles.chip}
                         onPress={() => toggleCuisine(cuisine)}
                       >
-                        <Text style={styles.chipText}>{cuisine}</Text>
+                        <Chip text={cuisine} size="small" variant="light" />
                       </TouchableOpacity>
                     ))
                   }
@@ -665,10 +664,9 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
                     .map(restriction => (
                       <TouchableOpacity
                         key={restriction}
-                        style={styles.chip}
                         onPress={() => toggleDietary(restriction)}
                       >
-                        <Text style={styles.chipText}>{restriction}</Text>
+                        <Chip text={restriction} size="small" variant="light" />
                       </TouchableOpacity>
                     ))
                   }
@@ -826,17 +824,16 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
                 {getFilteredTop3Restaurants()
                   .filter(restaurant => !selectedTop3.some(r => r.place_id === restaurant.place_id))
                   .map(restaurant => (
-                    <TouchableOpacity
-                      key={restaurant.place_id}
-                      style={[
-                        styles.chip,
-                        selectedTop3.length >= 3 && { opacity: 0.5 }
-                      ]}
-                      onPress={() => toggleTop3Restaurant(restaurant)}
-                      disabled={selectedTop3.length >= 3}
-                    >
-                      <Text style={styles.chipText}>{restaurant.name}</Text>
-                    </TouchableOpacity>
+                      <TouchableOpacity
+                        key={restaurant.place_id}
+                        style={[
+                          selectedTop3.length >= 3 && { opacity: 0.5 }
+                        ]}
+                        onPress={() => toggleTop3Restaurant(restaurant)}
+                        disabled={selectedTop3.length >= 3}
+                      >
+                        <Chip text={restaurant.name} size="small" variant="light" />
+                      </TouchableOpacity>
                   ))}
               </View>
               
@@ -964,6 +961,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '600',
     color: theme.colors.text.primary,
+  },
+  userHandle: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: theme.colors.text.secondary,
+    marginTop: 4,
+    fontFamily: theme.typography.fontFamilies.regular,
   },
   section: {
     paddingHorizontal: 20,
@@ -1112,19 +1116,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-  },
-  chip: {
-    backgroundColor: theme.colors.secondary + '20',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.secondary,
-  },
-  chipText: {
-    fontSize: 14,
-    color: theme.colors.secondary,
-    fontWeight: '500',
   },
   spiceContainer: {
     flexDirection: 'row',

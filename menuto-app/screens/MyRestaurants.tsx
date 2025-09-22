@@ -18,6 +18,8 @@ import { DishChip } from '../components/DishChip';
 import { UnifiedHeader } from '../components/UnifiedHeader';
 import { SearchBar } from '../components/SearchBar';
 import { RestaurantCard } from '../components/RestaurantCard';
+import { SearchRestaurantCard } from '../components/SearchRestaurantCard';
+import { SearchRestaurantSelected } from '../components/SearchRestaurantSelected';
 
 interface Props {
   onSelectRestaurant: (restaurant: FavoriteRestaurant) => void;
@@ -262,37 +264,22 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
   const renderExternalRestaurantCard = (restaurant: any) => {
     const isSelected = selectedRestaurants.some(r => r.place_id === restaurant.place_id);
     
-    // Parse address to show street, city, and state (exclude zip and country)
-    const parseAddress = (vicinity: string) => {
-      const parts = vicinity.split(',').map(part => part.trim());
-      return parts.slice(0, 3).join(', ');
-    };
+    if (isSelected) {
+      return (
+        <SearchRestaurantSelected
+          key={restaurant.place_id}
+          restaurant={restaurant}
+          onPress={() => toggleRestaurantSelection(restaurant)}
+        />
+      );
+    }
     
     return (
-      <TouchableOpacity
+      <SearchRestaurantCard
         key={restaurant.place_id}
-        style={[
-          styles.externalRestaurantCard,
-          isSelected && styles.externalRestaurantCardSelected
-        ]}
+        restaurant={restaurant}
         onPress={() => toggleRestaurantSelection(restaurant)}
-      >
-        <View style={styles.externalRestaurantInfo}>
-          <Text style={styles.externalRestaurantName}>{restaurant.name}</Text>
-          <Text style={styles.externalRestaurantVicinity}>{parseAddress(restaurant.vicinity)}</Text>
-          {restaurant.cuisine_type && (
-            <Text style={styles.externalRestaurantCuisine}>{restaurant.cuisine_type}</Text>
-          )}
-        </View>
-        <View style={styles.externalSelectionIndicator}>
-          <View style={[
-            styles.externalRadioButton,
-            isSelected && styles.externalRadioButtonSelected
-          ]}>
-            {isSelected && <Text style={styles.externalRadioButtonInner}>●</Text>}
-          </View>
-        </View>
-      </TouchableOpacity>
+      />
     );
   };
 
@@ -482,67 +469,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingBottom: theme.spacing.md,
   },
-  externalRestaurantCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    ...theme.shadows.sm,
-  },
-  externalRestaurantCardSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primary + '15',
-  },
-  externalRestaurantInfo: {
-    flex: 1,
-  },
-  externalRestaurantName: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.xs,
-    fontFamily: theme.typography.fontFamilies.semibold, // Added DM Sans
-  },
-  externalRestaurantVicinity: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.xs,
-    fontFamily: theme.typography.fontFamilies.regular, // Added DM Sans
-  },
-  externalRestaurantCuisine: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.tertiary,
-    fontWeight: theme.typography.weights.medium,
-    textTransform: 'capitalize',
-    fontFamily: theme.typography.fontFamilies.medium, // Added DM Sans
-  },
-  externalSelectionIndicator: {
-    marginLeft: theme.spacing.md,
-  },
-  externalRadioButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: theme.colors.secondary,
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  externalRadioButtonSelected: {
-    backgroundColor: theme.colors.secondary,
-    borderColor: theme.colors.secondary,
-  },
-  externalRadioButtonInner: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold',
-    fontFamily: theme.typography.fontFamilies.bold, // Added DM Sans
-  },
   scrollView: {
     flex: 1,
   },
@@ -602,6 +528,6 @@ const styles = StyleSheet.create({
   },
   restaurantList: {
     paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.xl,
+    paddingTop: theme.spacing.sm,
   },
 });
