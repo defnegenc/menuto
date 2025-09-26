@@ -341,6 +341,12 @@ class MenutoAPI {
     restaurantName: string,
     userFavoriteDishes: any[],
     userDietaryConstraints: string[] = [],
+    contextWeights?: {
+      hungerLevel: number;
+      preferenceLevel: number;
+      selectedCravings: string[];
+      spiceTolerance?: number;
+    },
     friendSelections: any[] = []
   ): Promise<any> {
     try {
@@ -356,6 +362,7 @@ class MenutoAPI {
           restaurant_name: restaurantName,
           user_favorite_dishes: userFavoriteDishes,
           user_dietary_constraints: userDietaryConstraints,
+          context_weights: contextWeights,
           friend_selections: friendSelections
         }),
       });

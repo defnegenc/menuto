@@ -9,8 +9,8 @@ interface LoadingScreenProps {
 }
 
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({ 
-  message = "Loading...", 
-  subMessage
+  message = "Loading recommendations", 
+  subMessage = "Cooking up something good..."
 }) => {
   const fadeAnim = useState(new Animated.Value(0))[0];
   const scaleAnim = useState(new Animated.Value(0.8))[0];
@@ -45,7 +45,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
       >
         {/* Animated loading icon */}
         <View style={styles.loadingIcon}>
-          <LoadingSpinner size={60} color={theme.colors.secondary} />
+          <LoadingSpinner size={60} color={theme.colors.primary} />
         </View>
 
         {/* Loading text */}
@@ -79,11 +79,12 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: theme.typography.sizes.lg,
     fontWeight: '600',
-    color: theme.colors.secondary,
+    color: theme.colors.text.primary,
     marginBottom: theme.spacing.sm,
+    textAlign: 'center',
   },
   subText: {
-    fontSize: theme.typography.sizes.lg,
+    fontSize: theme.typography.sizes.md,
     color: theme.colors.text.secondary,
     textAlign: 'center',
     fontStyle: 'italic',

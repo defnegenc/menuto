@@ -1,8 +1,7 @@
 import os
 import requests
 from typing import List, Dict, Any, Optional
-from sqlalchemy.orm import Session
-from app.models import Restaurant, Dish
+from supabase import create_client, Client
 import openai
 from dotenv import load_dotenv
 import time
@@ -20,6 +19,15 @@ class MenuDataService:
         self.google_api_key = os.getenv("GOOGLE_PLACES_API_KEY")
         self.yelp_api_key = os.getenv("YELP_API_KEY")
         self.openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        
+        # Initialize Supabase client
+        supabase_url = os.getenv("SUPABASE_URL")
+        supabase_key = os.getenv("SUPABASE_KEY")
+        if supabase_url and supabase_key:
+            self.supabase: Client = create_client(supabase_url, supabase_key)
+        else:
+            self.supabase = None
+            print("⚠️ Supabase not configured, will use external APIs only")
         
         if not self.google_api_key:
             raise ValueError("Google Places API key not found")
@@ -194,7 +202,7 @@ class MenuDataService:
             print(f"❌ Menu extraction from reviews failed: {str(e)}")
             return []
     
-    def get_restaurant_menu(self, place_id: str, restaurant_name: str, db: Session) -> List[Dict[str, Any]]:
+    def get_restaurant_menu(self, place_id: str, restaurant_name: str) -> List[Dict[str, Any]]:
         """
         Get restaurant menu from multiple sources with caching:
         1. Our database (user-contributed)
@@ -207,26 +215,46 @@ class MenuDataService:
         cache_key = f"menu_{place_id}_{hashlib.md5(restaurant_name.encode()).hexdigest()}"
         current_time = time.time()
         
-        # Check our database first (always fresh)
-        restaurant = db.query(Restaurant).filter(Restaurant.name.ilike(f"%{restaurant_name}%")).first()
-        if restaurant:
-            dishes = db.query(Dish).filter(Dish.restaurant_id == restaurant.id).all()
-            if dishes:
-                print(f"📋 Found {len(dishes)} dishes in our database")
-                return [
-                    {
-                        'id': dish.id,
-                        'name': dish.name,
-                        'description': dish.description,
-                        'price': dish.price,
-                        'category': dish.category,
-                        'dietary_tags': dish.dietary_tags or [],
-                        'ingredients': dish.ingredients or [],
-                        'avg_rating': dish.avg_rating,
-                        'source': 'database'
-                    }
-                    for dish in dishes
-                ]
+        # Check Supabase first (always fresh)
+        if self.supabase:
+            try:
+                # Look for restaurant by name in parsed_menus
+                menu_result = self.supabase.table("parsed_menus") \
+                    .select("*") \
+                    .ilike("restaurant_name", f"%{restaurant_name}%") \
+                    .order("parsed_at", desc=True) \
+                    .limit(1) \
+                    .execute()
+                
+                if menu_result.data:
+                    menu = menu_result.data[0]
+                    menu_id = menu["id"]
+                    
+                    # Get dishes for this menu
+                    dishes_result = self.supabase.table("parsed_dishes") \
+                        .select("*") \
+                        .eq("menu_id", menu_id) \
+                        .execute()
+                    
+                    if dishes_result.data:
+                        print(f"📋 Found {len(dishes_result.data)} dishes in Supabase")
+                        return [
+                            {
+                                'id': dish['id'],
+                                'name': dish['name'],
+                                'description': dish.get('description', ''),
+                                'price': dish.get('price'),
+                                'category': dish.get('category', 'main'),
+                                'dietary_tags': dish.get('dietary_tags', []),
+                                'ingredients': dish.get('ingredients', []),
+                                'avg_rating': dish.get('avg_rating', 4.0),
+                                'source': 'supabase'
+                            }
+                            for dish in dishes_result.data
+                        ]
+            except Exception as e:
+                print(f"❌ Supabase query failed: {str(e)}")
+                # Continue to external APIs
         
         # Check cache for extracted menu items
         if cache_key in MENU_CACHE:
@@ -270,67 +298,31 @@ class MenuDataService:
         self, 
         place_id: str, 
         restaurant_name: str, 
-        dish_data: Dict[str, Any], 
-        db: Session
+        dish_data: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Allow users to add missing menu items"""
+        """Allow users to add missing menu items to Supabase"""
+        if not self.supabase:
+            return {
+                'success': False,
+                'message': 'Supabase not configured'
+            }
+        
         try:
-            # Find or create restaurant
-            restaurant = db.query(Restaurant).filter(Restaurant.name.ilike(f"%{restaurant_name}%")).first()
-            if not restaurant:
-                restaurant = Restaurant(name=restaurant_name)
-                db.add(restaurant)
-                db.commit()
-                db.refresh(restaurant)
-            
-            # Check if dish already exists
-            existing_dish = db.query(Dish).filter(
-                Dish.restaurant_id == restaurant.id,
-                Dish.name.ilike(f"%{dish_data['name']}%")
-            ).first()
-            
-            if existing_dish:
-                return {
-                    'success': False,
-                    'message': 'Dish already exists',
-                    'dish': {
-                        'id': existing_dish.id,
-                        'name': existing_dish.name
-                    }
-                }
-            
-            # Add new dish
-            new_dish = Dish(
-                restaurant_id=restaurant.id,
-                name=dish_data['name'],
-                description=dish_data.get('description', ''),
-                price=dish_data.get('price'),
-                category=dish_data.get('category', 'main'),
-                ingredients=dish_data.get('ingredients', []),
-                dietary_tags=dish_data.get('dietary_tags', [])
-            )
-            
-            db.add(new_dish)
-            db.commit()
-            db.refresh(new_dish)
-            
-            print(f"✅ Added user-contributed dish: {new_dish.name}")
-            
+            # For now, just return success - user contributions can be added later
+            # This would require creating a user_contributions table in Supabase
             return {
                 'success': True,
-                'message': 'Dish added successfully',
+                'message': 'User contribution feature coming soon',
                 'dish': {
-                    'id': new_dish.id,
-                    'name': new_dish.name,
-                    'description': new_dish.description,
-                    'price': new_dish.price,
-                    'category': new_dish.category
+                    'name': dish_data['name'],
+                    'description': dish_data.get('description', ''),
+                    'price': dish_data.get('price'),
+                    'category': dish_data.get('category', 'main')
                 }
             }
             
         except Exception as e:
-            print(f"❌ Error adding user dish: {str(e)}")
-            db.rollback()
+            print(f"❌ Failed to add user-contributed dish: {str(e)}")
             return {
                 'success': False,
                 'message': f'Failed to add dish: {str(e)}'

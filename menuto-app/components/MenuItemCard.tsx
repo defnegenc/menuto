@@ -18,35 +18,57 @@ const capitalizeText = (text: string): string => {
 
 interface MenuItemCardProps {
   dish: ParsedDish;
-  onAddToFavorites: (dish: ParsedDish) => void;
+  onAddToFavorites?: (dish: ParsedDish) => void;
+  onPress?: () => void;
   isFavorite?: boolean;
+  isSelected?: boolean;
+  showScore?: boolean;
+  isFeatured?: boolean;
 }
 
 export const MenuItemCard: React.FC<MenuItemCardProps> = ({
   dish,
   onAddToFavorites,
-  isFavorite = false
+  onPress,
+  isFavorite = false,
+  isSelected = false,
+  showScore = false,
+  isFeatured = false
 }) => {
   return (
-    <View style={[styles.card, isFavorite && styles.lightPinkCard]}>
+    <TouchableOpacity 
+      style={[
+        styles.card, 
+        isFavorite && styles.lightPinkCard,
+        isSelected && styles.selectedCard,
+        isFeatured && styles.featuredCard
+      ]}
+      onPress={onPress}
+      disabled={!onPress}
+    >
       <View style={styles.content}>
         <View style={styles.dishInfo}>
           <Text style={styles.dishName}>{capitalizeText(dish.name)}</Text>
           {dish.description ? (
             <Text style={[styles.dishDescription, isFavorite && styles.dishDescriptionFavorited]}>{capitalizeText(dish.description)}</Text>
           ) : null}
+          {showScore && dish.recommendation_score && (
+            <Text style={styles.scoreText}>Score: {dish.recommendation_score.toFixed(1)}</Text>
+          )}
         </View>
 
-        <TouchableOpacity
-          style={[styles.addButton, isFavorite && styles.addButtonActive]}
-          onPress={() => onAddToFavorites(dish)}
-        >
-          <Text style={[styles.addButtonText, isFavorite && styles.addButtonTextActive]}>
-            {isFavorite ? 'Remove' : '+ Add'}
-          </Text>
-        </TouchableOpacity>
+        {onAddToFavorites && (
+          <TouchableOpacity
+            style={[styles.addButton, isFavorite && styles.addButtonActive]}
+            onPress={() => onAddToFavorites(dish)}
+          >
+            <Text style={[styles.addButtonText, isFavorite && styles.addButtonTextActive]}>
+              {isFavorite ? 'Remove' : '+ Add'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -113,5 +135,20 @@ const styles = StyleSheet.create({
   },
   addButtonTextActive: { 
     color: '#FFFFFF' 
+  },
+  scoreText: {
+    fontSize: theme.typography.sizes.sm,
+    color: theme.colors.primary,
+    fontWeight: '600',
+    marginTop: theme.spacing.xs,
+  },
+  selectedCard: {
+    borderColor: theme.colors.primary,
+    borderWidth: 2,
+  },
+  featuredCard: {
+    backgroundColor: theme.colors.primary + '10',
+    borderColor: theme.colors.primary,
+    borderWidth: 2,
   },
 });

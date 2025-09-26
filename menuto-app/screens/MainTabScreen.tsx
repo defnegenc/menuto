@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { Text } from 'react-native';
 import { MyRestaurants } from './MyRestaurants';
-import { RestaurantSearchScreen } from './RestaurantSearchScreen';
+import { ChooseDishLanding } from './ChooseDishLanding';
 import { ProfileScreen } from './ProfileScreen';
 
 import { FavoriteRestaurant } from '../types';
@@ -15,16 +15,24 @@ interface Props {
   onSelectRestaurant: (restaurant: FavoriteRestaurant) => void;
   onAddRestaurant?: () => void;
   onSignOut?: () => void;
+  onNavigateToDishRecommendations?: (restaurant: FavoriteRestaurant, preferences: {
+    hungerLevel: number;
+    preferenceLevel: number;
+    selectedCravings: string[];
+  }) => void;
 }
 
-export function MainTabScreen({ onSelectRestaurant, onAddRestaurant, onSignOut }: Props) {
+export function MainTabScreen({ onSelectRestaurant, onAddRestaurant, onSignOut, onNavigateToDishRecommendations }: Props) {
   // Create wrapper components to pass props
   const MyRestaurantsScreen = () => (
     <MyRestaurants onSelectRestaurant={onSelectRestaurant} onAddRestaurant={onAddRestaurant} />
   );
 
-  const AddRestaurantScreen = () => (
-    <RestaurantSearchScreen />
+  const ChooseDishScreen = () => (
+    <ChooseDishLanding 
+      onSelectRestaurant={onSelectRestaurant} 
+      onNavigateToRecommendations={onNavigateToDishRecommendations}
+    />
   );
 
   const ProfileScreenWrapper = () => (
@@ -59,12 +67,12 @@ export function MainTabScreen({ onSelectRestaurant, onAddRestaurant, onSignOut }
           }}
         />
         <Tab.Screen 
-          name="Add Restaurant" 
-          component={AddRestaurantScreen}
+          name="Choose Dish" 
+          component={ChooseDishScreen}
           options={{
-            tabBarLabel: 'Add Restaurant',
+            tabBarLabel: 'Choose Dish',
             tabBarIcon: ({ color }) => (
-              <Text style={{ color, fontSize: 16 }}>➕</Text>
+              <Text style={{ color, fontSize: 16 }}>🍴</Text>
             ),
           }}
         />

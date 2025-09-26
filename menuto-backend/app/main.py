@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import restaurants, dishes, reviews, recommendations, smart_recommendations, menu_api, menu_parser_api, menu_parsing, users, places
+from app.routers import restaurants, dishes, reviews, smart_recommendations, menu_api, menu_parser_api, menu_parsing, users, places
 from app.require_user import require_user
 from dotenv import load_dotenv
 
@@ -33,7 +33,6 @@ app.add_middleware(
 app.include_router(restaurants.router, prefix="/restaurants", tags=["restaurants"])
 app.include_router(dishes.router, prefix="/dishes", tags=["dishes"])
 app.include_router(reviews.router, prefix="/reviews", tags=["reviews"])
-app.include_router(recommendations.router, prefix="/recommendations", tags=["recommendations"])
 
 app.include_router(smart_recommendations.router, prefix="/smart-recommendations", tags=["smart-recommendations"])
 app.include_router(menu_api.router, prefix="/menu", tags=["menu-data"])

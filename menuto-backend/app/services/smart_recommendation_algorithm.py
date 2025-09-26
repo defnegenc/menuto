@@ -16,6 +16,7 @@ class SmartRecommendationAlgorithm:
         menu_items: List[Dict[str, Any]],
         user_favorite_dishes: List[Dict[str, str]],
         user_dietary_restrictions: List[str] = None,
+        context_weights: Dict[str, Any] = None,
         friend_selections: List[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
         """
@@ -47,6 +48,7 @@ class SmartRecommendationAlgorithm:
             score = self._calculate_item_score(
                 item, 
                 taste_predictions.get(item['name'], {}),
+                context_weights,
                 friend_selections
             )
             
@@ -58,8 +60,19 @@ class SmartRecommendationAlgorithm:
             
             scored_items.append(item)
         
-        # Sort by score (highest first)
-        scored_items.sort(key=lambda x: x['recommendation_score'], reverse=True)
+        # Sort by score (highest first), with some randomization for variety
+        import random
+        random.seed()  # Use current time as seed for variety
+        
+        # Add small random factor to break ties and provide variety
+        for item in scored_items:
+            item['_random_factor'] = random.uniform(0, 0.1)  # Small random boost
+        
+        scored_items.sort(key=lambda x: x['recommendation_score'] + x['_random_factor'], reverse=True)
+        
+        # Remove the temporary random factor
+        for item in scored_items:
+            del item['_random_factor']
         
         print(f"✅ Scored and ranked {len(scored_items)} items")
         return scored_items[:5]  # Return top 5 to reduce tokens
@@ -196,37 +209,98 @@ class SmartRecommendationAlgorithm:
         self, 
         item: Dict[str, Any], 
         taste_prediction: Dict[str, Any],
+        context_weights: Dict[str, Any] = None,
         friend_selections: List[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Calculate final recommendation score for an item"""
         
         breakdown = {}
         
-        # 1. Customer praise score (40% weight)
+        # Get context weights (default values if not provided)
+        hunger_level = context_weights.get('hungerLevel', 3) if context_weights else 3
+        preference_level = context_weights.get('preferenceLevel', 3) if context_weights else 3
+        selected_cravings = context_weights.get('selectedCravings', []) if context_weights else []
+        
+        # 1. Customer praise score (weighted by preference level)
+        # preference_level: 1=all me, 5=fan favorites
+        praise_weight = (preference_level - 1) / 4  # 0 to 1
+        personal_weight = 1 - praise_weight  # 1 to 0
+        
         praise_score = 0
         if item.get('customer_sentiment') == 'positive':
-            praise_score = 40
+            praise_score = 40 * praise_weight
         elif item.get('customer_sentiment') == 'mixed':
-            praise_score = 20
+            praise_score = 20 * praise_weight
+        else:
+            # Fallback: give base score based on category and description quality
+            base_score = 15 * praise_weight  # Base score for all items
+            if item.get('category') in ['main', 'starter']:
+                base_score += 5 * praise_weight  # Bonus for main courses and starters
+            if len(item.get('description', '')) > 20:  # More detailed descriptions
+                base_score += 5 * praise_weight
+            praise_score = base_score
         
         mention_frequency = item.get('mention_frequency', 1)
         if mention_frequency > 2:
-            praise_score += 10  # Bonus for frequently mentioned items
+            praise_score += 10 * praise_weight  # Bonus for frequently mentioned items
         
         breakdown['customer_praise'] = praise_score
         
-        # 2. Taste compatibility score (50% weight)  
+        # 2. Taste compatibility score (weighted by preference level)
         taste_score = 0
         taste_reasoning = "Based on restaurant popularity"
         
         if taste_prediction:
             pred_score = taste_prediction.get('prediction_score', 0)
-            taste_score = (pred_score / 100) * 50
+            taste_score = (pred_score / 100) * 50 * personal_weight
             taste_reasoning = taste_prediction.get('reasoning', taste_reasoning)
         
         breakdown['taste_compatibility'] = taste_score
         
-        # 3. Friend recommendation (10% weight - info only, small boost)
+        # Get item text for analysis
+        item_text = f"{item.get('name', '')} {item.get('description', '')}".lower()
+        
+        # 3. Craving match score (new!)
+        craving_score = 0
+        if selected_cravings:
+            craving_matches = 0
+            
+            for craving in selected_cravings:
+                if self._matches_craving(item_text, craving):
+                    craving_matches += 1
+            
+            if craving_matches > 0:
+                craving_score = (craving_matches / len(selected_cravings)) * 30
+                breakdown['craving_match'] = craving_score
+        
+        # 4. Hunger level adjustment
+        hunger_multiplier = 1.0
+        if hunger_level <= 2:  # Barely hungry
+            # Prefer lighter items
+            if any(word in item_text for word in ['light', 'salad', 'soup', 'small']):
+                hunger_multiplier = 1.2
+        elif hunger_level >= 4:  # Ravenous
+            # Prefer heavier, more filling items
+            if any(word in item_text for word in ['heavy', 'large', 'big', 'filling', 'rich']):
+                hunger_multiplier = 1.2
+        
+        # 5. Spice tolerance adjustment
+        spice_tolerance = context_weights.get('spiceTolerance', 3) if context_weights else 3
+        spice_score = 0
+        if spice_tolerance <= 2:  # Low spice tolerance
+            # Penalize spicy items
+            spicy_keywords = ['spicy', 'hot', 'chili', 'pepper', 'curry', 'piment', 'espelette', 'guindilla', 'jalapeño']
+            if any(keyword in item_text for keyword in spicy_keywords):
+                spice_score = -10  # Penalty for spicy items
+        elif spice_tolerance >= 4:  # High spice tolerance
+            # Bonus for spicy items
+            spicy_keywords = ['spicy', 'hot', 'chili', 'pepper', 'curry', 'piment', 'espelette', 'guindilla', 'jalapeño']
+            if any(keyword in item_text for keyword in spicy_keywords):
+                spice_score = 15  # Bonus for spicy items
+        
+        breakdown['spice_tolerance'] = spice_score
+        
+        # 6. Friend recommendation (10% weight - info only, small boost)
         friend_score = 0
         friend_info = None
         
@@ -239,15 +313,24 @@ class SmartRecommendationAlgorithm:
         
         breakdown['friend_boost'] = friend_score
         
-        # Calculate total
-        total_score = praise_score + taste_score + friend_score
+        # Calculate total with hunger multiplier
+        total_score = (praise_score + taste_score + craving_score + friend_score + spice_score) * hunger_multiplier
         
         # Generate reason
         reason_parts = []
         if praise_score >= 30:
             reason_parts.append("highly praised by customers")
+        elif praise_score >= 15:
+            reason_parts.append("popular choice at this restaurant")
         if taste_score >= 25:
             reason_parts.append(taste_reasoning.lower())
+        if craving_score >= 15:
+            craving_matches = []
+            for craving in selected_cravings:
+                if self._matches_craving(item_text, craving):
+                    craving_matches.append(craving)
+            if craving_matches:
+                reason_parts.append(f"matches your craving for {', '.join(craving_matches)}")
         if friend_info:
             reason_parts.append("recommended by a friend")
         
@@ -359,3 +442,19 @@ class SmartRecommendationAlgorithm:
             })
         
         return explanation
+    
+    def _matches_craving(self, item_text: str, craving: str) -> bool:
+        """Check if a dish matches a specific craving"""
+        craving_keywords = {
+            'light': ['light', 'fresh', 'salad', 'soup', 'steamed', 'grilled', 'green', 'vegetable'],
+            'fresh': ['fresh', 'raw', 'crudo', 'sashimi', 'ceviche', 'green', 'citrus', 'tartare'],
+            'carb-heavy': ['pasta', 'rice', 'bread', 'noodle', 'pizza', 'sandwich', 'wrap', 'potato', 'bomba', 'arroz', 'cake', 'pastel', 'meringue'],
+            'protein-heavy': ['chicken', 'beef', 'pork', 'fish', 'seafood', 'meat', 'protein', 'foie', 'anchovy', 'bonito', 'shrimp', 'octopus', 'pulpo'],
+            'spicy': ['spicy', 'hot', 'chili', 'pepper', 'curry', 'szechuan', 'jalapeño', 'piment', 'espelette', 'guindilla'],
+            'creamy': ['creamy', 'cream', 'cheese', 'butter', 'sauce', 'dip', 'mayo', 'pastela', 'anglaise', 'cultured', 'moscatel'],
+            'crispy': ['crispy', 'fried', 'crunchy', 'golden', 'battered', 'toasted', 'scorched'],
+            'comforting': ['comfort', 'warm', 'hearty', 'rich', 'home', 'traditional', 'basque', 'butter']
+        }
+        
+        keywords = craving_keywords.get(craving, [])
+        return any(keyword in item_text for keyword in keywords)

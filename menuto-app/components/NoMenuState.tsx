@@ -41,9 +41,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     paddingHorizontal: theme.spacing.xl,
-    paddingVertical: 60,
+    paddingVertical: 40,
   },
   title: {
     fontSize: theme.typography.sizes.xxl,
@@ -51,12 +51,12 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.md,
     fontFamily: theme.typography.fontFamilies.bold,
-    textAlign: 'left',
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: theme.typography.sizes.lg,
     color: theme.colors.text.secondary,
-    textAlign: 'left',
+    textAlign: 'center',
     lineHeight: 24,
     marginBottom: theme.spacing.xxxl,
     fontFamily: theme.typography.fontFamilies.regular,

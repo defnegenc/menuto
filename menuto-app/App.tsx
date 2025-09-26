@@ -14,6 +14,8 @@ import { MainTabScreen } from './screens/MainTabScreen';
 import { RecommendationsScreen } from './screens/RecommendationsScreen';
 import { DishDetailScreen } from './screens/DishDetailScreen';
 import { RestaurantDetailScreen } from './screens/RestaurantDetailScreen';
+import { DishRecommendations } from './screens/DishRecommendations';
+import { PostMealFeedback } from './screens/PostMealFeedback';
 // Onboarding screens
 import { TastePreferencesScreen, RestaurantSelectionScreen } from './screens/onboarding';
 
@@ -49,7 +51,7 @@ const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 console.log('🔑 Clerk publishable key:', publishableKey?.slice(0, 12) + '...');
 console.log('🌐 API URL:', process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8080');
 
-type AppScreen = 'signIn' | 'onboarding' | 'onboardingRestaurants' | 'mainTabs' | 'restaurantSearch' | 'restaurantDetail' | 'recommendations' | 'dishDetail';
+type AppScreen = 'signIn' | 'onboarding' | 'onboardingRestaurants' | 'mainTabs' | 'restaurantSearch' | 'restaurantDetail' | 'recommendations' | 'dishRecommendations' | 'dishDetail' | 'postMealFeedback';
 
 
 function AppContent() {
@@ -173,10 +175,14 @@ function AppContent() {
           }
         } catch (error) {
           console.log('❌ App.tsx: Failed to load user data:', error);
-          // Check if it's a 500 error (server issue) vs 404 (user doesn't exist)
+          // Check if it's a 500 error (server issue) vs 404 (user doesn't exist) vs 401 (auth issue)
           if (error instanceof Error && error.message.includes('500')) {
             console.log('⚠️ Server error (500) - backend may be down, staying on current screen');
             // Don't change screens on server errors, let user retry
+            return;
+          } else if (error instanceof Error && error.message.includes('401')) {
+            console.log('⚠️ Authentication error (401) - token may be invalid, staying on current screen');
+            // Don't change screens on auth errors, let user retry or re-authenticate
             return;
           }
           // If we can't load user data, assume it's a new user
@@ -221,6 +227,17 @@ function AppContent() {
   const [currentScreen, setCurrentScreen] = useState<AppScreen>(getInitialScreen());
   const [selectedDish, setSelectedDish] = useState<ParsedDish | null>(null);
   const [selectedRestaurant, setSelectedRestaurant] = useState<FavoriteRestaurant | null>(null);
+  const [userPreferences, setUserPreferences] = useState<{
+    hungerLevel: number;
+    preferenceLevel: number;
+    selectedCravings: string[];
+  } | null>(null);
+  const [selectedDishForFeedback, setSelectedDishForFeedback] = useState<{
+    id: number;
+    name: string;
+    description: string;
+    restaurant: string;
+  } | null>(null);
 
   const handleAuthComplete = () => {
     console.log('🔄 handleAuthComplete called, user state:', { 
@@ -317,9 +334,36 @@ function AppContent() {
     setCurrentScreen('recommendations');
   };
 
+  const handleNavigateToDishRecommendations = (restaurant: FavoriteRestaurant, preferences: {
+    hungerLevel: number;
+    preferenceLevel: number;
+    selectedCravings: string[];
+  }) => {
+    setSelectedRestaurant(restaurant);
+    setUserPreferences(preferences);
+    setCurrentScreen('dishRecommendations');
+  };
+
   const handleBackToRecommendations = () => {
     setSelectedDish(null);
     setCurrentScreen('restaurantDetail');
+  };
+
+  const handleDishRecommendationContinue = (dish: any) => {
+    // Set the selected dish for feedback
+    setSelectedDishForFeedback({
+      id: dish.id || Math.random(),
+      name: dish.name,
+      description: dish.description || '',
+      restaurant: selectedRestaurant?.name || 'Unknown Restaurant'
+    });
+    setCurrentScreen('postMealFeedback');
+  };
+
+  const handleFeedbackComplete = (rating: number, feedback: string) => {
+    console.log('Feedback submitted:', { rating, feedback });
+    // Navigate back to main tabs
+    setCurrentScreen('mainTabs');
   };
 
   const renderCurrentScreen = () => {
@@ -334,7 +378,12 @@ function AppContent() {
         return <RestaurantSelectionScreen onComplete={handleOnboardingRestaurantsComplete} />;
       
       case 'mainTabs':
-        return <MainTabScreen onSelectRestaurant={handleSelectRestaurant} onAddRestaurant={() => setCurrentScreen('restaurantSearch')} onSignOut={handleSignOut} />;
+        return <MainTabScreen 
+          onSelectRestaurant={handleSelectRestaurant} 
+          onAddRestaurant={() => setCurrentScreen('restaurantSearch')} 
+          onSignOut={handleSignOut}
+          onNavigateToDishRecommendations={handleNavigateToDishRecommendations}
+        />;
       
       case 'restaurantSearch':
         return <RestaurantSearchScreen onComplete={handleRestaurantSearchComplete} onBack={handleBackToMainTabs} />;
@@ -342,7 +391,7 @@ function AppContent() {
       case 'restaurantDetail':
         return selectedRestaurant ? (
           <RestaurantDetailScreen
-            key={`${selectedRestaurant.place_id}-${Date.now()}`} // Force fresh instance
+            key={selectedRestaurant.place_id} // Stable key based on restaurant ID only
             restaurant={selectedRestaurant}
             onBack={handleBackToMain}
             onGetRecommendations={handleGetRecommendations}
@@ -358,11 +407,30 @@ function AppContent() {
           />
         ) : null;
       
+       case 'dishRecommendations':
+         return selectedRestaurant && userPreferences ? (
+           <DishRecommendations
+             restaurant={selectedRestaurant}
+             userPreferences={userPreferences}
+             onContinue={handleDishRecommendationContinue}
+             onBack={handleBackToRestaurantDetail}
+           />
+         ) : null;
+      
       case 'dishDetail':
         return selectedDish ? (
           <DishDetailScreen
             dish={selectedDish}
             onBack={handleBackToRecommendations}
+          />
+        ) : null;
+      
+      case 'postMealFeedback':
+        return selectedDishForFeedback ? (
+          <PostMealFeedback
+            dish={selectedDishForFeedback}
+            onComplete={handleFeedbackComplete}
+            onBack={handleBackToMain}
           />
         ) : null;
       

@@ -23,7 +23,11 @@ async def generate_smart_recommendations(request: Request, db: Session = Depends
         restaurant_name = data.get('restaurant_name')  
         user_favorite_dishes = data.get('user_favorite_dishes', [])
         user_dietary_constraints = data.get('user_dietary_constraints', [])
+        context_weights = data.get('context_weights', {})
         friend_selections = data.get('friend_selections', [])
+        
+        # Extract spice tolerance from context weights
+        spice_tolerance = context_weights.get('spiceTolerance', 3)
         
         if not restaurant_place_id or not restaurant_name:
             raise HTTPException(status_code=400, detail="restaurant_place_id and restaurant_name are required")
@@ -33,7 +37,7 @@ async def generate_smart_recommendations(request: Request, db: Session = Depends
         
         # Get actual menu items from multiple sources (with caching)
         menu_service = MenuDataService()
-        menu_items = menu_service.get_restaurant_menu(restaurant_place_id, restaurant_name, db)
+        menu_items = menu_service.get_restaurant_menu(restaurant_place_id, restaurant_name)
         
         if not menu_items:
             print(f"⚠️  No menu items found for {restaurant_name}")
@@ -53,6 +57,7 @@ async def generate_smart_recommendations(request: Request, db: Session = Depends
             menu_items=menu_items,
             user_favorite_dishes=user_favorite_dishes,
             user_dietary_restrictions=user_dietary_constraints,
+            context_weights=context_weights,
             friend_selections=friend_selections
         )
         

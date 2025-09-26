@@ -31,9 +31,14 @@ interface Props {
   restaurant: FavoriteRestaurant;
   onBack: () => void;
   onGetRecommendations?: () => void;
+  onNavigateToDishRecommendations?: (restaurant: FavoriteRestaurant, preferences: {
+    hungerLevel: number;
+    preferenceLevel: number;
+    selectedCravings: string[];
+  }) => void;
 }
 
-export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendations }: Props) {
+export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendations, onNavigateToDishRecommendations }: Props) {
   const { user, setUser, userId } = useStore();
   const [menuDishes, setMenuDishes] = useState<ParsedDish[]>([]);
   const [isLoading, setIsLoading] = useState(false);
