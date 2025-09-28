@@ -12,7 +12,8 @@ export const theme = {
     // Text colors
     text: {
       primary: '#2C0703',      // Dark text (using primary color)
-      secondary: '#7F8C8D',    // Gray text
+      secondary: '#7F8C8D', 
+      darkGrey: '#4A4A4A',   // Gray text
       light: '#FFFFFF',        // White text
       muted: '#BDC3C7',        // Very light gray text
     },

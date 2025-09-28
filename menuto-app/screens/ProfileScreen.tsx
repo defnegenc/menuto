@@ -16,6 +16,7 @@ import { theme } from '../theme';
 import { FavoriteRestaurant } from '../types';
 import { SearchBar } from '../components/SearchBar';
 import { Chip } from '../components/Chip';
+import { UnifiedHeader } from '../components/UnifiedHeader';
 
 const POPULAR_CUISINES = [
   'Italian', 'Japanese', 'Mexican', 'Chinese', 'Indian', 
@@ -472,14 +473,15 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.content}>
-        <ScrollView 
-          style={styles.scrollView} 
-          contentContainerStyle={[styles.scrollViewContent, { paddingBottom: insets.bottom + 8 }]}
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-        >
+    <View style={styles.container}>
+      <UnifiedHeader title="Profile" />
+      
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={[styles.scrollViewContent, { paddingBottom: insets.bottom + 8 }]}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
         {/* Header with Profile Pic and Name */}
         <View style={styles.header}>
           <View style={styles.profilePicContainer}>
@@ -500,9 +502,12 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
           <Text style={styles.userHandle}>@{user?.username || 'unknown'}</Text>
         </View>
 
+        {/* Separator */}
+        <View style={styles.separator} />
+
         {/* Preferences Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, theme.typography.h1.fancy]}>Your Preferences</Text>
+          <Text style={styles.sectionTitle}>Your Preferences</Text>
           
           {/* Cuisine Preferences */}
           <View style={styles.preferenceGroup}>
@@ -896,8 +901,7 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
           </View>
         )}
         </ScrollView>
-      </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -905,9 +909,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
-  },
-  content: {
-    flex: 1,
   },
   scrollView: {
     flex: 1,
@@ -917,38 +918,45 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 20,
+    paddingVertical: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    marginHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    ...theme.shadows.sm,
   },
   profilePicContainer: {
-    marginBottom: 16,
+    marginBottom: theme.spacing.md,
   },
   profilePic: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 3,
+    borderColor: theme.colors.background,
   },
   profilePicText: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
   profilePhoto: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
   },
   cameraIconContainer: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: theme.colors.primary,
-    borderRadius: 12,
-    width: 24,
-    height: 24,
+    bottom: -2,
+    right: -2,
+    backgroundColor: theme.colors.secondary,
+    borderRadius: 10,
+    width: 22,
+    height: 22,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -958,26 +966,35 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   userName: {
-    fontSize: 24,
-    fontWeight: '600',
+    fontSize: theme.typography.sizes.xl,
+    fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.primary,
+    marginBottom: theme.spacing.xs,
+    fontFamily: theme.typography.fontFamilies.semibold,
   },
   userHandle: {
-    fontSize: 16,
-    fontWeight: '400',
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.weights.normal,
     color: theme.colors.text.secondary,
-    marginTop: 4,
     fontFamily: theme.typography.fontFamilies.regular,
   },
+  separator: {
+    height: 1,
+    backgroundColor: theme.colors.border,
+    marginHorizontal: theme.spacing.lg,
+    marginVertical: theme.spacing.lg,
+  },
   section: {
-    paddingHorizontal: 20,
+    paddingHorizontal: theme.spacing.lg,
     marginBottom: 0,
+    marginTop: theme.spacing.md,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: theme.typography.sizes.xxl,
+    fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.primary,
-    marginBottom: 16,
+    marginBottom: theme.spacing.md,
+    fontFamily: theme.typography.fontFamilies.semibold,
   },
   preferenceGroup: {
     marginBottom: 32,
@@ -989,9 +1006,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   preferenceLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
-    color: theme.colors.text.primary,
+    color: theme.colors.text.darkGrey,
   },
   editButton: {
     fontSize: 14,
