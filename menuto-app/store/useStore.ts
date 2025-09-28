@@ -39,11 +39,33 @@ export const useStore = create<AppState>((set, get) => ({
   
   // Actions
   setUser: (user: UserPreferences | null, userId: string) => {
+    console.log('💾 setUser called:', {
+      userId,
+      hasUser: !!user,
+      hasRestaurants: !!user?.favorite_restaurants?.length,
+      hasDishes: !!user?.favorite_dishes?.length,
+      restaurantCount: user?.favorite_restaurants?.length || 0,
+      dishCount: user?.favorite_dishes?.length || 0
+    });
+    
     // Always save to local state first - merge with existing user data
-    set((state) => ({
-      user: user ? { ...(state.user ?? {}), ...user } : null,
-      userId: userId || null
-    }));
+    set((state) => {
+      const newState = {
+        user: user ? { ...(state.user ?? {}), ...user } : null,
+        userId: userId || null
+      };
+      
+      console.log('💾 setUser state update:', {
+        previousUser: !!state.user,
+        newUser: !!newState.user,
+        previousRestaurants: state.user?.favorite_restaurants?.length || 0,
+        newRestaurants: newState.user?.favorite_restaurants?.length || 0,
+        previousDishes: state.user?.favorite_dishes?.length || 0,
+        newDishes: newState.user?.favorite_dishes?.length || 0
+      });
+      
+      return newState;
+    });
     
     if (user && userId && userId !== '' && userId !== 'SIGNED_OUT') {
       console.log('💾 User saved to local state:', { userId, hasRestaurants: !!user.favorite_restaurants?.length });

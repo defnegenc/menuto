@@ -10,6 +10,7 @@ import {
   TextInput,
   Modal,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store/useStore';
 import { api } from '../services/api';
@@ -20,6 +21,9 @@ import { SearchBar } from '../components/SearchBar';
 import { SearchRestaurantCard } from '../components/SearchRestaurantCard';
 import { SearchRestaurantSelected } from '../components/SearchRestaurantSelected';
 import { NoMenuState } from '../components/NoMenuState';
+import { DishRecommendations } from './DishRecommendations';
+import { PostMealFeedback } from './PostMealFeedback';
+import { MultiDishScoring } from './MultiDishScoring';
 
 interface Props {
   onSelectRestaurant?: (restaurant: FavoriteRestaurant) => void;
@@ -45,6 +49,13 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
   
   // Question states
   const [hungerLevel, setHungerLevel] = useState(3);
+  
+  // Feedback flow states
+  const [showDishRecommendations, setShowDishRecommendations] = useState(false);
+  const [showMultiDishScoring, setShowMultiDishScoring] = useState(false);
+  const [showPostMealFeedback, setShowPostMealFeedback] = useState(false);
+  const [selectedDishForFeedback, setSelectedDishForFeedback] = useState<any>(null);
+  const [selectedDishesForScoring, setSelectedDishesForScoring] = useState<any[]>([]);
   const [preferenceLevel, setPreferenceLevel] = useState(3);
   const [selectedCravings, setSelectedCravings] = useState<string[]>([]);
   
@@ -188,12 +199,117 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
   };
 
   const handleAddPhoto = async () => {
-    // For now, show an alert that this feature needs image picker
+    if (!selectedRestaurant) {
+      Alert.alert('Error', 'No restaurant selected');
+      return;
+    }
+
     Alert.alert(
-      'Photo Upload',
-      'Photo menu upload is coming soon! For now, you can paste the menu text.',
-      [{ text: 'OK' }]
+      'Upload Menu Photo',
+      'Choose how you want to add your menu photo:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Take Photo', 
+          onPress: async () => {
+            try {
+              const { status } = await ImagePicker.requestCameraPermissionsAsync();
+              
+              if (status !== 'granted') {
+                Alert.alert('Permission Required', 'Sorry, we need camera permissions to take menu photos.');
+                return;
+              }
+
+              const result = await ImagePicker.launchCameraAsync({
+                allowsEditing: false,
+                quality: 0.8,
+              });
+
+              if (!result.canceled && result.assets[0]) {
+                const imageUri = result.assets[0].uri;
+                await parseMenuFromScreenshot(imageUri);
+              }
+            } catch (error) {
+              console.error('Camera error:', error);
+              Alert.alert('Error', 'Failed to open camera. Please try again.');
+            }
+          }
+        },
+        { 
+          text: 'Upload from Gallery', 
+          onPress: async () => {
+            try {
+              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              
+              if (status !== 'granted') {
+                Alert.alert('Permission Required', 'Sorry, we need gallery permissions to upload menu photos.');
+                return;
+              }
+
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: false,
+                quality: 0.8,
+              });
+
+              if (!result.canceled && result.assets[0]) {
+                const imageUri = result.assets[0].uri;
+                await parseMenuFromScreenshot(imageUri);
+              }
+            } catch (error) {
+              console.error('Gallery error:', error);
+              Alert.alert('Error', 'Failed to open gallery. Please try again.');
+            }
+          }
+        }
+      ]
     );
+  };
+
+  const parseMenuFromScreenshot = async (imageUri: string) => {
+    if (!selectedRestaurant) return;
+
+    setIsParsing(true);
+    try {
+      console.log('📸 Parsing menu screenshot for:', selectedRestaurant.name);
+      console.log('📸 Image URI:', imageUri);
+      
+      const result = await api.parseMenuFromScreenshot(
+        imageUri,
+        selectedRestaurant.name,
+        selectedRestaurant.vicinity || ''
+      );
+      
+      console.log('✅ Menu parsing result:', JSON.stringify(result, null, 2));
+      
+      if (result && result.dishes && result.dishes.length > 0) {
+        Alert.alert(
+          'Success!', 
+          `Menu parsed successfully! Found ${result.dishes.length} dishes.`,
+          [{ text: 'OK' }]
+        );
+        
+        // Refresh the menu after parsing
+        await handleRestaurantSelection(selectedRestaurant);
+      } else {
+        Alert.alert(
+          'No Dishes Found', 
+          'The image was processed but no menu items were found. Please try a clearer image or paste the menu text instead.',
+          [{ text: 'OK' }]
+        );
+      }
+      
+    } catch (error) {
+      console.error('❌ Error parsing menu screenshot:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert(
+        'Error', 
+        `Failed to parse menu: ${errorMessage}`,
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsParsing(false);
+    }
   };
 
   const cravingOptions = [
@@ -221,17 +337,63 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
       restaurant: selectedRestaurant
     });
 
-    // Navigate to recommendations screen
-    if (onNavigateToRecommendations) {
-      onNavigateToRecommendations(selectedRestaurant, {
-        hungerLevel,
-        preferenceLevel,
-        selectedCravings
-      });
-    } else if (onSelectRestaurant) {
-      // Fallback to old behavior
-      onSelectRestaurant(selectedRestaurant);
-    }
+    // Show dish recommendations within this component
+    setShowDishRecommendations(true);
+  };
+
+  // Feedback flow handlers
+  const handleDishRecommendationContinue = (dishes: any[]) => {
+    console.log('Dishes selected for scoring:', dishes);
+    setSelectedDishesForScoring(dishes);
+    setShowDishRecommendations(false);
+    setShowMultiDishScoring(true);
+  };
+
+  const handleMultiDishScoringComplete = (dishes: any[], addToFavorites: boolean[]) => {
+    console.log('Multi-dish scoring completed:', { dishes, addToFavorites });
+    
+    // Complete the flow - no need for additional feedback screen
+    setShowMultiDishScoring(false);
+    setSelectedDishesForScoring([]);
+    
+    // Show success message
+    Alert.alert(
+      'Feedback Submitted!',
+      'Thank you for your feedback. Your preferences have been saved.',
+      [{ text: 'OK' }]
+    );
+  };
+
+  const handleFeedbackComplete = (rating: number, feedback: string) => {
+    console.log('Feedback completed:', { rating, feedback });
+    setShowPostMealFeedback(false);
+    setSelectedDishForFeedback(null);
+    // Stay in the same component - user can continue using the app
+  };
+
+  const handleBackToRecommendations = () => {
+    setShowPostMealFeedback(false);
+    setShowMultiDishScoring(false);
+    setShowDishRecommendations(true);
+  };
+
+  const handleBackToQuestions = () => {
+    setShowDishRecommendations(false);
+    setShowQuestions(true);
+  };
+
+  const handleBackToRestaurantSelection = () => {
+    setShowDishRecommendations(false);
+    setShowQuestions(false);
+    setSelectedRestaurant(null);
+    setMenuDishes([]);
+    setSearchText('');
+    setSearchResults([]);
+  };
+
+  const handleBackToChooseDishLanding = () => {
+    setShowDishRecommendations(false);
+    // Keep the restaurant selected and questions answered, just go back to the main landing view
   };
 
   const renderRestaurantCard = (restaurant: any) => {
@@ -255,6 +417,59 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
       />
     );
   };
+
+  // Show dish recommendations screen
+  if (showDishRecommendations && selectedRestaurant) {
+    return (
+      <DishRecommendations
+        restaurant={selectedRestaurant}
+        userPreferences={{
+          hungerLevel,
+          preferenceLevel,
+          selectedCravings
+        }}
+        onContinue={handleDishRecommendationContinue}
+        onBack={handleBackToChooseDishLanding}
+      />
+    );
+  }
+
+  // Show multi-dish scoring screen
+  if (showMultiDishScoring && selectedRestaurant && selectedDishesForScoring.length > 0) {
+    return (
+      <MultiDishScoring
+        restaurant={selectedRestaurant}
+        selectedDishes={selectedDishesForScoring}
+        onComplete={handleMultiDishScoringComplete}
+        onBack={handleBackToRecommendations}
+      />
+    );
+  }
+
+  // Show post meal feedback screen
+      if (showPostMealFeedback && selectedDishForFeedback) {
+        return (
+          <PostMealFeedback
+            dish={selectedDishForFeedback}
+            onComplete={handleFeedbackComplete}
+            onBack={handleBackToRecommendations}
+          />
+        );
+      }
+
+      // Show parsing loading state
+      if (isParsing) {
+        return (
+          <View style={styles.container}>
+            <UnifiedHeader title="Choose Dish" />
+            <View style={[styles.parsingContainer, { paddingTop: insets.top }]}>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <Text style={styles.parsingText}>Parsing your menu...</Text>
+              <Text style={styles.parsingSubtext}>This may take a few moments</Text>
+            </View>
+          </View>
+        );
+      }
 
   return (
     <View style={styles.container}>
@@ -739,5 +954,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     textAlignVertical: 'top',
+  },
+  parsingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.xl,
+  },
+  parsingText: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text.primary,
+    marginTop: theme.spacing.lg,
+    textAlign: 'center',
+  },
+  parsingSubtext: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.secondary,
+    marginTop: theme.spacing.sm,
+    textAlign: 'center',
   },
 });

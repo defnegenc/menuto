@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 import { UnifiedHeader } from '../components/UnifiedHeader';
+import { SearchBar } from '../components/SearchBar';
+import { MenuItemCard } from '../components/MenuItemCard';
 import { useStore } from '../store/useStore';
+import { api } from '../services/api';
+import { ParsedDish } from '../types';
 
 interface PostMealFeedbackProps {
   dish: {
@@ -11,6 +15,7 @@ interface PostMealFeedbackProps {
     name: string;
     description: string;
     restaurant: string;
+    restaurantPlaceId?: string;
   };
   onComplete: (rating: number, feedback: string) => void;
   onBack: () => void;
@@ -25,44 +30,81 @@ export const PostMealFeedback: React.FC<PostMealFeedbackProps> = ({
   const [rating, setRating] = useState<number>(0);
   const [feedback, setFeedback] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAddedToFavorites, setIsAddedToFavorites] = useState(false);
+  
+  // Search functionality states
+  const [searchText, setSearchText] = useState<string>('');
+  const [menuDishes, setMenuDishes] = useState<ParsedDish[]>([]);
+  const [filteredDishes, setFilteredDishes] = useState<ParsedDish[]>([]);
+  const [isLoadingMenu, setIsLoadingMenu] = useState<boolean>(false);
+  const [showSearchResults, setShowSearchResults] = useState<boolean>(false);
+  const [selectedDish, setSelectedDish] = useState(dish);
 
-  const handleAddToFavorites = () => {
-    if (!user || !userId) {
-      Alert.alert('Error', 'User not logged in');
+  // Load restaurant menu when component mounts
+  useEffect(() => {
+    if (dish.restaurantPlaceId) {
+      loadRestaurantMenu();
+    }
+  }, [dish.restaurantPlaceId]);
+
+  const loadRestaurantMenu = async () => {
+    if (!dish.restaurantPlaceId) {
+      console.log('❌ No restaurantPlaceId provided for menu loading');
       return;
     }
-
-    // Check if already in favorites
-    const existingFavorites = user.favorite_dishes || [];
-    const isAlreadyFavorite = existingFavorites.some(fav => 
-      fav.dish_name === dish.name && 
-      fav.restaurant_id === dish.restaurant
-    );
-
-    if (isAlreadyFavorite) {
-      Alert.alert('Already in Favorites', 'This dish is already in your favorites!');
-      return;
+    
+    console.log(`🔄 Loading menu for ${dish.restaurant} (${dish.restaurantPlaceId})`);
+    setIsLoadingMenu(true);
+    try {
+      const response = await api.getRestaurantMenu(dish.restaurant, dish.restaurantPlaceId);
+      console.log(`📋 Menu response:`, response);
+      
+      if (response.dishes && Array.isArray(response.dishes)) {
+        console.log(`✅ Loaded ${response.dishes.length} dishes:`, response.dishes.map((d: any) => d.name));
+        setMenuDishes(response.dishes);
+      } else if (response.success === false) {
+        console.log('❌ No menu found or API error:', response.message);
+        setMenuDishes([]);
+      } else {
+        console.log('❌ Unexpected response format:', response);
+        setMenuDishes([]);
+      }
+    } catch (error) {
+      console.error(`❌ Error loading menu for ${dish.restaurant}:`, error);
+      setMenuDishes([]);
+    } finally {
+      setIsLoadingMenu(false);
     }
+  };
 
-    // Add to favorites
-    const newFavorite = {
-      dish_name: dish.name,
-      restaurant_id: dish.restaurant,
-      rating: rating || 5 // Use current rating or default to 5
-    };
+  const handleSearchMenu = (text: string) => {
+    console.log(`🔍 Search text: "${text}", Menu dishes count: ${menuDishes.length}`);
+    setSearchText(text);
+    if (text.trim()) {
+      setShowSearchResults(true);
+      const filtered = menuDishes.filter(dish => 
+        dish.name.toLowerCase().includes(text.toLowerCase()) ||
+        (dish.description && dish.description.toLowerCase().includes(text.toLowerCase()))
+      );
+      console.log(`🔍 Filtered dishes:`, filtered.map(d => d.name));
+      setFilteredDishes(filtered);
+    } else {
+      setShowSearchResults(false);
+      setFilteredDishes([]);
+    }
+  };
 
-    const updatedFavorites = [...existingFavorites, newFavorite];
-    const updatedUser = { ...user, favorite_dishes: updatedFavorites };
-    
-    setUser(updatedUser, userId);
-    setIsAddedToFavorites(true);
-    
-    Alert.alert(
-      'Added to Favorites!', 
-      `${dish.name} has been added to your favorite dishes.`,
-      [{ text: 'Great!' }]
-    );
+  const handleDishSelect = (selectedDishItem: ParsedDish) => {
+    setSelectedDish({
+      id: typeof selectedDishItem.id === 'number' ? selectedDishItem.id : Math.random(),
+      name: selectedDishItem.name,
+      description: selectedDishItem.description || '',
+      restaurant: dish.restaurant,
+      restaurantPlaceId: dish.restaurantPlaceId
+    });
+    setSearchText('');
+    setShowSearchResults(false);
+    setRating(0); // Reset rating when selecting a new dish
+    setFeedback(''); // Reset feedback when selecting a new dish
   };
 
   const handleSubmit = async () => {
@@ -71,6 +113,99 @@ export const PostMealFeedback: React.FC<PostMealFeedbackProps> = ({
       return;
     }
 
+    // Ask if user wants to add dish and restaurant to favorites
+    Alert.alert(
+      'Add to Favorites?',
+      `Would you like to add "${selectedDish.name}" and "${selectedDish.restaurant}" to your favorites?`,
+      [
+        {
+          text: 'No Thanks',
+          style: 'cancel',
+          onPress: () => {
+            // Just complete the feedback without adding to favorites
+            submitFeedback();
+          }
+        },
+        {
+          text: 'Yes, Add Both!',
+          onPress: () => {
+            // Add both dish and restaurant to favorites, then complete feedback
+            addDishAndRestaurantToFavorites();
+          }
+        }
+      ]
+    );
+  };
+
+  const addDishAndRestaurantToFavorites = async () => {
+    if (!user || !userId) {
+      submitFeedback();
+      return;
+    }
+
+    try {
+      // Add dish to favorites
+      const existingFavorites = user.favorite_dishes || [];
+      const isAlreadyFavorite = existingFavorites.some(fav => 
+        fav.dish_name === selectedDish.name && 
+        fav.restaurant_id === selectedDish.restaurant
+      );
+
+      if (!isAlreadyFavorite) {
+        const newFavorite = {
+          dish_name: selectedDish.name,
+          restaurant_id: selectedDish.restaurantPlaceId || selectedDish.restaurant,
+          rating: rating
+        };
+
+        const updatedFavorites = [...existingFavorites, newFavorite];
+        const updatedUser = { ...user, favorite_dishes: updatedFavorites };
+        
+        console.log('🍽️ Adding dish and restaurant to favorites:', {
+          dishName: selectedDish.name,
+          restaurant: selectedDish.restaurant,
+          rating: rating
+        });
+        
+        setUser(updatedUser, userId);
+      }
+
+      // Add restaurant to favorites (if not already there)
+      const existingRestaurants = user.favorite_restaurants || [];
+      const isRestaurantAlreadyFavorite = existingRestaurants.some(rest => 
+        rest.name === selectedDish.restaurant
+      );
+
+      if (!isRestaurantAlreadyFavorite) {
+        const newRestaurant = {
+          place_id: selectedDish.restaurantPlaceId || `temp_${selectedDish.restaurant.replace(/\s+/g, '_').toLowerCase()}`,
+          name: selectedDish.restaurant,
+          vicinity: 'Location not available',
+          cuisine_type: 'Restaurant'
+        };
+
+        const updatedRestaurants = [...existingRestaurants, newRestaurant];
+        const finalUpdatedUser = { ...user, favorite_dishes: user.favorite_dishes || [], favorite_restaurants: updatedRestaurants };
+        
+        console.log('🍽️ Adding restaurant to favorites:', {
+          restaurantName: selectedDish.restaurant,
+          placeId: newRestaurant.place_id
+        });
+        
+        setUser(finalUpdatedUser, userId);
+      }
+
+      // Complete the feedback
+      submitFeedback();
+      
+    } catch (error) {
+      console.error('Error adding to favorites:', error);
+      // Still complete feedback even if favorites addition fails
+      submitFeedback();
+    }
+  };
+
+  const submitFeedback = async () => {
     setIsSubmitting(true);
     try {
       await onComplete(rating, feedback);
@@ -116,13 +251,17 @@ export const PostMealFeedback: React.FC<PostMealFeedbackProps> = ({
 
   return (
     <View style={styles.container}>
-      <UnifiedHeader title="How was it?" />
+      <UnifiedHeader 
+        title="Tell us how it was" 
+        showBackButton={true}
+        onBack={onBack}
+      />
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.dishInfo}>
-          <Text style={styles.dishName}>{dish.name}</Text>
-          <Text style={styles.dishDescription}>{dish.description}</Text>
-          <Text style={styles.restaurantName}>at {dish.restaurant}</Text>
+          <Text style={styles.dishName}>{selectedDish.name}</Text>
+          <Text style={styles.dishDescription}>{selectedDish.description}</Text>
+          <Text style={styles.restaurantName}>at {selectedDish.restaurant}</Text>
         </View>
 
         <View style={styles.ratingSection}>
@@ -152,30 +291,40 @@ export const PostMealFeedback: React.FC<PostMealFeedbackProps> = ({
           <Text style={styles.helpText}>
             If you ordered a different dish, you can search for it and rate that instead.
           </Text>
+          
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <SearchBar
+              value={searchText}
+              onChangeText={handleSearchMenu}
+              placeholder="Search for a different dish..."
+            />
+          </View>
         </View>
 
+        {/* Search Results */}
+        {showSearchResults && (
+          <View style={styles.searchResultsSection}>
+            <Text style={styles.searchResultsTitle}>Search Results</Text>
+            {isLoadingMenu ? (
+              <Text style={styles.loadingText}>Loading menu...</Text>
+            ) : filteredDishes.length > 0 ? (
+              filteredDishes.map((dishItem, index) => (
+                <View key={dishItem.id || `search-dish-${index}`} style={styles.searchResultItem}>
+                  <MenuItemCard
+                    dish={dishItem}
+                    onPress={() => handleDishSelect(dishItem)}
+                    isSelected={selectedDish.name === dishItem.name}
+                  />
+                </View>
+              ))
+            ) : (
+              <Text style={styles.noResultsText}>No dishes found matching "{searchText}"</Text>
+            )}
+          </View>
+        )}
+
         {/* Add to Favorites Section */}
-        <View style={styles.favoritesSection}>
-          <Text style={styles.sectionTitle}>Save this dish</Text>
-          <Text style={styles.sectionSubtitle}>
-            Add this dish to your favorites to get better recommendations in the future.
-          </Text>
-          <TouchableOpacity 
-            style={[
-              styles.favoritesButton,
-              isAddedToFavorites && styles.favoritesButtonAdded
-            ]}
-            onPress={handleAddToFavorites}
-            disabled={isAddedToFavorites}
-          >
-            <Text style={[
-              styles.favoritesButtonText,
-              isAddedToFavorites && styles.favoritesButtonTextAdded
-            ]}>
-              {isAddedToFavorites ? '✓ Added to Favorites' : '+ Add to Favorites'}
-            </Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
 
       {/* Submit Button */}
@@ -301,6 +450,40 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.text.secondary,
     lineHeight: 20,
+    marginBottom: theme.spacing.md,
+  },
+  searchContainer: {
+    marginTop: theme.spacing.md,
+  },
+  searchResultsSection: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
+    ...theme.shadows.sm,
+  },
+  searchResultsTitle: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.md,
+  },
+  searchResultItem: {
+    marginBottom: theme.spacing.sm,
+  },
+  loadingText: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    padding: theme.spacing.lg,
+  },
+  noResultsText: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+    padding: theme.spacing.lg,
   },
   submitSection: {
     padding: theme.spacing.lg,
@@ -326,30 +509,6 @@ const styles = StyleSheet.create({
   },
   submitButtonTextDisabled: {
     color: theme.colors.text.secondary,
-  },
-  favoritesSection: {
-    marginBottom: theme.spacing.xl,
-  },
-  favoritesButton: {
-    backgroundColor: theme.colors.secondary,
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: theme.colors.secondary,
-  },
-  favoritesButtonAdded: {
-    backgroundColor: theme.colors.success,
-    borderColor: theme.colors.success,
-  },
-  favoritesButtonText: {
-    color: '#FFFFFF',
-    fontSize: theme.typography.sizes.md,
-    fontWeight: '600',
-  },
-  favoritesButtonTextAdded: {
-    color: '#FFFFFF',
   },
 });
 

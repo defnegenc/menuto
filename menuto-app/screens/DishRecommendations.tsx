@@ -5,6 +5,8 @@ import { theme } from '../theme';
 import { UnifiedHeader } from '../components/UnifiedHeader';
 import { LoadingScreen } from '../components/LoadingScreen';
 import { MenuItemCard } from '../components/MenuItemCard';
+import { SelectionDishCard } from '../components/SelectionDishCard';
+import { SearchBar } from '../components/SearchBar';
 import { api } from '../services/api';
 import { useStore } from '../store/useStore';
 
@@ -19,7 +21,7 @@ interface DishRecommendationsProps {
     preferenceLevel: number;
     selectedCravings: string[];
   };
-  onContinue: (dish: Recommendation) => void;
+  onContinue: (dishes: Recommendation[]) => void;
   onBack: () => void;
 }
 
@@ -54,11 +56,27 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [selectedDish, setSelectedDish] = useState<Recommendation | null>(null);
-  const [isDishSelected, setIsDishSelected] = useState(false);
+  const [chosenDish, setChosenDish] = useState<Recommendation | null>(null);
+  const [selectedDishes, setSelectedDishes] = useState<Recommendation[]>([]);
+  const [searchText, setSearchText] = useState('');
+  const [filteredRecommendations, setFilteredRecommendations] = useState<Recommendation[]>([]);
 
   useEffect(() => {
     loadRecommendations();
   }, []);
+
+  // Filter recommendations based on search text
+  useEffect(() => {
+    if (!searchText.trim()) {
+      setFilteredRecommendations(recommendations);
+    } else {
+      const filtered = recommendations.filter(dish =>
+        dish.name.toLowerCase().includes(searchText.toLowerCase()) ||
+        (dish.description && dish.description.toLowerCase().includes(searchText.toLowerCase()))
+      );
+      setFilteredRecommendations(filtered);
+    }
+  }, [searchText, recommendations]);
 
   const loadRecommendations = async () => {
     try {
@@ -84,11 +102,15 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
       );
 
       console.log('✅ Smart recommendations received:', response);
-      setRecommendations(response.recommendations || []);
+      const newRecommendations = response.recommendations || [];
+      setRecommendations(newRecommendations);
+      setFilteredRecommendations(newRecommendations);
       
-      // Auto-select the top recommendation
-      if (response.recommendations && response.recommendations.length > 0) {
-        setSelectedDish(response.recommendations[0]);
+      // Auto-select the top recommendation (skip dishes user has already had)
+      if (newRecommendations.length > 0) {
+        const topRecommendation = getTopRecommendation(newRecommendations);
+        setSelectedDish(topRecommendation);
+        console.log('🎯 Selected top recommendation:', topRecommendation.name, 'User had before:', hasUserHadDish(topRecommendation.name));
       }
     } catch (error) {
       console.error('❌ Failed to get recommendations:', error);
@@ -102,63 +124,101 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
     }
   };
 
-  const handleGetNewRecommendation = async () => {
-    try {
-      setIsLoading(true);
-      console.log('🔄 Getting new recommendations...');
-      
-      // Get user's dietary preferences and spice tolerance
-      const userDietaryConstraints = user?.dietary_restrictions || [];
-      const userFavoriteDishes = user?.favorite_dishes || [];
-      
-      const response = await api.getSmartRecommendationsNew(
-        restaurant.place_id,
-        restaurant.name,
-        userFavoriteDishes, // Use actual user favorites
-        userDietaryConstraints, // Use actual dietary constraints
-        {
-          hungerLevel: userPreferences.hungerLevel,
-          preferenceLevel: userPreferences.preferenceLevel,
-          selectedCravings: userPreferences.selectedCravings,
-          spiceTolerance: user?.spice_tolerance || 3
-        },
-        [] // friendSelections - empty for now
-      );
-
-      console.log('✅ New recommendations received:', response);
-      setRecommendations(response.recommendations || []);
-      
-      // Auto-select the top recommendation
-      if (response.recommendations && response.recommendations.length > 0) {
-        setSelectedDish(response.recommendations[0]);
-      }
-    } catch (error) {
-      console.error('❌ Failed to get new recommendations:', error);
+  const handleGetNewRecommendation = () => {
+    console.log('🔄 Getting next recommendation from existing list...');
+    
+    // Find the next untried dish from the current recommendations
+    const currentIndex = recommendations.findIndex(rec => rec.id === selectedDish?.id);
+    const remainingRecommendations = recommendations.slice(currentIndex + 1);
+    
+    const nextUntriedDish = getTopRecommendation(remainingRecommendations);
+    
+    if (nextUntriedDish) {
+      setSelectedDish(nextUntriedDish);
+      setChosenDish(null); // Reset chosen dish
+      console.log('🎯 Selected next recommendation:', nextUntriedDish.name, 'User had before:', hasUserHadDish(nextUntriedDish.name));
+    } else {
+      // If no more untried dishes, show alert
       Alert.alert(
-        'Error',
-        'Failed to get new recommendations. Please try again.',
+        'All Done!',
+        'You\'ve tried all the recommended dishes! Try adjusting your preferences or check back later for new menu items.',
         [{ text: 'OK' }]
       );
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleDishSelect = (dish: Recommendation) => {
-    setSelectedDish(dish);
-    setIsDishSelected(false); // Reset selection state when choosing a different dish
+    setSelectedDishes(prev => {
+      const isSelected = prev.some(d => d.id === dish.id);
+      if (isSelected) {
+        return prev.filter(d => d.id !== dish.id);
+      } else {
+        return [...prev, dish];
+      }
+    });
   };
 
   const handleSelectDish = () => {
     if (selectedDish) {
-      setIsDishSelected(true);
+      handleDishSelect(selectedDish);
     }
+  };
+
+  const formatRecommendationReason = (reason: string) => {
+    // Split by "|" separator (backend now sends 3 bullets separated by |)
+    const reasons = reason
+      .split('|')
+      .map(r => r.trim())
+      .filter(r => r.length > 0)
+      .slice(0, 3) // Ensure exactly 3 reasons
+      .map(r => {
+        // Clean up the text
+        let cleaned = r.trim();
+        
+        // Remove "Recommended because it's" prefix if present
+        if (cleaned.startsWith("Recommended because it's ")) {
+          cleaned = cleaned.substring(25);
+        }
+        
+        // Capitalize first letter
+        return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+      });
+    
+    // Ensure we always have 3 bullets
+    while (reasons.length < 3) {
+      reasons.push("Matches your preferences");
+    }
+    
+    return reasons;
+  };
+
+  const hasUserHadDish = (dishName: string) => {
+    if (!user?.favorite_dishes) return false;
+    
+    return user.favorite_dishes.some(favorite => 
+      favorite.dish_name.toLowerCase() === dishName.toLowerCase()
+    );
+  };
+
+  const getTopRecommendation = (recommendations: Recommendation[]) => {
+    // Find first recommendation that user hasn't already had
+    for (const recommendation of recommendations) {
+      if (!hasUserHadDish(recommendation.name)) {
+        return recommendation;
+      }
+    }
+    // If all dishes have been had, return the first one
+    return recommendations[0];
   };
 
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <UnifiedHeader title="Choose Dish" />
+        <UnifiedHeader 
+          title="Choose Dish" 
+          showBackButton={true}
+          onBack={onBack}
+        />
         <LoadingScreen 
           message="Loading recommendations"
           subMessage="Cooking up something good..."
@@ -169,7 +229,20 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
 
   return (
     <View style={styles.container}>
-      <UnifiedHeader title="Choose Dish" />
+      <UnifiedHeader 
+        title="Choose Dish" 
+        showBackButton={true}
+        onBack={onBack}
+      />
+      
+      {/* Search Bar */}
+      <View style={styles.searchSection}>
+        <SearchBar
+          value={searchText}
+          onChangeText={setSearchText}
+          placeholder="Search dishes..."
+        />
+      </View>
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {selectedDish && (
@@ -180,37 +253,28 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
             
             {/* Featured Recommendation Card */}
             <View style={styles.featuredCard}>
-              <MenuItemCard
-                dish={selectedDish}
-                isSelected={true}
-                onPress={() => {}} // No action needed for featured card
-                showScore={true}
-                isFeatured={true}
+              <SelectionDishCard
+                dish={{
+                  name: selectedDish.name,
+                  description: selectedDish.description,
+                  score: selectedDish.recommendation_score || 0
+                }}
+                isSelected={selectedDishes.some(d => d.id === selectedDish?.id)}
+                onPress={handleSelectDish}
+                showScore={!hasUserHadDish(selectedDish.name)}
               />
             </View>
 
             {/* Why was this recommended */}
             <View style={styles.reasoningSection}>
               <Text style={styles.reasoningTitle}>Why was this recommended?</Text>
-              <Text style={styles.reasoningText}>{selectedDish.recommendation_reason}</Text>
+              {formatRecommendationReason(selectedDish.recommendation_reason).map((reason, index) => (
+                <Text key={index} style={styles.reasoningText}>
+                  {index + 1}. {reason}
+                </Text>
+              ))}
             </View>
 
-            {/* Select button */}
-            {!isDishSelected && (
-              <TouchableOpacity 
-                style={styles.selectButton}
-                onPress={handleSelectDish}
-              >
-                <Text style={styles.selectButtonText}>Select This Dish</Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Selected state */}
-            {isDishSelected && (
-              <View style={styles.selectedState}>
-                <Text style={styles.selectedText}>✓ Selected: {selectedDish.name}</Text>
-              </View>
-            )}
 
             {/* Get new recommendation button */}
             <TouchableOpacity 
@@ -222,18 +286,34 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
           </View>
         )}
 
-        {/* All recommendations list */}
+        {/* Other recommendations list */}
         <View style={styles.allRecommendationsSection}>
-          <Text style={styles.sectionTitle}>All Recommendations</Text>
-          {recommendations.map((dish) => (
-            <MenuItemCard
-              key={dish.id}
-              dish={dish}
-              isSelected={selectedDish?.id === dish.id}
-              onPress={() => handleDishSelect(dish)}
-              showScore={true}
-            />
-          ))}
+          <Text style={styles.sectionTitle}>
+            {searchText ? `Search Results (${filteredRecommendations.length})` : 'Other recommendations'}
+          </Text>
+          {filteredRecommendations.length > 0 ? (
+            filteredRecommendations
+              .filter((dish) => dish.id !== selectedDish?.id) // Remove the main recommendation from this list
+              .map((dish) => (
+                <SelectionDishCard
+                  key={dish.id}
+                  dish={{
+                    name: dish.name,
+                    description: dish.description,
+                    score: dish.recommendation_score || 0
+                  }}
+                  isSelected={selectedDishes.some(d => d.id === dish.id)}
+                  onPress={() => handleDishSelect(dish)}
+                  showScore={!hasUserHadDish(dish.name)}
+                />
+              ))
+          ) : searchText ? (
+            <View style={styles.noResultsSection}>
+              <Text style={styles.noResultsText}>
+                No dishes found matching "{searchText}"
+              </Text>
+            </View>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -242,16 +322,19 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
         <TouchableOpacity 
           style={[
             styles.continueButton,
-            !isDishSelected && styles.continueButtonDisabled
+            selectedDishes.length === 0 && styles.continueButtonDisabled
           ]}
-          onPress={isDishSelected && selectedDish ? () => onContinue(selectedDish) : undefined}
-          disabled={!isDishSelected}
+          onPress={selectedDishes.length > 0 ? () => onContinue(selectedDishes) : undefined}
+          disabled={selectedDishes.length === 0}
         >
           <Text style={[
             styles.continueButtonText,
-            !isDishSelected && styles.continueButtonTextDisabled
+            selectedDishes.length === 0 && styles.continueButtonTextDisabled
           ]}>
-            {isDishSelected ? 'Continue' : 'Select a dish to continue'}
+            {selectedDishes.length === 0 
+              ? 'Select Dishes to Continue' 
+              : `Continue with ${selectedDishes.length} dish${selectedDishes.length > 1 ? 'es' : ''}`
+            }
           </Text>
         </TouchableOpacity>
       </View>
@@ -279,17 +362,11 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   dishName: {
-    color: theme.colors.primary,
+    color: theme.colors.secondary,
     fontWeight: '700',
   },
   featuredCard: {
     marginBottom: theme.spacing.lg,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    ...theme.shadows.sm,
   },
   reasoningSection: {
     marginBottom: theme.spacing.lg,
@@ -306,42 +383,14 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   newRecommendationButton: {
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
+    marginTop: theme.spacing.md,
   },
   newRecommendationText: {
     fontSize: theme.typography.sizes.sm,
-    color: theme.colors.primary,
+    color: theme.colors.secondary,
     textDecorationLine: 'underline',
     fontWeight: '500',
-  },
-  selectButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-    ...theme.shadows.sm,
-  },
-  selectButtonText: {
-    color: theme.colors.text.light,
-    fontSize: theme.typography.sizes.md,
-    fontWeight: '600',
-  },
-  selectedState: {
-    backgroundColor: theme.colors.success + '20',
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.success,
-  },
-  selectedText: {
-    color: theme.colors.success,
-    fontSize: theme.typography.sizes.md,
-    fontWeight: '600',
   },
   allRecommendationsSection: {
     marginBottom: theme.spacing.xl,
@@ -376,5 +425,19 @@ const styles = StyleSheet.create({
   },
   continueButtonTextDisabled: {
     color: theme.colors.text.secondary,
+  },
+  searchSection: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.background,
+  },
+  noResultsSection: {
+    padding: theme.spacing.xl,
+    alignItems: 'center',
+  },
+  noResultsText: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
   },
 });

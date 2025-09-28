@@ -69,6 +69,16 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
 
   const favoriteRestaurants = user?.favorite_restaurants || [];
   const favoriteDishes = user?.favorite_dishes || [];
+  
+  // Debug logging
+  console.log('🔍 MyRestaurants: Current state:', {
+    hasUser: !!user,
+    userId,
+    restaurantCount: favoriteRestaurants.length,
+    dishCount: favoriteDishes.length,
+    restaurants: favoriteRestaurants.map(r => r.name),
+    dishes: favoriteDishes.map(d => d.dish_name)
+  });
 
   // Filter restaurants based on search text
   const filteredRestaurants = favoriteRestaurants.filter(restaurant =>
@@ -160,6 +170,21 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
 
     const updatedRestaurants = [...favoriteRestaurants, ...newRestaurants];
     const updatedUser = { ...user, favorite_restaurants: updatedRestaurants };
+    
+    console.log('🍽️ Adding restaurants to user:', {
+      userId,
+      newRestaurants: newRestaurants.map(r => r.name),
+      totalRestaurants: updatedRestaurants.length,
+      beforeUpdate: favoriteRestaurants.length,
+      afterUpdate: updatedRestaurants.length
+    });
+    
+    console.log('🍽️ Updated user object:', {
+      hasFavoriteRestaurants: !!updatedUser.favorite_restaurants,
+      restaurantCount: updatedUser.favorite_restaurants?.length || 0,
+      restaurantNames: updatedUser.favorite_restaurants?.map(r => r.name) || []
+    });
+    
     setUser(updatedUser, userId);
     
     // Clear selection and search
@@ -176,10 +201,19 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
 
   const getFavoriteDishesForRestaurant = (restaurant: FavoriteRestaurant): FavoriteDish[] => {
     // Match by restaurant name since we don't have a proper restaurant_id mapping
-    return favoriteDishes.filter(dish => 
+    const matchingDishes = favoriteDishes.filter(dish => 
       dish.restaurant_id === restaurant.place_id || 
       dish.restaurant_id === restaurant.name
     );
+    
+    console.log('🔍 getFavoriteDishesForRestaurant:', {
+      restaurantName: restaurant.name,
+      restaurantPlaceId: restaurant.place_id,
+      allFavoriteDishes: favoriteDishes.map(d => ({ name: d.dish_name, restaurant_id: d.restaurant_id })),
+      matchingDishes: matchingDishes.map(d => ({ name: d.dish_name, restaurant_id: d.restaurant_id }))
+    });
+    
+    return matchingDishes;
   };
 
   const handleRemoveRestaurant = (restaurantId: string) => {
@@ -198,9 +232,23 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
   };
 
   const removeRestaurant = async (restaurantId: string) => {
-    // TODO: Update user profile in backend
-    // For now, just update local state
-    console.log('Remove restaurant:', restaurantId);
+    if (!user || !userId) return;
+    
+    console.log('🍽️ Removing restaurant:', restaurantId);
+    
+    // Remove restaurant from favorites
+    const updatedRestaurants = favoriteRestaurants.filter(r => r.place_id !== restaurantId);
+    const updatedUser = { ...user, favorite_restaurants: updatedRestaurants };
+    
+    console.log('🍽️ Restaurant removal:', {
+      userId,
+      removedRestaurantId: restaurantId,
+      beforeUpdate: favoriteRestaurants.length,
+      afterUpdate: updatedRestaurants.length,
+      remainingRestaurants: updatedRestaurants.map(r => r.name)
+    });
+    
+    setUser(updatedUser, userId);
   };
 
   const addTestRestaurant = () => {
