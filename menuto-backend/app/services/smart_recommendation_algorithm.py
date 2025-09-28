@@ -17,7 +17,9 @@ class SmartRecommendationAlgorithm:
         user_favorite_dishes: List[Dict[str, str]],
         user_dietary_restrictions: List[str] = None,
         context_weights: Dict[str, Any] = None,
-        friend_selections: List[Dict[str, Any]] = None
+        friend_selections: List[Dict[str, Any]] = None,
+        restaurant_name: str = None,
+        restaurant_place_id: str = None
     ) -> List[Dict[str, Any]]:
         """
         Score menu items based on:
@@ -49,7 +51,10 @@ class SmartRecommendationAlgorithm:
                 item, 
                 taste_predictions.get(item['name'], {}),
                 context_weights,
-                friend_selections
+                friend_selections,
+                user_favorite_dishes,
+                restaurant_name,
+                restaurant_place_id
             )
             
             # Add scoring details
@@ -210,8 +215,14 @@ class SmartRecommendationAlgorithm:
         item: Dict[str, Any], 
         taste_prediction: Dict[str, Any],
         context_weights: Dict[str, Any] = None,
-        friend_selections: List[Dict[str, Any]] = None
+        friend_selections: List[Dict[str, Any]] = None,
+        user_favorite_dishes: List[Dict[str, str]] = None,
+        restaurant_name: str = None,
+        restaurant_place_id: str = None
     ) -> Dict[str, Any]:
+        # Debug logging for context weights
+        if context_weights:
+            print(f"🎛️ Context weights: {context_weights}")
         """Calculate final recommendation score for an item"""
         
         breakdown = {}
@@ -225,6 +236,8 @@ class SmartRecommendationAlgorithm:
         # preference_level: 1=all me, 5=fan favorites
         praise_weight = (preference_level - 1) / 4  # 0 to 1
         personal_weight = 1 - praise_weight  # 1 to 0
+        
+        print(f"🎯 Scoring {item.get('name', 'Unknown')}: preference_level={preference_level}, praise_weight={praise_weight:.2f}, personal_weight={personal_weight:.2f}")
         
         praise_score = 0
         if item.get('customer_sentiment') == 'positive':
@@ -246,6 +259,9 @@ class SmartRecommendationAlgorithm:
         
         breakdown['customer_praise'] = praise_score
         
+        # Debug logging for popularity scoring
+        print(f"📊 {item.get('name', 'Unknown')}: customer_praise={praise_score:.1f} (sentiment={item.get('customer_sentiment', 'none')}, frequency={item.get('mention_frequency', 1)}, praise_weight={praise_weight:.2f})")
+        
         # 2. Taste compatibility score (weighted by preference level)
         taste_score = 0
         taste_reasoning = "Based on restaurant popularity"
@@ -260,18 +276,29 @@ class SmartRecommendationAlgorithm:
         # Get item text for analysis
         item_text = f"{item.get('name', '')} {item.get('description', '')}".lower()
         
-        # 3. Craving match score (new!)
+        # 3. Craving match score (IMPROVED!)
         craving_score = 0
         if selected_cravings:
             craving_matches = 0
+            craving_penalty = 0
             
             for craving in selected_cravings:
                 if self._matches_craving(item_text, craving):
                     craving_matches += 1
+                else:
+                    # Check for anti-cravings (opposite of what user wants)
+                    if self._matches_anti_craving(item_text, craving):
+                        craving_penalty += 1
             
             if craving_matches > 0:
-                craving_score = (craving_matches / len(selected_cravings)) * 30
+                # Much higher bonus for matching cravings
+                craving_score = (craving_matches / len(selected_cravings)) * 50  # Increased from 30
                 breakdown['craving_match'] = craving_score
+            
+            if craving_penalty > 0:
+                # Heavy penalty for anti-cravings
+                craving_score -= (craving_penalty / len(selected_cravings)) * 40
+                breakdown['craving_penalty'] = craving_penalty * -40
         
         # 4. Hunger level adjustment
         hunger_multiplier = 1.0
@@ -313,31 +340,131 @@ class SmartRecommendationAlgorithm:
         
         breakdown['friend_boost'] = friend_score
         
-        # Calculate total with hunger multiplier
-        total_score = (praise_score + taste_score + craving_score + friend_score + spice_score) * hunger_multiplier
+        # 6. Restaurant-specific favorite bonus (NEW!)
+        restaurant_favorite_bonus = 0
+        if user_favorite_dishes and restaurant_name:
+            print(f"🔍 Checking restaurant-specific favorites for: {restaurant_name} (place_id: {restaurant_place_id})")
+            print(f"🔍 User favorite dishes: {[dish.get('restaurant_id', 'NO_ID') for dish in user_favorite_dishes]}")
+            
+            # Check if user has favorites from this specific restaurant
+            # Match by both restaurant name and place_id
+            restaurant_favorites = [
+                dish for dish in user_favorite_dishes 
+                if (dish.get('restaurant_id') == restaurant_name or 
+                    dish.get('restaurant_id') == restaurant_place_id or
+                    dish.get('restaurant_name') == restaurant_name)
+            ]
+            
+            print(f"🔍 Found {len(restaurant_favorites)} restaurant-specific favorites")
+            
+            if restaurant_favorites:
+                # Heavy weighting for restaurant-specific favorites
+                restaurant_favorite_bonus = 25  # Significant bonus
+                breakdown['restaurant_favorite_bonus'] = restaurant_favorite_bonus
+                print(f"🏆 Restaurant-specific favorite bonus: +{restaurant_favorite_bonus} for {restaurant_name}")
+            else:
+                print(f"❌ No restaurant-specific favorites found for {restaurant_name}")
         
-        # Generate reason
-        reason_parts = []
-        if praise_score >= 30:
-            reason_parts.append("highly praised by customers")
+        # Calculate total with hunger multiplier
+        total_score = (praise_score + taste_score + craving_score + friend_score + spice_score + restaurant_favorite_bonus) * hunger_multiplier
+        
+        # Generate exactly 3 concise reasoning bullets
+        reason_bullets = []
+        
+        # Check for similar dishes user has liked
+        similar_dish_reference = self._find_similar_dish_reference(item, user_favorite_dishes, restaurant_name, restaurant_place_id)
+        
+        # Bullet 1: Specific restaurant experience or similar dishes (PRIORITY)
+        if similar_dish_reference:
+            reason_bullets.append(similar_dish_reference.title())
+        elif restaurant_favorite_bonus > 0:
+            # Find a specific dish they've loved from this restaurant
+            same_restaurant_dishes = []
+            for f in user_favorite_dishes:
+                favorite_restaurant = f.get('restaurant_id', '')
+                # Use place_id for exact matching if available
+                if restaurant_place_id:
+                    if favorite_restaurant == restaurant_place_id:
+                        same_restaurant_dishes.append(f.get('dish_name', ''))
+                else:
+                    # Fallback to name matching
+                    if favorite_restaurant == restaurant_name or restaurant_name in favorite_restaurant:
+                        same_restaurant_dishes.append(f.get('dish_name', ''))
+            
+            if same_restaurant_dishes:
+                specific_dish = same_restaurant_dishes[0].title()
+                reason_bullets.append(f"You've loved {specific_dish} from this restaurant before")
+            else:
+                reason_bullets.append("You've loved dishes from this restaurant before")
+        elif praise_score >= 30:
+            reason_bullets.append("Highly praised by customers")
         elif praise_score >= 15:
-            reason_parts.append("popular choice at this restaurant")
-        if taste_score >= 25:
-            reason_parts.append(taste_reasoning.lower())
-        if craving_score >= 15:
+            reason_bullets.append("Popular choice at this restaurant")
+        else:
+            reason_bullets.append("Popular choice at this restaurant")
+        
+        # Bullet 2: Taste compatibility, broader patterns, or novelty
+        if not similar_dish_reference and taste_score >= 25:
+            reason_bullets.append(taste_reasoning.title())
+        elif craving_score >= 15:
             craving_matches = []
             for craving in selected_cravings:
                 if self._matches_craving(item_text, craving):
                     craving_matches.append(craving)
             if craving_matches:
-                reason_parts.append(f"matches your craving for {', '.join(craving_matches)}")
-        if friend_info:
-            reason_parts.append("recommended by a friend")
+                reason_bullets.append(f"Matches your craving for {', '.join(craving_matches)}")
+        elif context_weights and context_weights.get('hungerLevel', 3) >= 4:
+            reason_bullets.append("Perfect for your hunger level")
+        elif context_weights and context_weights.get('preferenceLevel', 3) >= 4:
+            reason_bullets.append("Matches your preference for trying new things")
+        else:
+            # Check if this is a new dish for the user at THIS restaurant
+            user_has_tried_this_dish = False
+            user_has_restaurant_favorites = False
+            
+            if user_favorite_dishes and restaurant_place_id:
+                # Check if user has tried this specific dish
+                user_has_tried_this_dish = any(
+                    favorite.get('dish_name', '').lower() == item['name'].lower() 
+                    for favorite in user_favorite_dishes
+                )
+                
+                # Check if user has any favorites from this restaurant
+                user_has_restaurant_favorites = any(
+                    favorite.get('restaurant_id') == restaurant_place_id
+                    for favorite in user_favorite_dishes
+                )
+            
+            # Only show "You haven't tried this before" if:
+            # 1. User has favorites from THIS restaurant, AND
+            # 2. User hasn't tried this specific dish
+            if user_has_restaurant_favorites and not user_has_tried_this_dish:
+                reason_bullets.append("You haven't tried this before")
+            else:
+                reason_bullets.append("Matches your taste preferences")
         
-        if not reason_parts:
-            reason_parts.append("popular choice at this restaurant")
+        # Bullet 3: Craving match, hunger level, or popularity
+        if craving_score >= 15 and not any("craving" in bullet.lower() for bullet in reason_bullets):
+            craving_matches = []
+            for craving in selected_cravings:
+                if self._matches_craving(item_text, craving):
+                    craving_matches.append(craving)
+            if craving_matches:
+                reason_bullets.append(f"Matches your craving for {', '.join(craving_matches)}")
+        elif context_weights and context_weights.get('hungerLevel', 3) >= 4 and not any("hunger" in bullet.lower() for bullet in reason_bullets):
+            reason_bullets.append("Perfect for your hunger level")
+        elif context_weights and context_weights.get('preferenceLevel', 3) >= 4 and not any("adventure" in bullet.lower() for bullet in reason_bullets):
+            reason_bullets.append("Matches your adventure preference")
+        elif praise_score >= 20 and not any("popular" in bullet.lower() or "praised" in bullet.lower() for bullet in reason_bullets):
+            reason_bullets.append("Highly rated by diners")
+        else:
+            reason_bullets.append("Matches your dining preferences")
         
-        reason = f"Recommended because it's {' and '.join(reason_parts)}."
+        # Ensure we have exactly 3 bullets
+        reason_bullets = reason_bullets[:3]
+        
+        # Format as 3 separate lines
+        reason = " | ".join(reason_bullets)
         
         return {
             'total_score': round(total_score, 1),
@@ -458,3 +585,173 @@ class SmartRecommendationAlgorithm:
         
         keywords = craving_keywords.get(craving, [])
         return any(keyword in item_text for keyword in keywords)
+    
+    def _matches_anti_craving(self, item_text: str, craving: str) -> bool:
+        """Check if an item is the opposite of what the user craves"""
+        craving_lower = craving.lower()
+        
+        # Define anti-craving keywords (opposite of what user wants)
+        anti_craving_keywords = {
+            'crispy': ['salad', 'raw', 'fresh', 'light', 'steamed', 'poached', 'crudo', 'sashimi', 'tartare', 'ceviche'],
+            'carb-heavy': ['salad', 'soup', 'protein', 'vegetable', 'green', 'raw', 'crudo', 'sashimi', 'tartare', 'ceviche'],
+            'comforting': ['salad', 'raw', 'fresh', 'light', 'steamed', 'poached', 'crudo', 'sashimi', 'cold', 'tartare'],
+            'spicy': ['mild', 'bland', 'sweet', 'creamy', 'butter'],
+            'creamy': ['light', 'fresh', 'raw', 'steamed', 'grilled'],
+            'fresh': ['fried', 'heavy', 'rich', 'creamy', 'comfort'],
+            'light': ['fried', 'heavy', 'rich', 'creamy', 'comfort', 'pasta', 'bread']
+        }
+        
+        if craving_lower in anti_craving_keywords:
+            return any(keyword in item_text for keyword in anti_craving_keywords[craving_lower])
+        
+        return False
+
+    def _find_similar_dish_reference(self, item: Dict[str, Any], user_favorite_dishes: List[Dict[str, str]], restaurant_name: str, restaurant_place_id: str = None) -> str:
+        """Find similar dishes user has liked and generate specific reference"""
+        if not user_favorite_dishes:
+            return ""
+        
+        item_name = item.get('name', '').lower()
+        item_description = item.get('description', '').lower()
+        item_text = f"{item_name} {item_description}"
+        
+        same_restaurant_favorites = []
+        other_restaurant_favorites = []
+        
+        for favorite in user_favorite_dishes:
+            favorite_name = favorite.get('dish_name', '')
+            favorite_restaurant = favorite.get('restaurant_id', '')
+            
+            if favorite_name.lower() == item_name:
+                continue
+                
+            # Check if it's the same restaurant using place_id (most reliable)
+            is_same_restaurant = False
+            if restaurant_place_id:
+                # Use place_id for exact matching
+                is_same_restaurant = favorite_restaurant == restaurant_place_id
+            else:
+                # Fallback to name matching if place_id not available
+                is_same_restaurant = (
+                    favorite_restaurant == restaurant_name or 
+                    favorite_restaurant in restaurant_name or
+                    restaurant_name in favorite_restaurant
+                )
+            
+            if is_same_restaurant:
+                same_restaurant_favorites.append(favorite_name)
+            else:
+                other_restaurant_favorites.append(favorite_name)
+        
+        # First priority: Find similar dishes from the SAME restaurant
+        for favorite_name in same_restaurant_favorites:
+            if self._dishes_are_similar(item_text, favorite_name.lower()):
+                return f"similar to {favorite_name.title()}, which you've loved from this restaurant"
+        
+        # Second priority: Find similar dishes from OTHER restaurants with pattern
+        for favorite_name in other_restaurant_favorites:
+            if self._dishes_are_similar(item_text, favorite_name.lower()):
+                return f"similar to {favorite_name.title()}, which you've loved elsewhere"
+        
+        # Third priority: Find broader pattern (e.g., "you love curries")
+        pattern = self._find_broader_taste_pattern(item_text, user_favorite_dishes)
+        if pattern:
+            return pattern
+        
+        return ""
+    
+    def _dishes_are_similar(self, item_text: str, favorite_name: str) -> bool:
+        """Check if two dishes are similar based on cuisine, ingredients, or cooking method"""
+        # Enhanced similarity checking with more specific matching
+        similarity_indicators = [
+            # Cuisine types (high similarity)
+            'curry', 'pasta', 'pizza', 'burger', 'salad', 'soup', 'stir-fry', 'grilled', 'fried', 'roasted',
+            'braised', 'steamed', 'baked', 'sauteed', 'marinated', 'crispy', 'creamy', 'spicy', 'sweet',
+            'sushi', 'roll', 'ramen', 'tacos', 'burrito', 'pad thai', 'pho', 'dumpling',
+            # Cooking methods (high similarity)
+            'wok', 'seared', 'blackened', 'tempura', 'teriyaki', 'tandoor', 'bbq', 'smoked',
+            # Flavor profiles (high similarity)
+            'garlic', 'ginger', 'curry', 'coconut', 'tomato', 'cream', 'butter', 'olive oil'
+        ]
+        
+        # Check for exact cuisine/cooking method matches (high confidence)
+        for indicator in similarity_indicators:
+            if indicator in item_text and indicator in favorite_name:
+                return True
+        
+        # For protein ingredients, require additional context to avoid false matches
+        protein_ingredients = [
+            'chicken', 'beef', 'pork', 'fish', 'shrimp', 'crab', 'lamb', 'tofu', 'cheese', 'mushroom',
+            'salmon', 'tuna', 'duck', 'turkey', 'veal', 'scallop', 'lobster', 'octopus', 'squid'
+        ]
+        
+        for protein in protein_ingredients:
+            if protein in item_text and protein in favorite_name:
+                # Only consider similar if they share cooking method or cuisine type
+                shared_context = any(
+                    context in item_text and context in favorite_name 
+                    for context in similarity_indicators
+                )
+                if shared_context:
+                    return True
+        
+        return False
+    
+    def _find_broader_taste_pattern(self, item_text: str, user_favorite_dishes: List[Dict[str, str]]) -> str:
+        """Find broader taste patterns from user's favorites"""
+        # Count cuisine types and ingredients in user's favorites
+        cuisine_counts = {}
+        ingredient_counts = {}
+        
+        for favorite in user_favorite_dishes:
+            favorite_name = favorite.get('dish_name', '').lower()
+            
+            # Categorize by cuisine/type
+            if any(word in favorite_name for word in ['curry', 'masala', 'tikka']):
+                cuisine_counts['curries'] = cuisine_counts.get('curries', 0) + 1
+            elif any(word in favorite_name for word in ['pasta', 'spaghetti', 'linguine']):
+                cuisine_counts['pasta'] = cuisine_counts.get('pasta', 0) + 1
+            elif any(word in favorite_name for word in ['pizza', 'margherita', 'pepperoni']):
+                cuisine_counts['pizza'] = cuisine_counts.get('pizza', 0) + 1
+            elif any(word in favorite_name for word in ['burger', 'sandwich']):
+                cuisine_counts['burgers'] = cuisine_counts.get('burgers', 0) + 1
+            elif any(word in favorite_name for word in ['salad', 'caesar', 'greek']):
+                cuisine_counts['salads'] = cuisine_counts.get('salads', 0) + 1
+            elif any(word in favorite_name for word in ['sushi', 'roll', 'sashimi']):
+                cuisine_counts['sushi'] = cuisine_counts.get('sushi', 0) + 1
+            
+            # Count protein ingredients
+            proteins = ['chicken', 'beef', 'pork', 'fish', 'shrimp', 'crab', 'lamb', 'salmon', 'tuna', 'duck']
+            for protein in proteins:
+                if protein in favorite_name:
+                    ingredient_counts[protein] = ingredient_counts.get(protein, 0) + 1
+        
+        # Check for ingredient patterns first (more specific)
+        if ingredient_counts:
+            most_common_ingredient = max(ingredient_counts, key=ingredient_counts.get)
+            count = ingredient_counts[most_common_ingredient]
+            
+            if count >= 2 and most_common_ingredient in item_text:
+                # Find a specific dish name with this ingredient for reference
+                for favorite in user_favorite_dishes:
+                    if most_common_ingredient in favorite.get('dish_name', '').lower():
+                        return f"You liked another dish with {most_common_ingredient.title()}, {favorite.get('dish_name')}!"
+        
+        # Find the most common cuisine pattern
+        if cuisine_counts:
+            most_common = max(cuisine_counts, key=cuisine_counts.get)
+            count = cuisine_counts[most_common]
+            
+            if count >= 2:  # Only mention if user has multiple favorites in this category
+                if most_common == 'curries' and any(word in item_text for word in ['curry', 'masala', 'tikka']):
+                    return "you love curries"
+                elif most_common == 'pasta' and any(word in item_text for word in ['pasta', 'spaghetti', 'linguine']):
+                    return "you love pasta dishes"
+                elif most_common == 'pizza' and any(word in item_text for word in ['pizza', 'margherita']):
+                    return "you love pizza"
+                elif most_common == 'burgers' and any(word in item_text for word in ['burger', 'sandwich']):
+                    return "you love burgers"
+                elif most_common == 'salads' and any(word in item_text for word in ['salad', 'caesar']):
+                    return "you love salads"
+        
+        return ""

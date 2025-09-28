@@ -1,5 +1,5 @@
 # ---- build stage ----
-    FROM python:3.11-slim AS builder
+    FROM python:3.12-slim AS builder
     WORKDIR /app
     ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
     RUN apt-get update && apt-get install -y build-essential && rm -rf /var/lib/apt/lists/*
@@ -9,7 +9,7 @@
     RUN pip install --prefix=/install -r requirements.txt
     
     # ---- runtime stage ----
-    FROM python:3.11-slim
+    FROM python:3.12-slim
     WORKDIR /app
     ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
     

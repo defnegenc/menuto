@@ -96,7 +96,7 @@ async def add_favorite_dish(user_id: str, dish_data: Dict, user=Depends(require_
         return {"success": True, "message": "Mock mode - not saved to database"}
     current = _get_user(user_id) or {"id": user_id}
     favs = (current.get("favorite_dishes") or []) + [dish_data]
-    r = sb.table(TABLE).update({"favorite_dishes": favs}).eq("id", user_id).select("*").execute()
+    r = sb.table(TABLE).update({"favorite_dishes": favs}).eq("id", user_id).execute()
     return {"success": bool(r.data)}
 
 @router.get("/{user_id}/favorite-dishes")

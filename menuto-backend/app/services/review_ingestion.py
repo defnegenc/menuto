@@ -16,6 +16,8 @@ class ReviewIngestion:
     
     def get_google_reviews(self, place_id: str, max_reviews: int = 50) -> List[Dict]:
         """Fetch reviews from Google Places API"""
+        print(f"🔍 Fetching Google reviews for place_id: {place_id}")
+        
         url = "https://maps.googleapis.com/maps/api/place/details/json"
         params = {
             "place_id": place_id,
@@ -28,18 +30,28 @@ class ReviewIngestion:
             data = response.json()
             
             if data.get("status") != "OK":
+                print(f"❌ Google API error: {data.get('status')}")
                 raise Exception(f"Google API error: {data.get('status')}")
             
             reviews = []
-            for review in data.get("result", {}).get("reviews", []):
-                reviews.append({
+            raw_reviews = data.get("result", {}).get("reviews", [])
+            print(f"📝 Found {len(raw_reviews)} Google reviews")
+            
+            for i, review in enumerate(raw_reviews):
+                review_data = {
                     "platform": "google",
                     "reviewer_external_id": review.get("author_name", "unknown"),
                     "rating": float(review.get("rating", 0)),
                     "text": review.get("text", ""),
                     "review_date": review.get("time")  # Unix timestamp
-                })
+                }
+                reviews.append(review_data)
+                
+                # Log first few reviews for debugging
+                if i < 3:
+                    print(f"📖 Review {i+1}: {review_data['rating']}⭐ - \"{review_data['text'][:100]}...\"")
             
+            print(f"✅ Processed {len(reviews)} Google reviews")
             return reviews[:max_reviews]
             
         except Exception as e:
@@ -48,6 +60,12 @@ class ReviewIngestion:
     
     def get_yelp_reviews(self, business_id: str, max_reviews: int = 50) -> List[Dict]:
         """Fetch reviews from Yelp API"""
+        print(f"🔍 Fetching Yelp reviews for business_id: {business_id}")
+        
+        if not self.yelp_api_key:
+            print("⚠️ No Yelp API key found - skipping Yelp reviews")
+            return []
+        
         url = f"https://api.yelp.com/v3/businesses/{business_id}/reviews"
         headers = {
             "Authorization": f"Bearer {self.yelp_api_key}"
@@ -61,15 +79,24 @@ class ReviewIngestion:
             data = response.json()
             
             reviews = []
-            for review in data.get("reviews", []):
-                reviews.append({
+            raw_reviews = data.get("reviews", [])
+            print(f"📝 Found {len(raw_reviews)} Yelp reviews")
+            
+            for i, review in enumerate(raw_reviews):
+                review_data = {
                     "platform": "yelp", 
                     "reviewer_external_id": review.get("user", {}).get("id", "unknown"),
                     "rating": float(review.get("rating", 0)),
                     "text": review.get("text", ""),
                     "review_date": review.get("time_created")
-                })
+                }
+                reviews.append(review_data)
+                
+                # Log first few reviews for debugging
+                if i < 3:
+                    print(f"📖 Review {i+1}: {review_data['rating']}⭐ - \"{review_data['text'][:100]}...\"")
             
+            print(f"✅ Processed {len(reviews)} Yelp reviews")
             return reviews
             
         except Exception as e:
@@ -78,6 +105,9 @@ class ReviewIngestion:
     
     def enrich_review_with_llm(self, review_text: str, dish_name: str = "") -> Dict:
         """Use LLM to extract structured data from review text"""
+        print(f"🤖 Enriching review with LLM{f' for dish: {dish_name}' if dish_name else ''}")
+        print(f"📝 Review text: \"{review_text[:150]}...\"")
+        
         prompt = f"""
         Analyze this restaurant review and extract structured information.
         {f"The review is specifically about: {dish_name}" if dish_name else ""}
@@ -113,6 +143,7 @@ class ReviewIngestion:
             )
             
             enriched_data = json.loads(response.choices[0].message.content)
+            print(f"✅ LLM enrichment result: {json.dumps(enriched_data, indent=2)}")
             return enriched_data
             
         except Exception as e:
@@ -151,22 +182,35 @@ class ReviewIngestion:
 
 def ingest_restaurant_reviews(google_place_id: str = None, yelp_business_id: str = None) -> List[Dict]:
     """Main function to ingest and enrich reviews from multiple platforms"""
+    print(f"🚀 Starting review ingestion for Google: {google_place_id}, Yelp: {yelp_business_id}")
+    
     ingestion = ReviewIngestion()
     all_reviews = []
     
     # Get Google reviews
     if google_place_id:
+        print(f"📱 Fetching Google reviews...")
         google_reviews = ingestion.get_google_reviews(google_place_id)
         all_reviews.extend(google_reviews)
+        print(f"📊 Total Google reviews: {len(google_reviews)}")
+    else:
+        print("⚠️ No Google place_id provided")
     
     # Get Yelp reviews  
     if yelp_business_id:
+        print(f"🍽️ Fetching Yelp reviews...")
         yelp_reviews = ingestion.get_yelp_reviews(yelp_business_id)
         all_reviews.extend(yelp_reviews)
+        print(f"📊 Total Yelp reviews: {len(yelp_reviews)}")
+    else:
+        print("⚠️ No Yelp business_id provided")
     
     # Enrich with LLM
     if all_reviews:
+        print(f"🤖 Starting LLM enrichment for {len(all_reviews)} reviews...")
         enriched_reviews = ingestion.batch_enrich_reviews(all_reviews)
+        print(f"✅ Review ingestion complete! Processed {len(enriched_reviews)} reviews")
         return enriched_reviews
     
+    print("❌ No reviews found to process")
     return []

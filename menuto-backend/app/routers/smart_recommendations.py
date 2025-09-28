@@ -58,7 +58,9 @@ async def generate_smart_recommendations(request: Request, db: Session = Depends
             user_favorite_dishes=user_favorite_dishes,
             user_dietary_restrictions=user_dietary_constraints,
             context_weights=context_weights,
-            friend_selections=friend_selections
+            friend_selections=friend_selections,
+            restaurant_name=restaurant_name,
+            restaurant_place_id=restaurant_place_id
         )
         
         return {
