@@ -1,25 +1,37 @@
+# macOS / editors
+.DS_Store
+.vscode/
+.idea/
+
+# Env (never commit real values)
+.env
+.env.*
+!.env.example
+!.env.production.example
+menuto-backend/.env
+menuto-backend/.env.*
+
+# Node / RN / Expo
 node_modules/
 .expo/
 .expo-shared/
 .expo-dev/
+.cache/
+.metro-cache/
 web-build/
-metro-cache/
+dist/
+build/
 coverage/
-ios/Pods/
-ios/build/
-xcuserdata/
-DerivedData/
-android/.gradle/
-android/.idea/
-android/local.properties
-android/app/build/
-.env
-.env.*
-*.keystore
-*.jks
-**/google-services.json
-**/GoogleService-Info.plist
-.DS_Store
-.vscode/
-.idea/
-menuto-backend/.env
+fingerprint
+fingerprint.*
+
+# iOS / Android anywhere (works for menuto-app/** too)
+**/ios/
+**/ios/Pods/
+**/ios/build/
+**/xcuserdata/
+**/DerivedData/
+**/android/.gradle/
+**/android/.idea/
+**/android/local.properties
+**/android/app/build/

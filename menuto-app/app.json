@@ -14,9 +14,18 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "bundleIdentifier": "com.defnegenc.menutoapp",
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Menuto uses the camera so you can snap menu photos / scan QR menus.",
+        "NSPhotoLibraryUsageDescription": "Allow photo library access to attach pictures.",
+        "NSPhotoLibraryAddUsageDescription": "Allow saving photos you take in the app."
+      }
     },
     "android": {
+      "package": "com.defnegenc.menutoapp",
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -41,6 +50,9 @@
         }
       ],
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "eas": { "projectId": "dbee21e9-7a63-4aa4-a35b-0c395b554f9f" }
+    }
   }
 }

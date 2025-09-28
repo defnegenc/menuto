@@ -52,8 +52,8 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({
           {dish.description ? (
             <Text style={[styles.dishDescription, isFavorite && styles.dishDescriptionFavorited]}>{capitalizeText(dish.description)}</Text>
           ) : null}
-          {showScore && dish.recommendation_score && (
-            <Text style={styles.scoreText}>Score: {dish.recommendation_score.toFixed(1)}</Text>
+          {showScore && dish.score && (
+            <Text style={styles.scoreText}>Score: {dish.score.toFixed(1)}</Text>
           )}
         </View>
 

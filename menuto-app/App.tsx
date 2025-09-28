@@ -237,6 +237,7 @@ function AppContent() {
     name: string;
     description: string;
     restaurant: string;
+    restaurantPlaceId?: string;
   } | null>(null);
 
   const handleAuthComplete = () => {
@@ -355,15 +356,16 @@ function AppContent() {
       id: dish.id || Math.random(),
       name: dish.name,
       description: dish.description || '',
-      restaurant: selectedRestaurant?.name || 'Unknown Restaurant'
+      restaurant: selectedRestaurant?.name || 'Unknown Restaurant',
+      restaurantPlaceId: selectedRestaurant?.place_id
     });
     setCurrentScreen('postMealFeedback');
   };
 
   const handleFeedbackComplete = (rating: number, feedback: string) => {
     console.log('Feedback submitted:', { rating, feedback });
-    // Navigate back to main tabs
-    setCurrentScreen('mainTabs');
+    // Navigate back to dish recommendations (where they came from)
+    setCurrentScreen('dishRecommendations');
   };
 
   const renderCurrentScreen = () => {
@@ -430,7 +432,7 @@ function AppContent() {
           <PostMealFeedback
             dish={selectedDishForFeedback}
             onComplete={handleFeedbackComplete}
-            onBack={handleBackToMain}
+            onBack={() => setCurrentScreen('dishRecommendations')}
           />
         ) : null;
       

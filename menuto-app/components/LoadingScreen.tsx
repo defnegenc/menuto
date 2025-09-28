@@ -14,6 +14,15 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
 }) => {
   const fadeAnim = useState(new Animated.Value(0))[0];
   const scaleAnim = useState(new Animated.Value(0.8))[0];
+  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
+  
+  const rotatingMessages = [
+    "Cooking up something good...",
+    "Finding your perfect match...",
+    "I hope you're hungry...",
+    "Deciding... kinda nervous...",
+    "You're in for a treat..."
+  ];
 
   useEffect(() => {
     // Fade in animation
@@ -30,6 +39,15 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
       friction: 7,
       useNativeDriver: true,
     }).start();
+
+    // Rotate messages every 2 seconds
+    const interval = setInterval(() => {
+      setCurrentMessageIndex((prevIndex) => 
+        (prevIndex + 1) % rotatingMessages.length
+      );
+    }, 2000);
+
+    return () => clearInterval(interval);
   }, [fadeAnim, scaleAnim]);
 
   return (
@@ -53,10 +71,12 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({
           {message}
         </Text>
 
-        {/* Sub message */}
-        {subMessage && (
-          <Text style={styles.subText}>{subMessage}</Text>
-        )}
+        {/* Sub message - use rotating messages if no custom subMessage provided */}
+        <Text style={styles.subText}>
+          {subMessage === "Cooking up something good..." 
+            ? rotatingMessages[currentMessageIndex] 
+            : subMessage}
+        </Text>
       </Animated.View>
     </View>
   );
