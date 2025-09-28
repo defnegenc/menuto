@@ -43,7 +43,7 @@ export const theme = {
       xl: 18,
       xxl: 20,
       title: 24,
-      heading: 28,
+      heading: 30,
       display: 32,
     },
     weights: {
