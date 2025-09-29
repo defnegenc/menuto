@@ -1,7 +1,10 @@
 import { UserPreferences, RecommendationResponse, MenuScanResult } from '../types';
 
 // Change this to your backend URL
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8080';
+const API_BASE = process.env.EXPO_PUBLIC_API_URL;
+if (!API_BASE) {
+  throw new Error('Missing EXPO_PUBLIC_API_URL in build');
+}
 console.log('🔌 API_BASE =', API_BASE);
 
 // Helper function to get Clerk token
