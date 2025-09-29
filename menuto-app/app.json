@@ -52,7 +52,15 @@
       "expo-secure-store"
     ],
     "extra": {
-      "eas": { "projectId": "dbee21e9-7a63-4aa4-a35b-0c395b554f9f" }
+      "eas": {
+        "projectId": "dbee21e9-7a63-4aa4-a35b-0c395b554f9f"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/dbee21e9-7a63-4aa4-a35b-0c395b554f9f"
     }
   }
 }

@@ -103,6 +103,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: theme.spacing.xs,
     fontFamily: 'Artifact',
+    lineHeight: theme.typography.sizes.heading * 1.4, // Add text height (lineHeight)
   },
   headerSubtitle: {
     fontSize: theme.typography.sizes.md,

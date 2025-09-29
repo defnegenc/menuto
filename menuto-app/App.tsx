@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet, Text } from 'react-native';
 import { ClerkProvider, useUser, useAuth } from '@clerk/clerk-expo';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { tokenCache } from './clerkTokenCache';
 import * as Linking from 'expo-linking';
+import * as SplashScreen from 'expo-splash-screen';
+import * as Font from 'expo-font';
 import { loadFonts } from './utils/fonts';
 import { theme } from './theme';
 
@@ -46,6 +48,9 @@ const hasCompletedOnboarding = (u?: any) => {
   return completed;
 };
 
+// Prevent splash screen from auto-hiding
+SplashScreen.preventAutoHideAsync();
+
 // Get Clerk publishable key
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 console.log('🔑 Clerk publishable key:', publishableKey?.slice(0, 12) + '...');
@@ -58,28 +63,41 @@ function AppContent() {
   const { user, setUser } = useStore();
   const { user: clerkUser, isLoaded } = useUser();
   const { signOut, getToken, isSignedIn } = useAuth();
-  const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [appIsReady, setAppIsReady] = useState(false);
   
-  // Debug Clerk auth state - this should show on every render
-  console.log('🔍 Clerk auth state:', { 
-    isLoaded, 
-    isSignedIn, 
-    getTokenType: typeof getToken, 
-    hasGetToken: !!getToken,
-    clerkUserId: clerkUser?.id 
-  });
-  
-  // Load fonts on app startup
+  // Fast first render - load fonts, then show UI
   useEffect(() => {
-    const loadFontsAsync = async () => {
-      await loadFonts();
-      setFontsLoaded(true);
+    let mounted = true;
+    (async () => {
+      try {
+        // 1) Load all fonts using existing system
+        await loadFonts();
+        
+        // 2) Don't await API/Clerk here - do it after first render
+        if (mounted) {
+          setAppIsReady(true);
+          await SplashScreen.hideAsync();
+        }
+      } catch (error) {
+        console.error('Error loading fonts:', error);
+        if (mounted) {
+          setAppIsReady(true);
+          await SplashScreen.hideAsync();
+        }
+      }
+    })();
+    
+    return () => {
+      mounted = false;
     };
-    loadFontsAsync();
   }, []);
 
-  // Wire up Clerk token to API layer
+  // Wire up Clerk token to API layer (after first render)
   useEffect(() => {
+    if (!appIsReady) {
+      return;
+    }
+    
     console.log('🔍 Token getter effect running, getToken:', typeof getToken, !!getToken);
     if (!getToken) {
       console.log('⏳ getToken not available yet');
@@ -88,11 +106,16 @@ function AppContent() {
     console.log('🔧 Setting up auth token getter...');
     setAuthTokenGetter(() => getToken({ template: 'backend', skipCache: false }));
     console.log('✅ Auth token getter configured');
-  }, [getToken]);
+  }, [getToken, appIsReady]);
 
-  // Load user data when Clerk user is available
+  // Load user data when Clerk user is available (after first render)
   useEffect(() => {
     const loadUserData = async () => {
+      // Only run after app is ready and Clerk is loaded
+      if (!appIsReady || !isLoaded) {
+        return;
+      }
+      
       console.log('🔄 App.tsx: Clerk user state:', { 
         hasClerkUser: !!clerkUser, 
         clerkUserId: clerkUser?.id,
@@ -100,11 +123,6 @@ function AppContent() {
         localUserId: user?.id || 'none',
         isLoaded: isLoaded
       });
-      
-      if (!isLoaded) {
-        console.log('⏳ App.tsx: Clerk still loading...');
-        return;
-      }
       
       if (clerkUser && !user) {
         try {
@@ -199,7 +217,7 @@ function AppContent() {
     };
     
     loadUserData();
-  }, [clerkUser, user, setUser, isLoaded, getToken]);
+  }, [clerkUser, user, setUser, isLoaded, getToken, appIsReady]);
 
   // Set userId in store when Clerk user changes
   useEffect(() => {
@@ -224,7 +242,7 @@ function AppContent() {
     return 'onboarding';
   };
   
-  const [currentScreen, setCurrentScreen] = useState<AppScreen>(getInitialScreen());
+  const [currentScreen, setCurrentScreen] = useState<AppScreen>('signIn');
   const [selectedDish, setSelectedDish] = useState<ParsedDish | null>(null);
   const [selectedRestaurant, setSelectedRestaurant] = useState<FavoriteRestaurant | null>(null);
   const [userPreferences, setUserPreferences] = useState<{
@@ -239,6 +257,14 @@ function AppContent() {
     restaurant: string;
     restaurantPlaceId?: string;
   } | null>(null);
+
+  // Update screen based on user state
+  useEffect(() => {
+    if (!appIsReady) return;
+    
+    const newScreen = getInitialScreen();
+    setCurrentScreen(newScreen);
+  }, [appIsReady, clerkUser, user]);
 
   const handleAuthComplete = () => {
     console.log('🔄 handleAuthComplete called, user state:', { 
@@ -441,13 +467,13 @@ function AppContent() {
     }
   };
 
-  if (!fontsLoaded || !isLoaded) {
+  if (!appIsReady || !isLoaded) {
     return (
       <View style={styles.container}>
         <StatusBar style="dark" />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <Text style={{ fontSize: 16, color: theme.colors.text.secondary }}>
-            {!fontsLoaded ? 'Loading fonts...' : 'Loading...'}
+            {!appIsReady ? 'Loading fonts...' : 'Loading...'}
           </Text>
         </View>
       </View>
