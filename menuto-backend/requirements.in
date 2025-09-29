@@ -5,3 +5,11 @@ python-multipart
 pillow
 pytesseract
 requests
+supabase
+sqlalchemy
+psycopg2-binary
+PyJWT
+openai
+PyMuPDF
+beautifulsoup4
+lxml

@@ -10,12 +10,15 @@ import {
   Alert,
   InteractionManager,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { api } from '../../services/api';
 import { useStore } from '../../store/useStore';
 import { theme } from '../../theme';
 import { UnifiedHeader } from '../../components/UnifiedHeader';
+import { SearchBar } from '../../components/SearchBar';
+import { SearchRestaurantCard } from '../../components/SearchRestaurantCard';
+import { SearchRestaurantSelected } from '../../components/SearchRestaurantSelected';
 
 interface Restaurant {
   place_id: string;
@@ -393,40 +396,32 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
     const isAlreadyAdded = existingRestaurants.some(r => r.place_id === restaurant.place_id);
     const isSelected = selectedRestaurants.some(r => r.place_id === restaurant.place_id);
     
+    // Use SearchRestaurantSelected for selected restaurants
+    if (isSelected) {
+      return (
+        <SearchRestaurantSelected
+          key={restaurant.place_id}
+          restaurant={restaurant}
+          onPress={() => {
+            if (!isAlreadyAdded) {
+              toggleRestaurantSelection(restaurant);
+            }
+          }}
+        />
+      );
+    }
+    
+    // Use SearchRestaurantCard for unselected restaurants
     return (
-      <TouchableOpacity
+      <SearchRestaurantCard
         key={restaurant.place_id}
-        style={[
-          styles.restaurantCard,
-          isAlreadyAdded && styles.restaurantCardAdded,
-          isSelected && styles.restaurantCardSelected
-        ]}
+        restaurant={restaurant}
         onPress={() => {
-          if (isAlreadyAdded) return;
-          toggleRestaurantSelection(restaurant);
+          if (!isAlreadyAdded) {
+            toggleRestaurantSelection(restaurant);
+          }
         }}
-        disabled={isAlreadyAdded}
-      >
-        <View style={styles.restaurantInfo}>
-          <Text style={styles.restaurantName}>{restaurant.name}</Text>
-          <Text style={styles.restaurantVicinity}>{restaurant.vicinity}</Text>
-          {restaurant.cuisine_type && (
-            <Text style={styles.cuisineType}>{restaurant.cuisine_type}</Text>
-          )}
-        </View>
-        <View style={styles.selectionIndicator}>
-          {isAlreadyAdded ? (
-            <Text style={styles.addedText}>Added ✓</Text>
-          ) : (
-            <View style={[
-              styles.radioButton,
-              isSelected && styles.radioButtonSelected
-            ]}>
-              {isSelected && <Text style={styles.radioButtonInner}>●</Text>}
-            </View>
-          )}
-        </View>
-      </TouchableOpacity>
+      />
     );
   };
 
@@ -438,11 +433,8 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
   // Show loading screen while initializing
   if (isInitializing) {
     return (
-      <View style={[styles.fixedContainer, { paddingTop: insets.top }]}>
-        <UnifiedHeader 
-          title="Add Restaurants" 
-          subtitle="Search and tap to add restaurants you love"
-        />
+      <View style={styles.container}>
+        <UnifiedHeader title="Add Restaurants" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text style={styles.loadingText}>Setting up location services...</Text>
@@ -452,32 +444,16 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
   }
 
   return (
-    <View style={[styles.fixedContainer, { paddingTop: insets.top }]}>
-      <UnifiedHeader 
-        title="Add Restaurants" 
-        subtitle="Search and tap to add restaurants you love"
-      />
-
+    <View style={styles.container}>
+      <UnifiedHeader title="Add Restaurants" />
+      
+      {/* Search Bar */}
       <View style={styles.searchSection}>
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchInput}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder="Type restaurant name or cuisine (e.g., Sushi, Pizza)..."
-            placeholderTextColor={theme.colors.text.secondary}
-          />
-          <TouchableOpacity 
-            style={styles.searchButton}
-            disabled={isSearching}
-          >
-            {isSearching ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.searchButtonText}>🔍</Text>
-            )}
-          </TouchableOpacity>
-        </View>
+        <SearchBar
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search restaurants..."
+        />
         
         <View style={styles.statusRow}>
           <Text style={styles.selectedCount}>
@@ -509,7 +485,7 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
               </>
             ) : user?.home_base ? (
               <>
-                <Text style={styles.locationIcon}>🏠</Text>
+                <Text style={styles.locationIcon}>📍</Text>
                 <Text style={styles.locationText}>Using {user.home_base}</Text>
               </>
             ) : locationStatus === 'granted' ? (
@@ -555,7 +531,7 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
                   {localCities.length > 0 && (
                     <>
                       <View style={styles.citySectionHeader}>
-                        <Text style={styles.citySectionTitle}>🏠 Local Area</Text>
+                        <Text style={styles.citySectionTitle}>📍 Local Area</Text>
                       </View>
                       {localCities.map((city) => (
                         <TouchableOpacity
@@ -570,7 +546,7 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
                           <View style={styles.cityInfo}>
                             <View style={styles.cityNameRow}>
                               <Text style={styles.cityName}>{city.name}</Text>
-                              <Text style={styles.localBadge}>🏠</Text>
+                              <Text style={styles.localBadge}>📍</Text>
                             </View>
                             {city.country && (
                               <Text style={styles.cityCountry}>{city.country}</Text>
@@ -625,82 +601,162 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
         </View>
       )}
 
-      <ScrollView style={styles.resultsContainer}>
-        {searchResults.map(renderRestaurantCard)}
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 50}]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Selected Restaurants - Show when no search */}
+        {!searchQuery && selectedRestaurants.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Selected Restaurants</Text>
+            <View style={styles.restaurantList}>
+              {selectedRestaurants.map(renderRestaurantCard)}
+            </View>
+          </>
+        )}
         
-        {searchResults.length === 0 && searchQuery && !isSearching && (
+        {/* Search Results */}
+        {searchQuery && searchResults.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Search Results</Text>
+            <View style={styles.restaurantList}>
+              {searchResults.map(renderRestaurantCard)}
+            </View>
+          </>
+        )}
+        
+        {/* Loading State */}
+        {searchQuery && isSearching && (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="small" color={theme.colors.primary} />
+            <Text style={styles.loadingText}>Searching restaurants...</Text>
+          </View>
+        )}
+        
+        {/* No Results */}
+        {searchQuery && !isSearching && searchResults.length === 0 && (
           <View style={styles.emptyState}>
+            <Text style={styles.emptyStateIcon}>🔍</Text>
+            <Text style={styles.emptyStateTitle}>No Results</Text>
             <Text style={styles.emptyStateText}>
-              No restaurants found. Try a different search term.
+              No restaurants found for "{searchQuery}". Try a different search term.
+            </Text>
+          </View>
+        )}
+        
+        {/* Initial State - Instructions */}
+        {!searchQuery && selectedRestaurants.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateIcon}>🍽️</Text>
+            <Text style={styles.emptyStateTitle}>Find Your Favorites</Text>
+            <Text style={styles.emptyStateText}>
+              Search for restaurants you love to add them to your list. You can also add favorite dishes and menus later.
             </Text>
           </View>
         )}
       </ScrollView>
 
-      <View style={styles.footer}>
-        <TouchableOpacity 
-          style={[
-            styles.continueButton,
-            selectedRestaurants.length < 3 && styles.continueButtonDisabled
-          ]}
-          onPress={handleComplete}
-          disabled={selectedRestaurants.length < 3}
-        >
-          <Text style={styles.continueButtonText}>
-            Continue ({selectedRestaurants.length}/3)
-          </Text>
-        </TouchableOpacity>
-      </View>
+      {/* Fixed Footer Continue Button - Show when restaurants are selected */}
+      {selectedRestaurants.length > 0 && (
+        <View style={styles.footer}>
+          <TouchableOpacity 
+            style={[
+              styles.footerContinueButton,
+              selectedRestaurants.length < 3 && styles.footerContinueButtonDisabled
+            ]}
+            onPress={handleComplete}
+            disabled={selectedRestaurants.length < 3}
+          >
+            <Text style={[
+              styles.footerContinueButtonText,
+              selectedRestaurants.length < 3 && styles.footerContinueButtonTextDisabled
+            ]}>
+              Continue ({selectedRestaurants.length}/3)
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  fixedContainer: {
+  container: {
     flex: 1,
     backgroundColor: theme.colors.background,
-    margin: 0,
-    padding: 0,
   },
-
   searchSection: {
     paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.lg,
-    backgroundColor: theme.colors.surface,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    marginBottom: theme.spacing.md,
-    maxWidth: '100%',
-    alignSelf: 'center',
-  },
-  searchInput: {
-    flex: 1,
+    paddingVertical: theme.spacing.lg,
+    paddingBottom: theme.spacing.xs,
     backgroundColor: theme.colors.background,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    fontSize: theme.typography.sizes.lg,
-    marginRight: theme.spacing.sm,
-    color: theme.colors.text.primary,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  searchButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  searchButtonText: {
-    fontSize: theme.typography.sizes.xl,
   },
   statusRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: theme.spacing.sm,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  footerContinueButton: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.lg,
+    paddingVertical: theme.spacing.lg,
+    alignItems: 'center',
+  },
+  footerContinueButtonText: {
+    color: theme.colors.text.light,
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.semibold,
+    fontFamily: theme.typography.fontFamilies.semibold,
+  },
+  footerContinueButtonDisabled: {
+    backgroundColor: theme.colors.text.muted,
+  },
+  footerContinueButtonTextDisabled: {
+    color: theme.colors.text.secondary,
+  },
+  sectionTitle: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text.primary,
+    marginHorizontal: theme.spacing.lg,
+    marginVertical: theme.spacing.md,
+    fontFamily: theme.typography.fontFamilies.semibold,
+  },
+  loadingState: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.lg,
+    gap: theme.spacing.sm,
+  },
+  loadingText: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.secondary,
+    fontFamily: theme.typography.fontFamilies.regular,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  restaurantList: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.sm,
   },
   selectedCount: {
     fontSize: theme.typography.sizes.md,
@@ -719,107 +775,31 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.sm,
     color: theme.colors.text.secondary,
   },
-  resultsContainer: {
+  emptyState: {
     flex: 1,
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-  },
-  restaurantCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    ...theme.shadows.sm,
-  },
-  restaurantCardSelected: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primary + '15',
-    borderWidth: 2,
-  },
-  restaurantCardAdded: {
-    backgroundColor: '#F0F0F0',
-    borderColor: '#D0D0D0',
-    opacity: 0.7,
-  },
-  restaurantInfo: {
-    flex: 1,
-  },
-  restaurantName: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.xs,
-  },
-  restaurantVicinity: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.xs,
-  },
-  cuisineType: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.tertiary,
-    fontWeight: theme.typography.weights.medium,
-    textTransform: 'capitalize',
-  },
-  selectionIndicator: {
-    marginLeft: theme.spacing.md,
-  },
-  radioButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: theme.colors.secondary,
-    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: theme.spacing.huge,
+    paddingVertical: 60,
   },
-  radioButtonSelected: {
-    backgroundColor: theme.colors.secondary,
-    borderColor: theme.colors.secondary,
+  emptyStateIcon: {
+    fontSize: 64,
+    marginBottom: theme.spacing.xl,
   },
-  radioButtonInner: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  addedText: {
-    color: theme.colors.text.secondary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  emptyState: {
-    padding: theme.spacing.huge,
-    alignItems: 'center',
+  emptyStateTitle: {
+    fontSize: theme.typography.sizes.xxl,
+    fontWeight: 600,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.md,
+    fontFamily: theme.typography.fontFamilies.semibold,
   },
   emptyStateText: {
     fontSize: theme.typography.sizes.lg,
     color: theme.colors.text.secondary,
     textAlign: 'center',
-  },
-  footer: {
-    padding: theme.spacing.xl,
-    backgroundColor: theme.colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-  },
-  continueButton: {
-    backgroundColor: theme.colors.secondary,
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.lg,
-    alignItems: 'center',
-  },
-  continueButtonText: {
-    color: theme.colors.text.light,
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.semibold,
-  },
-  continueButtonDisabled: {
-    backgroundColor: theme.colors.text.muted,
+    lineHeight: 24,
+    marginBottom: theme.spacing.xxxl,
+    fontFamily: theme.typography.fontFamilies.regular,
   },
   clearButtonContainer: {
     padding: theme.spacing.xs,
@@ -940,11 +920,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: theme.spacing.xl,
-  },
-  loadingText: {
-    fontSize: theme.typography.sizes.lg,
-    color: theme.colors.text.secondary,
-    marginTop: theme.spacing.lg,
-    textAlign: 'center',
   },
 });

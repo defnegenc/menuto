@@ -435,7 +435,7 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, onBac
               </>
             ) : user?.home_base ? (
               <>
-                <Text style={styles.locationIcon}>🏠</Text>
+                <Text style={styles.locationIcon}>📍</Text>
                 <Text style={styles.locationText}>Using {user.home_base}</Text>
               </>
             ) : locationStatus === 'granted' ? (
@@ -481,7 +481,7 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, onBac
                   {localCities.length > 0 && (
                     <>
                       <View style={styles.citySectionHeader}>
-                        <Text style={styles.citySectionTitle}>🏠 Local Area</Text>
+                        <Text style={styles.citySectionTitle}>📍 Local Area</Text>
                       </View>
                       {localCities.map((city) => (
                         <TouchableOpacity
@@ -496,7 +496,7 @@ export function RestaurantSearchScreen({ isOnboarding = false, onComplete, onBac
                           <View style={styles.cityInfo}>
                             <View style={styles.cityNameRow}>
                               <Text style={styles.cityName}>{city.name}</Text>
-                              <Text style={styles.localBadge}>🏠</Text>
+                              <Text style={styles.localBadge}>📍</Text>
                             </View>
                             {city.country && (
                               <Text style={styles.cityCountry}>{city.country}</Text>

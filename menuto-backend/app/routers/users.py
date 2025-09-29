@@ -24,6 +24,7 @@ TABLE = "user_profiles"  # <-- matches your schema screenshot
 class UserPreferences(BaseModel):
     id: Optional[str] = None
     name: Optional[str] = None
+    username: Optional[str] = None
     email: Optional[str] = None
     profile_photo: Optional[str] = None
     preferred_cuisines: List[str] = []
@@ -44,10 +45,14 @@ def _get_user(user_id: str):
 def _upsert(row: dict):
     if not sb:
         return row  # Return the data as-is in mock mode
+    print(f"🔍 DEBUG: _upsert called with row: {row}")
+    print(f"🔍 DEBUG: Username in row being upserted: {row.get('username')}")
     # First upsert the data
     sb.table(TABLE).upsert(row, on_conflict="id").execute()
     # Then fetch the updated record
     r = sb.table(TABLE).select("*").eq("id", row["id"]).maybe_single().execute()
+    print(f"🔍 DEBUG: _upsert returned data: {r.data}")
+    print(f"🔍 DEBUG: Username in returned data: {r.data.get('username') if r.data else 'No data'}")
     return r.data
 
 @router.get("/{user_id}/preferences")
@@ -68,7 +73,10 @@ async def create_user_preferences(user_id: str, prefs: UserPreferences, user=Dep
         raise HTTPException(status_code=403, detail="Access denied")
     if prefs.id and prefs.id != user_id:
         raise HTTPException(status_code=400, detail="Payload id must match path user_id")
-    row = {"id": user_id, **prefs.model_dump(exclude={"id"}, exclude_none=True)}
+    row = {"id": user_id, **prefs.model_dump(exclude={"id"})}
+    print(f"🔍 DEBUG: Creating user preferences with row: {row}")
+    print(f"🔍 DEBUG: Username in prefs: {prefs.username}")
+    print(f"🔍 DEBUG: Username in row: {row.get('username')}")
     return _upsert(row)
 
 @router.put("/{user_id}/preferences")
@@ -85,7 +93,7 @@ async def update_top_3_restaurants(user_id: str, restaurants: List[Dict], user=D
         raise HTTPException(status_code=403, detail="Access denied")
     if not sb:
         return {"success": True, "message": "Mock mode - not saved to database"}
-    r = sb.table(TABLE).update({"top_3_restaurants": restaurants}).eq("id", user_id).select("*").execute()
+    r = sb.table(TABLE).update({"top_3_restaurants": restaurants}).eq("id", user_id).execute()
     return {"success": bool(r.data)}
 
 @router.post("/{user_id}/favorite-dishes")

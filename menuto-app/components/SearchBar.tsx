@@ -35,6 +35,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.md,
     color: '#666666', // Darker gray text
     fontFamily: theme.typography.fontFamilies.regular,
+    marginBottom: theme.spacing.md,
     // No border
   },
 });

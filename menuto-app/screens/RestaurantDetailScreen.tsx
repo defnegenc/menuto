@@ -43,8 +43,8 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
   const [menuDishes, setMenuDishes] = useState<ParsedDish[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isParsing, setIsParsing] = useState(false); // Separate state for parsing
-  const [showAddOptions, setShowAddOptions] = useState(false);
   const [showPasteModal, setShowPasteModal] = useState(false);
+  const [showAddMoreOptions, setShowAddMoreOptions] = useState(false);
   const [menuText, setMenuText] = useState('');
   const [searchText, setSearchText] = useState('');
   const [filteredDishes, setFilteredDishes] = useState<ParsedDish[]>([]);
@@ -79,8 +79,8 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
     
     // Reset all state for this restaurant
     setMenuDishes([]);
-    setShowAddOptions(false);
     setShowPasteModal(false);
+    setShowAddMoreOptions(false);
     setMenuText('');
     setSearchText('');
     setFilteredDishes([]);
@@ -195,8 +195,8 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
 
   const handleAddPhoto = () => {
     Alert.alert(
-      'Add Menu Photo',
-      'Choose how you want to add a menu photo:',
+      'Upload Menu Photo',
+      'Choose how you want to add your menu photo:',
       [
         { text: 'Cancel', style: 'cancel' },
         { 
@@ -211,9 +211,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
               }
 
               const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [4, 3],
+                allowsEditing: false,
                 quality: 0.8,
               });
 
@@ -240,8 +238,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
 
               const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [4, 3],
+                allowsEditing: false,
                 quality: 0.8,
               });
 
@@ -261,7 +258,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
 
   const parseMenuFromUrl = async (url: string) => {
     console.log(`🔄 Starting URL parsing for: ${restaurant.name}`);
-    setShowAddOptions(false); // Close the modal
+    setShowAddMoreOptions(false);
     setIsParsing(true);
     try {
       const response = await api.parseAndStoreMenu(url, restaurant.name, restaurant.place_id);
@@ -284,22 +281,45 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
   };
 
   const parseMenuFromScreenshot = async (imageUri: string) => {
-    setShowAddOptions(false); // Close the modal
+    setShowAddMoreOptions(false);
     setIsParsing(true);
     try {
-      const response = await api.parseMenuFromScreenshot(imageUri, restaurant.name, restaurant.place_id);
-      if (response.success) {
-        setMenuDishes(response.dishes);
-        Alert.alert('Success', `Added ${response.count} dishes to the menu!`);
+      console.log('📸 Parsing menu screenshot for:', restaurant.name);
+      console.log('📸 Image URI:', imageUri);
+      
+      const result = await api.parseMenuFromScreenshot(
+        imageUri,
+        restaurant.name,
+        restaurant.vicinity || ''
+      );
+      
+      console.log('✅ Menu parsing result:', JSON.stringify(result, null, 2));
+      
+      if (result && result.dishes && result.dishes.length > 0) {
+        Alert.alert(
+          'Success!', 
+          `Menu parsed successfully! Found ${result.dishes.length} dishes.`,
+          [{ text: 'OK' }]
+        );
         
-        // Add a small delay before trying to fetch the menu again
-        setTimeout(() => {
-          loadRestaurantMenu();
-        }, 2000); // 2 second delay
+        // Refresh the menu after parsing
+        await loadRestaurantMenu();
+      } else {
+        Alert.alert(
+          'No Dishes Found', 
+          'The image was processed but no menu items were found. Please try a clearer image or paste the menu text instead.',
+          [{ text: 'OK' }]
+        );
       }
+      
     } catch (error) {
-      console.error('Menu parsing error:', error);
-      Alert.alert('Error', 'Failed to parse menu screenshot. Please try again.');
+      console.error('❌ Error parsing menu screenshot:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert(
+        'Error', 
+        `Failed to parse menu: ${errorMessage}`,
+        [{ text: 'OK' }]
+      );
     } finally {
       setIsParsing(false);
     }
@@ -315,28 +335,46 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
     console.log('Restaurant:', restaurant.name);
     console.log('Text length:', menuText.length);
     
+    setShowAddMoreOptions(false);
     setIsParsing(true);
     
     try {
-      const response = await api.parseMenuFromText(menuText, restaurant.name, restaurant.place_id);
-      console.log(`✅ Text parsing response for ${restaurant.name}:`, response);
+      const result = await api.parseMenuFromText(
+        menuText.trim(),
+        restaurant.name,
+        restaurant.vicinity || ''
+      );
       
-      if (response.success && response.dishes) {
-        setMenuDishes(response.dishes);
-        setMenuText('');
-        console.log(`✅ Text parsing completed for: ${restaurant.name}`);
-        Alert.alert('Success', `Added ${response.dishes.length} dishes to the menu!`);
+      console.log('✅ Menu parsing result:', JSON.stringify(result, null, 2));
+      
+      if (result && result.dishes && result.dishes.length > 0) {
+        Alert.alert(
+          'Success!', 
+          `Menu parsed successfully! Found ${result.dishes.length} dishes.`,
+          [{ text: 'OK' }]
+        );
         
-        // Add a small delay before trying to fetch the menu again
-        setTimeout(() => {
-          loadRestaurantMenu();
-        }, 2000); // 2 second delay
+        // Clear the text input
+        setMenuText('');
+        
+        // Refresh the menu after parsing
+        await loadRestaurantMenu();
       } else {
-        Alert.alert('Error', response.message || 'Failed to parse menu text.');
+        Alert.alert(
+          'No Dishes Found', 
+          'The text was processed but no menu items were found. Please try a different format or check your input.',
+          [{ text: 'OK' }]
+        );
       }
+      
     } catch (error) {
-      console.error(`❌ Menu parsing error for ${restaurant.name}:`, error);
-      Alert.alert('Error', `Failed to parse menu text: ${String(error)}`);
+      console.error('❌ Error parsing menu text:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert(
+        'Error', 
+        `Failed to parse menu: ${errorMessage}`,
+        [{ text: 'OK' }]
+      );
     } finally {
       setIsParsing(false);
     }
@@ -350,7 +388,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
     
     // Close modal and start parsing immediately
     setShowPasteModal(false);
-    parseMenuFromText();
+    setTimeout(() => parseMenuFromText(), 100);
   };
 
   const removeFavoriteDish = (favoriteDish: any) => {
@@ -603,10 +641,22 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
               <View style={styles.menuHeader}>
                 <View style={styles.menuTitleRow}>
                   <Text style={[styles.sectionTitle, theme.typography.h2.fancy]}>Menu</Text>
-                  <TouchableOpacity style={styles.addMoreButton} onPress={() => setShowAddOptions(true)}>
-                    <Text style={styles.addMoreButtonText}>+ Add More Items</Text>
-                  </TouchableOpacity>
+                  {!showAddMoreOptions && (
+                    <TouchableOpacity style={styles.addMoreButton} onPress={() => setShowAddMoreOptions(true)}>
+                      <Text style={styles.addMoreButtonText}>+ Add More Items</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
+                {showAddMoreOptions && (
+                  <View style={styles.addMoreContainer}>
+                    <NoMenuState
+                      onAddMenuPDF={handleAddMenuPDF}
+                      onPasteMenuText={handlePasteMenuText}
+                      onAddPhoto={handleAddPhoto}
+                      onCancel={() => setShowAddMoreOptions(false)}
+                    />
+                  </View>
+                )}
               </View>
 
               {/* Category Filter Buttons */}
@@ -679,72 +729,49 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
 
       {/* Paste Menu Text Modal */}
       <Modal
-        key={`paste-modal-${showPasteModal}`}
         visible={showPasteModal}
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowPasteModal(false)}>
-              <Text style={styles.modalCloseButton}>Cancel</Text>
+              <Text style={styles.modalCancelButton}>Cancel</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Paste Menu Text</Text>
-            <TouchableOpacity 
-              onPress={() => {
-                setShowPasteModal(false);
-                setTimeout(() => parseMenuFromText(), 100);
-              }}
-            >
-              <Text style={styles.modalDoneButton}>Parse</Text>
+            <TouchableOpacity onPress={handleParseText} disabled={!menuText.trim()}>
+              <Text style={[styles.modalSubmitButton, !menuText.trim() && styles.modalSubmitButtonDisabled]}>
+                Submit
+              </Text>
             </TouchableOpacity>
           </View>
           
-          <TextInput
-            style={styles.menuTextInput}
-            value={menuText}
-            onChangeText={setMenuText}
-            placeholder="Paste your menu text here..."
-            placeholderTextColor={theme.colors.text.secondary}
-            multiline
-            textAlignVertical="top"
-          />
-        </SafeAreaView>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalInstructions}>
+              Paste the menu text below. Include dish names, descriptions, and prices if available.
+            </Text>
+            
+            
+            <TextInput
+              style={styles.textInput}
+              value={menuText}
+              onChangeText={(text) => {
+                console.log('📝 TextInput changed, length:', text.length);
+                setMenuText(text);
+              }}
+              placeholder="Paste menu text here..."
+              multiline
+              textAlignVertical="top"
+              autoFocus
+              selectTextOnFocus
+              clearButtonMode="while-editing"
+              returnKeyType="default"
+              blurOnSubmit={false}
+            />
+          </View>
+        </View>
       </Modal>
 
-      {/* Add More Items Modal */}
-      <Modal
-        visible={showAddOptions}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowAddOptions(false)}>
-              <Text style={styles.modalCloseButton}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Add More Menu Items</Text>
-            <View style={{ width: 60 }} />
-          </View>
-          
-          <View style={styles.addOptionsContainer}>
-            <TouchableOpacity style={styles.addOptionButton} onPress={handleAddMenuPDF}>
-              <Text style={styles.addOptionIcon}>📄</Text>
-              <Text style={styles.addOptionText}>Add Menu PDF</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.addOptionButton} onPress={handlePasteMenuText}>
-              <Text style={styles.addOptionIcon}>📝</Text>
-              <Text style={styles.addOptionText}>Paste Menu Text</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.addOptionButton} onPress={handleAddPhoto}>
-              <Text style={styles.addOptionIcon}>📸</Text>
-              <Text style={styles.addOptionText}>Add Menu Photo</Text>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -834,6 +861,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  addMoreButton: {
+    backgroundColor: theme.colors.secondary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  addMoreButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: theme.typography.fontFamilies.semibold,
+  },
+  addMoreContainer: {
+    width: '100%',
+  },
   menuActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -845,18 +888,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: theme.colors.text.primary,
     fontFamily: theme.typography.fontFamilies.bold,
-  },
-  addMoreButton: {
-    backgroundColor: theme.colors.secondary,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  addMoreButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: theme.typography.fontFamilies.semibold,
   },
   categorySection: {
     marginBottom: 24,
@@ -876,59 +907,54 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#E1E8ED',
+    borderBottomColor: theme.colors.border,
   },
-  modalCloseButton: {
+  modalCancelButton: {
+    fontSize: theme.typography.sizes.md,
     color: theme.colors.text.secondary,
-    fontSize: 16,
     fontFamily: theme.typography.fontFamilies.regular,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.semibold,
     color: theme.colors.text.primary,
-    fontFamily: theme.typography.fontFamilies.bold,
-  },
-  modalDoneButton: {
-    color: theme.colors.primary,
-    fontSize: 16,
-    fontWeight: '600',
     fontFamily: theme.typography.fontFamilies.semibold,
   },
-  menuTextInput: {
+  modalSubmitButton: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.primary,
+    fontWeight: theme.typography.weights.semibold,
+    fontFamily: theme.typography.fontFamilies.semibold,
+  },
+  modalSubmitButtonDisabled: {
+    color: theme.colors.text.secondary,
+  },
+  modalContent: {
     flex: 1,
-    padding: 20,
-    fontSize: 16,
-    color: theme.colors.text.primary,
-    textAlignVertical: 'top',
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+  },
+  modalInstructions: {
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.lg,
+    lineHeight: 20,
     fontFamily: theme.typography.fontFamilies.regular,
   },
-  addOptionsContainer: {
+  textInput: {
     flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-  },
-  addOptionButton: {
     backgroundColor: theme.colors.surface,
-    borderRadius: 12,
-    padding: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    marginBottom: 16,
-  },
-  addOptionIcon: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  addOptionText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: theme.colors.primary,
-    fontFamily: theme.typography.fontFamilies.semibold,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.primary,
+    fontFamily: theme.typography.fontFamilies.regular,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    textAlignVertical: 'top',
   },
   // Updated category filter styles to match the Figma design
   categoryFilterContainer: {

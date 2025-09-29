@@ -599,6 +599,7 @@ class MenutoAPI {
       // Make sure the *correct* id is last so it cannot be overridden
       const payload = { ...cleanPrefs, id: userId };
       console.log('💾 Saving user preferences:', { userId, payload });
+      console.log('🔍 DEBUG: Username in payload:', payload.username);
       
       return await request(`/users/${userId}/preferences`, {
         method: 'POST',

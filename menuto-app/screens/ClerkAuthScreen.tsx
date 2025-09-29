@@ -64,6 +64,8 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
           console.log('❌ ClerkAuthScreen: Failed to load user data, creating new user in Supabase');
           // Create user in Supabase with the pending payload
           const userToCreate = { id: authUserId, ...pendingUserPayload };
+          console.log('🔍 DEBUG: User to create:', userToCreate);
+          console.log('🔍 DEBUG: Username in userToCreate:', userToCreate.username);
           await api.saveUserPreferences(authUserId, userToCreate);
           console.log('✅ ClerkAuthScreen: User created in Supabase');
           setUser(userToCreate, authUserId);

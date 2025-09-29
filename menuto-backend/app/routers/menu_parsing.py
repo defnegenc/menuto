@@ -22,7 +22,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 # from ..models import ParsedMenu, ParsedDish, User
-from ..services.llm_menu_parser import parse_menu_with_llm
+# from ..services.llm_menu_parser import parse_menu_with_llm
 from ..services.screenshot_menu_parser import ScreenshotMenuParser
 from pydantic import BaseModel
 
@@ -67,7 +67,8 @@ async def parse_and_store_menu(
             })
         
         # Parse the menu
-        dishes_data = parse_menu_with_llm(menu_url, restaurant_name)
+        # dishes_data = parse_menu_with_llm(menu_url, restaurant_name)
+        dishes_data = []  # Temporary fallback
         
         if not dishes_data:
             raise HTTPException(
@@ -269,9 +270,10 @@ async def parse_menu_from_image(
             text = pytesseract.image_to_string(image)
             
             # Parse with LLM
-            from ..services.llm_menu_parser import LLMMenuParser
-            parser = LLMMenuParser()
-            dishes_data = parser.parse_menu_with_llm(text, restaurant_name)
+            # from ..services.llm_menu_parser import LLMMenuParser
+            # parser = LLMMenuParser()
+            # dishes_data = parser.parse_menu_with_llm(text, restaurant_name)
+            dishes_data = []  # Temporary fallback
             
             if not dishes_data:
                 raise HTTPException(
@@ -400,9 +402,10 @@ async def parse_menu_from_text(
         logger.info(f"Parsing menu text for {restaurant_name}")
         
         # Parse with LLM
-        from ..services.llm_menu_parser import LLMMenuParser
-        parser = LLMMenuParser()
-        dishes_data = parser.parse_menu_with_llm(menu_text, restaurant_name)
+        # from ..services.llm_menu_parser import LLMMenuParser
+        # parser = LLMMenuParser()
+        # dishes_data = parser.parse_menu_with_llm(menu_text, restaurant_name)
+        dishes_data = []  # Temporary fallback
         
         if not dishes_data:
             raise HTTPException(
