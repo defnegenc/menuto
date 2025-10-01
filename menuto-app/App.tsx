@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, Alert } from 'react-native';
 import { ClerkProvider, useUser, useAuth } from '@clerk/clerk-expo';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { tokenCache } from './clerkTokenCache';
@@ -55,6 +55,12 @@ SplashScreen.preventAutoHideAsync();
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 console.log('🔑 Clerk publishable key:', publishableKey?.slice(0, 12) + '...');
 console.log('🌐 API URL:', process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8080');
+// Show debug info on screen for production testing
+if (!publishableKey || publishableKey.length < 10) {
+  setTimeout(() => {
+    Alert.alert('DEBUG', `Clerk Key Missing!\nKey: ${publishableKey}\nAPI: ${process.env.EXPO_PUBLIC_API_URL}`);
+  }, 2000);
+}
 
 type AppScreen = 'signIn' | 'onboarding' | 'onboardingRestaurants' | 'mainTabs' | 'restaurantSearch' | 'restaurantDetail' | 'recommendations' | 'dishRecommendations' | 'dishDetail' | 'postMealFeedback';
 
@@ -72,18 +78,14 @@ function AppContent() {
       try {
         // 1) Load all fonts using existing system
         await loadFonts();
-        
-        // 2) Don't await API/Clerk here - do it after first render
-        if (mounted) {
-          setAppIsReady(true);
-          await SplashScreen.hideAsync();
-        }
       } catch (error) {
         console.error('Error loading fonts:', error);
-        if (mounted) {
-          setAppIsReady(true);
-          await SplashScreen.hideAsync();
-        }
+      }
+      
+      // 2) Always release splash screen and show UI
+      if (mounted) {
+        setAppIsReady(true);
+        await SplashScreen.hideAsync();
       }
     })();
     
@@ -134,31 +136,15 @@ function AppContent() {
             setAuthTokenGetter(() => getToken({ template: 'backend', skipCache: false }));
           }
           
-          // Wait for token to be available before making API calls
-          console.log('⏳ Waiting for authentication token...');
-          let token = null;
-          let attempts = 0;
-          const maxAttempts = 10;
-          
-          while (!token && attempts < maxAttempts) {
-            try {
-              token = await getToken({ template: 'backend', skipCache: false });
-              if (token) {
-                console.log('✅ Token obtained, making API call');
-                break;
-              }
-            } catch (e) {
-              console.log('⚠️ Token attempt failed:', e);
+          // Try to get token once - don't block startup
+          console.log('⏳ Getting authentication token...');
+          try {
+            const token = await getToken({ template: 'backend', skipCache: false });
+            if (token) {
+              console.log('✅ Token obtained, making API call');
             }
-            attempts++;
-            if (!token && attempts < maxAttempts) {
-              await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms between attempts
-            }
-          }
-          
-          if (!token) {
-            console.log('❌ Could not obtain token after', maxAttempts, 'attempts');
-            // Continue without token - the app will handle the 401 gracefully
+          } catch (e) {
+            console.log('⚠️ Token attempt failed, continuing without token:', e);
           }
           
           const userData = await api.getUserPreferences(clerkUser.id);

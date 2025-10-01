@@ -37,12 +37,31 @@ async function request(path: string, opts: RequestInit = {}) {
   } else {
     console.log('⚠️ request(): no token for', path);
   }
-  const res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`${res.status} ${body}`);
+  
+  // Add 10 second timeout to prevent hanging
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  
+  try {
+    const res = await fetch(`${API_BASE}${path}`, { 
+      ...opts, 
+      headers,
+      signal: controller.signal 
+    });
+    clearTimeout(timeoutId);
+    
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`${res.status} ${body}`);
+    }
+    return res.json();
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timeout - backend may be unreachable');
+    }
+    throw error;
   }
-  return res.json();
 }
 
 class MenutoAPI {

@@ -87,10 +87,22 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
 
   // Add null checks for Clerk hooks
   if (!signIn || !signUp || !setActive || !setActiveSignUp) {
+    console.log('❌ ClerkAuthScreen: Clerk hooks not available:', {
+      signIn: !!signIn,
+      signUp: !!signUp, 
+      setActive: !!setActive,
+      setActiveSignUp: !!setActiveSignUp
+    });
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
-          <Text style={styles.title}>Loading...</Text>
+          <Text style={styles.title}>Clerk Loading...</Text>
+          <Text style={styles.subtitle}>
+            {!signIn && 'Missing signIn hook. '}
+            {!signUp && 'Missing signUp hook. '}
+            {!setActive && 'Missing setActive hook. '}
+            {!setActiveSignUp && 'Missing setActiveSignUp hook. '}
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -168,11 +180,12 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
   };
 
   const handleAuth = async () => {
+    // Debug what we're working with
+    Alert.alert('DEBUG START', `isSignUp: ${isSignUp}\nemail: ${email}\npassword length: ${password.length}\nClerk hooks available: ${!!signIn && !!signUp}`);
+    
     // Check if user is already signed in
     if (authUserId && !isSignUp) {
       console.log('🔄 User already signed in, proceeding with auth complete');
-      // User is already signed in, just proceed - no need to set pending payload
-      // The App.tsx will handle loading existing user data
       onAuthComplete();
       return;
     }
@@ -223,12 +236,14 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
 
     try {
       if (isSignUp) {
+        Alert.alert('DEBUG', 'About to call signUp.create...');
         // Starting sign up process
         // Sign up with Clerk
         const result = await signUp.create({
           emailAddress: email,
           password,
         });
+        Alert.alert('DEBUG', `Sign up result status: ${result.status}`);
         console.log('Sign up result:', result);
 
         if (result.status === 'complete') {
@@ -292,11 +307,13 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
           Alert.alert('Error', `Signup status: ${result.status}`);
         }
       } else {
+        Alert.alert('DEBUG', 'About to call signIn.create...');
         // Sign in with Clerk
         const result = await signIn.create({
           identifier: email,
           password,
         });
+        Alert.alert('DEBUG', `Sign in result status: ${result.status}`);
 
         if (result.status === 'complete') {
           await setActive({ session: result.createdSessionId });
@@ -313,7 +330,7 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
       }
     } catch (error: any) {
       console.error('Auth error:', error);
-      Alert.alert('Error', error.errors?.[0]?.message || 'Authentication failed');
+      Alert.alert('AUTH ERROR', `${error.message || 'Authentication failed'}\n\nFull error: ${JSON.stringify(error.errors || error, null, 2)}`);
     } finally {
       setIsLoading(false);
     }
