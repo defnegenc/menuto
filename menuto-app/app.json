@@ -20,17 +20,23 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Menuto uses the camera so you can snap menu photos / scan QR menus.",
         "NSPhotoLibraryUsageDescription": "Allow photo library access to attach pictures.",
-        "NSPhotoLibraryAddUsageDescription": "Allow saving photos you take in the app."
+        "NSPhotoLibraryAddUsageDescription": "Allow saving photos you take in the app.",
+        "NSLocationWhenInUseUsageDescription": "Menuto uses your location to find nearby restaurants and provide personalized recommendations.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Menuto uses your location to find nearby restaurants and provide personalized recommendations."
       }
     },
     "android": {
       "package": "com.defnegenc.menutoapp",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -49,7 +55,14 @@
           ]
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Menuto uses your location to find nearby restaurants and provide personalized recommendations.",
+          "locationWhenInUsePermission": "Menuto uses your location to find nearby restaurants and provide personalized recommendations."
+        }
+      ]
     ],
     "extra": {
       "eas": {

@@ -9,6 +9,9 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
 import { loadFonts } from './utils/fonts';
 import { theme } from './theme';
+import { CrashReporter } from './components/CrashReporter';
+import { debugLog } from './utils/debug';
+import { Buffer } from 'buffer';
 
 // Screens
 import { ClerkAuthScreen } from './screens/ClerkAuthScreen';
@@ -28,39 +31,48 @@ import { RestaurantSearchScreen } from './screens/RestaurantSearchScreen';
 import { useStore } from './store/useStore';
 import { ParsedDish, FavoriteRestaurant } from './types';
 import { api, setAuthTokenGetter, ensureUserProfile, isAuthGetterWired } from './services/api';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Onboarding completion helpers
 const hasTastePrefs = (u?: any) => {
   const hasPrefs = Array.isArray(u?.preferred_cuisines) && u.preferred_cuisines.length > 0;
-  console.log('🔍 hasTastePrefs:', { hasPrefs, prefs: u?.preferred_cuisines });
+  debugLog('🔍 hasTastePrefs:', { hasPrefs, prefs: u?.preferred_cuisines });
   return hasPrefs;
 };
 
 const hasRestaurants = (u?: any) => {
   const hasRest = Array.isArray(u?.favorite_restaurants) && u.favorite_restaurants.length > 0;
-  console.log('🔍 hasRestaurants:', { hasRest, restaurants: u?.favorite_restaurants?.length });
+  debugLog('🔍 hasRestaurants:', { hasRest, restaurants: u?.favorite_restaurants?.length });
   return hasRest;
 };
 
 const hasCompletedOnboarding = (u?: any) => {
   const completed = hasTastePrefs(u) && hasRestaurants(u);
-  console.log('🔍 hasCompletedOnboarding:', { completed });
+  debugLog('🔍 hasCompletedOnboarding:', { completed });
   return completed;
 };
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
+// Global error handler for unhandled promise rejections
+const globalErrorUtils = (globalThis as any)?.ErrorUtils;
+if (globalErrorUtils) {
+  const originalHandler = globalErrorUtils.getGlobalHandler?.();
+  
+  globalErrorUtils.setGlobalHandler?.((error: any, isFatal: boolean) => {
+    console.error('💥 Global error caught:', error, 'Fatal:', isFatal);
+    
+    if (originalHandler) {
+      originalHandler(error, isFatal);
+    }
+  });
+}
+
 // Get Clerk publishable key
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
-console.log('🔑 Clerk publishable key:', publishableKey?.slice(0, 12) + '...');
-console.log('🌐 API URL:', process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8080');
-// Show debug info on screen for production testing
-if (!publishableKey || publishableKey.length < 10) {
-  setTimeout(() => {
-    Alert.alert('DEBUG', `Clerk Key Missing!\nKey: ${publishableKey}\nAPI: ${process.env.EXPO_PUBLIC_API_URL}`);
-  }, 2000);
-}
+debugLog('🔑 Clerk publishable key:', publishableKey?.slice(0, 12) + '...');
+debugLog('🌐 API URL:', process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8080');
 
 type AppScreen = 'signIn' | 'onboarding' | 'onboardingRestaurants' | 'mainTabs' | 'restaurantSearch' | 'restaurantDetail' | 'recommendations' | 'dishRecommendations' | 'dishDetail' | 'postMealFeedback';
 
@@ -100,15 +112,74 @@ function AppContent() {
       return;
     }
     
-    console.log('🔍 Token getter effect running, getToken:', typeof getToken, !!getToken);
+    debugLog('🔍 Token getter effect running, getToken:', typeof getToken, !!getToken);
     if (!getToken) {
-      console.log('⏳ getToken not available yet');
+      debugLog('⏳ getToken not available yet');
       return;
     }
-    console.log('🔧 Setting up auth token getter...');
+    debugLog('🔧 Setting up auth token getter...');
     setAuthTokenGetter(() => getToken({ template: 'backend', skipCache: false }));
-    console.log('✅ Auth token getter configured');
+    debugLog('✅ Auth token getter configured');
   }, [getToken, appIsReady]);
+
+  useEffect(() => {
+    const debugToken = async () => {
+      if (!appIsReady || !isLoaded || !clerkUser || !getToken) {
+        return;
+      }
+      
+      try {
+        console.log('🔍 DEBUG: Attempting to get token...');
+        const token = await getToken({ template: 'backend', skipCache: true });
+        
+        if (!token) {
+          console.error('❌ DEBUG: Token is null/undefined');
+          return;
+        }
+        
+        console.log('✅ DEBUG: Token obtained, length:', token.length);
+        console.log('🔑 DEBUG: Token preview:', token.substring(0, 100) + '...');
+        
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const payloadJson = Buffer.from(parts[1], 'base64').toString('utf-8');
+          const payload = JSON.parse(payloadJson);
+          console.log('📋 DEBUG: Token payload:', JSON.stringify(payload, null, 2));
+          console.log('🎯 DEBUG: Audience:', payload.aud);
+          console.log('🎯 DEBUG: Issuer:', payload.iss);
+          console.log('🎯 DEBUG: Subject (User ID):', payload.sub);
+          console.log('🎯 DEBUG: Expires:', new Date(payload.exp * 1000).toISOString());
+          
+          console.log('🧪 DEBUG: Testing API call...');
+          const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+          const response = await fetch(`${apiUrl}/users/${payload.sub}/preferences`, {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          console.log('🧪 DEBUG: API response status:', response.status);
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('✅ DEBUG: API call successful:', data);
+          } else {
+            const errorText = await response.text();
+            console.error('❌ DEBUG: API call failed:', response.status, errorText);
+            console.log('🔧 DEBUG: Test manually with:');
+            console.log(`curl -H "Authorization: Bearer ${token.substring(0, 50)}..." \\\n  ${apiUrl}/users/${payload.sub}/preferences`);
+          }
+        }
+      } catch (error) {
+        console.error('❌ DEBUG: Token debug error:', error);
+      }
+    };
+    
+    const timer = setTimeout(debugToken, 2000);
+    return () => clearTimeout(timer);
+  }, [appIsReady, isLoaded, clerkUser, getToken]);
 
   // Load user data when Clerk user is available (after first render)
   useEffect(() => {
@@ -118,7 +189,7 @@ function AppContent() {
         return;
       }
       
-      console.log('🔄 App.tsx: Clerk user state:', { 
+      debugLog('🔄 App.tsx: Clerk user state:', { 
         hasClerkUser: !!clerkUser, 
         clerkUserId: clerkUser?.id,
         hasLocalUser: !!user,
@@ -128,29 +199,33 @@ function AppContent() {
       
       if (clerkUser && !user) {
         try {
-          console.log('🔄 App.tsx: Loading user data for Clerk ID:', clerkUser.id);
+          debugLog('🔄 App.tsx: Loading user data for Clerk ID:', clerkUser.id);
           
           // Set up token getter immediately if not already set
           if (!isAuthGetterWired()) {
-            console.log('🔧 Setting up token getter immediately...');
+            debugLog('🔧 Setting up token getter immediately...');
             setAuthTokenGetter(() => getToken({ template: 'backend', skipCache: false }));
           }
           
           // Try to get token once - don't block startup
-          console.log('⏳ Getting authentication token...');
+          debugLog('⏳ Getting authentication token...');
           try {
             const token = await getToken({ template: 'backend', skipCache: false });
             if (token) {
-              console.log('✅ Token obtained, making API call');
+              debugLog('✅ Token obtained, making API call');
             }
           } catch (e) {
-            console.log('⚠️ Token attempt failed, continuing without token:', e);
+            debugLog('⚠️ Token attempt failed, continuing without token:', e);
           }
           
-          const userData = await api.getUserPreferences(clerkUser.id);
+          const userData = await api.getUserPreferences(clerkUser.id).catch(err => {
+            debugLog('⚠️ getUserPreferences failed, will create new profile:', err);
+            return null;
+          });
+          
           if (userData) {
-            console.log('✅ App.tsx: User data loaded successfully');
-            console.log('📊 User data breakdown:', {
+            debugLog('✅ App.tsx: User data loaded successfully');
+            debugLog('📊 User data breakdown:', {
               hasPreferences: !!userData.preferred_cuisines?.length,
               hasRestaurants: !!userData.favorite_restaurants?.length,
               restaurantCount: userData.favorite_restaurants?.length || 0,
@@ -160,45 +235,71 @@ function AppContent() {
 
             // Route based on what they already have
             if (hasCompletedOnboarding(userData)) {
-              console.log('🎯 App.tsx: User has completed onboarding, going to mainTabs');
+              debugLog('🎯 App.tsx: User has completed onboarding, going to mainTabs');
               setCurrentScreen('mainTabs');
             } else if (hasTastePrefs(userData)) {
-              console.log('🎯 App.tsx: User has taste prefs but no restaurants, going to onboardingRestaurants');
+              debugLog('🎯 App.tsx: User has taste prefs but no restaurants, going to onboardingRestaurants');
               setCurrentScreen('onboardingRestaurants');
             } else {
-              console.log('🎯 App.tsx: New user, going to onboarding');
+              debugLog('🎯 App.tsx: New user, going to onboarding');
               setCurrentScreen('onboarding');
             }
           } else {
-            console.log('↩️ No profile yet. Creating one…');
-            const email = clerkUser.primaryEmailAddress?.emailAddress ?? undefined;
-            const created = await ensureUserProfile(clerkUser.id, email);
-            setUser(created, clerkUser.id);
-            setCurrentScreen('onboarding');
+            debugLog('↩️ No profile yet. Creating one…');
+            try {
+              const email = clerkUser.primaryEmailAddress?.emailAddress ?? undefined;
+              const created = await ensureUserProfile(clerkUser.id, email);
+              setUser(created, clerkUser.id);
+              setCurrentScreen('onboarding');
+            } catch (createError) {
+              debugLog('⚠️ Failed to create profile, continuing to onboarding anyway:', createError);
+              // Create minimal local profile
+              setUser({
+                id: clerkUser.id,
+                preferred_cuisines: [],
+                spice_tolerance: 3,
+                price_preference: 2,
+                dietary_restrictions: [],
+                favorite_restaurants: [],
+                favorite_dishes: [],
+              }, clerkUser.id);
+              setCurrentScreen('onboarding');
+            }
             return;
           }
         } catch (error) {
-          console.log('❌ App.tsx: Failed to load user data:', error);
+          debugLog('❌ App.tsx: Failed to load user data:', error);
           // Check if it's a 500 error (server issue) vs 404 (user doesn't exist) vs 401 (auth issue)
           if (error instanceof Error && error.message.includes('500')) {
-            console.log('⚠️ Server error (500) - backend may be down, staying on current screen');
+            debugLog('⚠️ Server error (500) - backend may be down, staying on current screen');
             // Don't change screens on server errors, let user retry
             return;
           } else if (error instanceof Error && error.message.includes('401')) {
-            console.log('⚠️ Authentication error (401) - token may be invalid, staying on current screen');
-            // Don't change screens on auth errors, let user retry or re-authenticate
+            debugLog('⚠️ Authentication error (401) - token invalid, signing out...');
+            // Force sign out when token is invalid (user deleted from Clerk)
+            try {
+              if (isSignedIn) {
+                await signOut();
+              }
+            } catch (signOutError) {
+              console.error('❌ Failed to sign out:', signOutError);
+              // Continue anyway - clear local state
+            }
+            setUser(null, 'SIGNED_OUT');
+            setCurrentScreen('signIn');
+            debugLog('✅ Signed out due to invalid token');
             return;
           }
           // If we can't load user data, assume it's a new user
-          console.log('↩️ Assuming new user due to error, going to onboarding');
+          debugLog('↩️ Assuming new user due to error, going to onboarding');
           setCurrentScreen('onboarding');
         }
       } else if (!clerkUser) {
-        console.log('❌ App.tsx: No Clerk user available - user needs to sign in');
+        debugLog('❌ App.tsx: No Clerk user available - user needs to sign in');
       } else if (user) {
-        console.log('✅ App.tsx: User already loaded, ID:', user.id || 'no-id');
+        debugLog('✅ App.tsx: User already loaded, ID:', user.id || 'no-id');
       } else {
-        console.log('✅ App.tsx: No user loaded');
+        debugLog('✅ App.tsx: No user loaded');
       }
     };
     
@@ -208,7 +309,7 @@ function AppContent() {
   // Set userId in store when Clerk user changes
   useEffect(() => {
     if (clerkUser?.id && !user) {
-      console.log('🔄 App.tsx: Setting userId in store:', clerkUser.id);
+      debugLog('🔄 App.tsx: Setting userId in store:', clerkUser.id);
       // Don't call setUser here, just set the userId
       // The loadUserData effect above will handle loading the actual user data
     }
@@ -219,9 +320,8 @@ function AppContent() {
     // If Clerk not ready, keep sign-in UI
     if (!clerkUser) return 'signIn';
 
-    // If we haven't loaded the user profile yet, show onboarding
-    // (We'll create/fetch and redirect)
-    if (!user) return 'onboarding';
+    // Wait for user data to load before routing to onboarding
+    if (!user) return 'signIn';
 
     if (hasCompletedOnboarding(user)) return 'mainTabs';
     if (hasTastePrefs(user)) return 'onboardingRestaurants';
@@ -244,16 +344,25 @@ function AppContent() {
     restaurantPlaceId?: string;
   } | null>(null);
 
-  // Update screen based on user state
+  // Update screen based on user state - only on initial load
   useEffect(() => {
     if (!appIsReady) return;
     
-    const newScreen = getInitialScreen();
-    setCurrentScreen(newScreen);
+    // Only auto-navigate if we're on the sign-in screen or onboarding screens
+    // Don't interfere with navigation when user is already in the main app
+    const shouldAutoNavigate = 
+      currentScreen === 'signIn' || 
+      currentScreen === 'onboarding' || 
+      currentScreen === 'onboardingRestaurants';
+    
+    if (shouldAutoNavigate) {
+      const newScreen = getInitialScreen();
+      setCurrentScreen(newScreen);
+    }
   }, [appIsReady, clerkUser, user]);
 
   const handleAuthComplete = () => {
-    console.log('🔄 handleAuthComplete called, user state:', { 
+    debugLog('🔄 handleAuthComplete called, user state:', { 
       hasUser: !!user, 
       userId: user?.id,
       hasTastePrefs: hasTastePrefs(user),
@@ -261,15 +370,16 @@ function AppContent() {
       hasCompletedOnboarding: hasCompletedOnboarding(user)
     });
     
+    
     // Wait for user data to be available before routing
     if (!user) {
-      console.log('⏳ handleAuthComplete: Waiting for user data to load...');
+      debugLog('⏳ handleAuthComplete: Waiting for user data to load...');
       // Add a small delay and try again
       setTimeout(() => {
         if (user) {
           handleAuthComplete();
         } else {
-          console.log('⚠️ handleAuthComplete: Still no user data after delay, routing to onboarding');
+          debugLog('⚠️ handleAuthComplete: Still no user data after delay, routing to onboarding');
           setCurrentScreen('onboarding');
         }
       }, 200);
@@ -278,22 +388,22 @@ function AppContent() {
     
     // If the user object already exists (e.g., returning user), route correctly
     if (hasCompletedOnboarding(user)) {
-      console.log('🎯 handleAuthComplete: User has completed onboarding, going to mainTabs');
+      debugLog('🎯 handleAuthComplete: User has completed onboarding, going to mainTabs');
       setCurrentScreen('mainTabs');
     } else if (hasTastePrefs(user)) {
-      console.log('🎯 handleAuthComplete: User has taste prefs but no restaurants, going to onboardingRestaurants');
+      debugLog('🎯 handleAuthComplete: User has taste prefs but no restaurants, going to onboardingRestaurants');
       setCurrentScreen('onboardingRestaurants');
     } else {
-      console.log('🎯 handleAuthComplete: New user, going to onboarding');
+      debugLog('🎯 handleAuthComplete: New user, going to onboarding');
       setCurrentScreen('onboarding');
     }
   };
 
   const handleSignOut = async () => {
     try {
-      console.log('🔄 Signing out...');
+      debugLog('🔄 Signing out...');
       await signOut(); // No parameters at all
-      console.log('✅ Sign out successful');
+      debugLog('✅ Sign out successful');
     } catch (error) {
       console.error('❌ Sign out error:', error);
     } finally {
@@ -303,22 +413,39 @@ function AppContent() {
     }
   };
 
+  const handleBackToSignIn = useCallback(() => {
+    debugLog('🔙 App: handleBackToSignIn called, current screen:', currentScreen);
+
+    if (isSignedIn) {
+      signOut().catch((err) => console.error('❌ Failed to sign out during back navigation:', err));
+    }
+
+    setSelectedDish(null);
+    setSelectedRestaurant(null);
+    setUserPreferences(null);
+    setSelectedDishForFeedback(null);
+    setUser(null, '');
+    setCurrentScreen('signIn');
+
+    debugLog('🔙 App: Screen set to signIn and user cleared');
+  }, [currentScreen, isSignedIn, signOut, setUser]);
+
   const handleOnboardingComplete = () => {
     setCurrentScreen('onboardingRestaurants');
   };
 
   const handleOnboardingRestaurantsComplete = () => {
-    console.log('handleOnboardingRestaurantsComplete called');
+    debugLog('handleOnboardingRestaurantsComplete called');
     setCurrentScreen('mainTabs');
   };
 
   const handleRestaurantSearchComplete = () => {
-    console.log('handleRestaurantSearchComplete called');
+    debugLog('handleRestaurantSearchComplete called');
     setCurrentScreen('mainTabs');
   };
 
   const handleBackToMainTabs = () => {
-    console.log('🔙 App: handleBackToMainTabs called');
+    debugLog('🔙 App: handleBackToMainTabs called');
     setCurrentScreen('mainTabs');
   };
 
@@ -375,7 +502,7 @@ function AppContent() {
   };
 
   const handleFeedbackComplete = (rating: number, feedback: string) => {
-    console.log('Feedback submitted:', { rating, feedback });
+    debugLog('Feedback submitted:', { rating, feedback });
     // Navigate back to dish recommendations (where they came from)
     setCurrentScreen('dishRecommendations');
   };
@@ -386,7 +513,7 @@ function AppContent() {
         return <ClerkAuthScreen onAuthComplete={handleAuthComplete} />;
       
       case 'onboarding':
-        return <TastePreferencesScreen onComplete={handleOnboardingComplete} />;
+        return <TastePreferencesScreen onComplete={handleOnboardingComplete} onBack={handleBackToSignIn} />;
       
       case 'onboardingRestaurants':
         return <RestaurantSelectionScreen onComplete={handleOnboardingRestaurantsComplete} />;
@@ -476,11 +603,13 @@ function AppContent() {
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-        <AppContent />
-      </ClerkProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+          <AppContent />
+        </ClerkProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 
