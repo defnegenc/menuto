@@ -31,9 +31,27 @@ fingerprint.*
 **/ios/build/
 **/xcuserdata/
 **/DerivedData/
+**/android/
 **/android/.gradle/
 **/android/.idea/
 **/android/local.properties
 **/android/app/build/
+*.gradle
+*.properties
+gradlew
+gradlew.bat
+debug.keystore
+proguard-rules.pro
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
 
+# Backup files
+*.bak
+*.root-bak

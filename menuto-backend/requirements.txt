@@ -24,6 +24,10 @@ charset-normalizer==3.4.2
     # via requests
 click==8.1.8
     # via uvicorn
+beautifulsoup4==4.12.3
+    # via -r requirements.in
+soupsieve==2.6
+    # via beautifulsoup4
 cryptography==46.0.1
     # via pyjwt
 deprecation==2.1.0
@@ -63,6 +67,8 @@ idna==3.10
     #   requests
 jiter==0.11.0
     # via openai
+lxml==5.3.0
+    # via -r requirements.in
 openai==1.109.1
     # via -r requirements.in
 packaging==23.2

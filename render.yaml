@@ -10,9 +10,13 @@ services:
     autoDeploy: true
     envVars:
       - key: API_ENV
-        value: staging
+        value: prod
       - key: DATABASE_URL
         sync: false
+      - key: CLERK_ISSUER
+        value: https://clerk.usemenuto.com
+      - key: CLERK_AUDIENCE
+        value: menuto-backend
       - key: CLERK_SECRET_KEY
         sync: false
       - key: CLERK_PUBLISHABLE_KEY
