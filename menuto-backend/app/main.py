@@ -3,11 +3,29 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import restaurants, dishes, reviews, smart_recommendations, menu_api, menu_parser_api, menu_parsing, users, places
 from app.require_user import require_user
 from dotenv import load_dotenv
+import os
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
 load_dotenv()
 
 app = FastAPI(title="Menuto API", version="1.0.0")
+
+@app.on_event("startup")
+async def startup_event():
+    """Log startup information to help debug deployment issues"""
+    logger.info("=" * 50)
+    logger.info("Menuto API Starting Up")
+    logger.info(f"PORT: {os.getenv('PORT', 'not set')}")
+    logger.info(f"DATABASE_URL: {'set' if os.getenv('DATABASE_URL') else 'NOT SET'}")
+    logger.info(f"CLERK_ISSUER: {os.getenv('CLERK_ISSUER', 'not set')}")
+    logger.info(f"SUPABASE_URL: {'set' if os.getenv('SUPABASE_URL') else 'NOT SET'}")
+    logger.info(f"OPENAI_API_KEY: {'set' if os.getenv('OPENAI_API_KEY') else 'NOT SET'}")
+    logger.info("=" * 50)
 
 ALLOWED_ORIGINS = [
     "http://localhost:19006",  # Expo web/dev
