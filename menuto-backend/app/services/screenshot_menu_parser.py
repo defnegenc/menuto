@@ -1,3 +1,14 @@
+"""
+menuto-backend/app/services/screenshot_menu_parser.py
+
+What this is:
+- OpenAI Vision-based parser for menu *photos/screenshots*.
+
+Why we keep it:
+- Used by /menu-parsing/parse-screenshot to extract dishes from an uploaded image.
+- Separate from menu_parser.py because the Vision prompt/schema differs from text parsing.
+"""
+
 import base64
 import json
 import logging
@@ -6,7 +17,13 @@ from openai import OpenAI
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+from app.services.menu_parsing_utils import DishItem
+
+try:
+    # In some environments (.env is ignored/locked down) this may be blocked; env vars can still be set externally.
+    load_dotenv()
+except Exception as e:
+    _ = e
 
 logger = logging.getLogger(__name__)
 
@@ -103,25 +120,47 @@ Return ONLY valid JSON, no other text.
             )
             
             logger.info("OpenAI response received, parsing JSON...")
-            result = json.loads(response.choices[0].message.content)
+            content = response.choices[0].message.content
+            if not content:
+                logger.warning("OpenAI returned empty message content for vision parse")
+                return {
+                    "success": False,
+                    "message": "OpenAI returned an empty response. Try again with a clearer image.",
+                    "dishes": []
+                }
+
+            result = json.loads(content)
             
             # Flatten the sections into a list of dishes
             dishes = []
             for section in result.get("sections", []):
                 for item in section.get("items", []):
-                    dish = {
+                    raw = {
                         "name": item.get("name", ""),
                         "description": item.get("description", ""),
+                        "price": None,  # Vision schema doesn't reliably extract price yet
                         "category": item.get("category", "main"),
-                        "ingredients": [],  # Could be enhanced with ingredient extraction
-                        "dietary_tags": [],  # Could be enhanced with dietary info extraction
-                        "preparation_style": [],  # Could be enhanced
+                        "ingredients": [],
+                        "dietary_tags": [],
+                        "preparation_style": [],
+                        # non-canonical debug/metadata fields (safe to store/ignore)
                         "section": section.get("name", "Unknown"),
-                        "restaurant_id": restaurant_name,
-                        "is_user_added": False
                     }
-                    dishes.append(dish)
+                    try:
+                        dishes.append(DishItem(**raw).dict())
+                    except Exception:
+                        continue
             
+            if len(dishes) == 0:
+                logger.warning("No dishes detected in screenshot parse result")
+                return {
+                    "success": False,
+                    "restaurant": restaurant_name,
+                    "count": 0,
+                    "dishes": [],
+                    "message": "No dishes detected in the image. Try a clearer, more zoomed-in menu photo."
+                }
+
             logger.info(f"Successfully parsed {len(dishes)} dishes from screenshot")
             
             return {

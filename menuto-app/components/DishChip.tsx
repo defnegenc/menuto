@@ -2,6 +2,22 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { theme } from '../theme';
 
+// Title case helper - capitalize first letter of each word
+const toTitleCase = (str: string): string => {
+  if (!str) return '';
+  const smallWords = new Set(['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'in', 'of', 'on', 'or', 'the', 'to', 'with']);
+  return str
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word, index) => {
+      if (index === 0 || !smallWords.has(word)) {
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      }
+      return word;
+    })
+    .join(' ');
+};
+
 interface DishChipProps {
   dishName: string;
   onRemove?: () => void;
@@ -13,9 +29,11 @@ export const DishChip: React.FC<DishChipProps> = ({
   onRemove, 
   showRemoveButton = false 
 }) => {
+  const displayName = toTitleCase(dishName);
+  
   return (
     <View style={styles.chip}>
-      <Text style={styles.chipText}>🍽️ {dishName}</Text>
+      <Text style={styles.chipText}>🍽️ {displayName}</Text>
       {showRemoveButton && onRemove && (
         <TouchableOpacity 
           style={styles.removeButton}

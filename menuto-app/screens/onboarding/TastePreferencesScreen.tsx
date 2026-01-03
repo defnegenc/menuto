@@ -8,6 +8,7 @@ import {
   Alert,
   TextInput,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../store/useStore';
 import { UserPreferences } from '../../types';
@@ -79,6 +80,8 @@ export function TastePreferencesScreen({ onComplete, onBack }: Props) {
   const { user, setUser } = useStore();
   const userId = useStore((state) => state.userId);
   const insets = useSafeAreaInsets();
+  
+  console.log('🔍 TastePreferencesScreen: onBack prop received:', !!onBack);
   
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const [cuisineSearch, setCuisineSearch] = useState<string>('');
@@ -206,6 +209,18 @@ export function TastePreferencesScreen({ onComplete, onBack }: Props) {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.customHeader}>
+        {onBack && (
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => {
+              console.log('🔙 TastePreferencesScreen: Back button pressed');
+              onBack();
+            }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+          </TouchableOpacity>
+        )}
         <Text style={styles.customHeaderTitle}>Let's learn your taste</Text>
         <Text style={styles.customHeaderSubtitle}>This helps us recommend dishes you'll love</Text>
       </View>
@@ -346,6 +361,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+    position: 'relative',
+  },
+  backButton: {
+    position: 'absolute',
+    left: theme.spacing.lg,
+    top: theme.spacing.md,
+    zIndex: 1,
+    padding: theme.spacing.sm,
   },
   customHeaderTitle: {
     fontSize: theme.typography.sizes.heading,

@@ -12,6 +12,8 @@ app = FastAPI(title="Menuto API", version="1.0.0")
 ALLOWED_ORIGINS = [
     "http://localhost:19006",  # Expo web/dev
     "http://localhost:8081",   # Metro
+    "http://localhost:8080",   # Local backend (if calling from a web client)
+    "http://127.0.0.1:8080",   # Local backend (loopback)
     "exp://localhost",         # Expo
     "http://localhost:3000",   # web dev (if any)
     "https://*.onrender.com",  # during bring-up

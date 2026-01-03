@@ -1,83 +1,127 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy.orm import Session
-from app.database import get_db
-from app.services.recommendation_engine import RecommendationEngine
-from app.services.demo_recommendations import generate_demo_recommendations
-from app.services.smart_recommendation_algorithm import SmartRecommendationAlgorithm
+from __future__ import annotations
+
+from fastapi import APIRouter, HTTPException, Request
+
 from app.services.menu_data_service import MenuDataService
-from typing import List, Dict, Any, Optional
-import json
+from app.services.recommendation_engine import RecommendationEngine
+from app.services.recommendation_types import HungerLevel, RecommendationContext
+from app.services.smart_recommendation_algorithm import SmartRecommendationAlgorithm
 
 router = APIRouter()
 
+
+def _map_hunger_level(raw: int | float | None) -> HungerLevel:
+    if raw is None:
+        return HungerLevel.NORMAL
+    if raw <= 2:
+        return HungerLevel.LIGHT
+    if raw >= 4:
+        return HungerLevel.STARVING
+    return HungerLevel.NORMAL
+
+
 @router.post("/generate")
-async def generate_smart_recommendations(request: Request, db: Session = Depends(get_db)):
-    """
-    Generate intelligent recommendations based on user's favorite dishes and restaurant reviews
-    Uses the new SmartRecommendationAlgorithm with real menu data
-    """
+async def generate_smart_recommendations(
+    request: Request,
+):
     try:
         data = await request.json()
-        
-        restaurant_place_id = data.get('restaurant_place_id')
-        restaurant_name = data.get('restaurant_name')  
-        user_favorite_dishes = data.get('user_favorite_dishes', [])
-        user_dietary_constraints = data.get('user_dietary_constraints', [])
-        context_weights = data.get('context_weights', {})
-        friend_selections = data.get('friend_selections', [])
-        
-        # Extract spice tolerance from context weights
-        spice_tolerance = context_weights.get('spiceTolerance', 3)
-        
+
+        restaurant_place_id: str | None = data.get("restaurant_place_id")
+        restaurant_name: str | None = data.get("restaurant_name")
+        user_favorite_dishes = data.get("user_favorite_dishes", []) or []
+        user_dietary_constraints = data.get("user_dietary_constraints", []) or []
+        context_weights = data.get("context_weights", {}) or {}
+        friend_selections = data.get("friend_selections", []) or []
+
         if not restaurant_place_id or not restaurant_name:
-            raise HTTPException(status_code=400, detail="restaurant_place_id and restaurant_name are required")
-        
+            raise HTTPException(
+                status_code=400,
+                detail="restaurant_place_id and restaurant_name are required",
+            )
+
         print(f"🤖 Generating smart recommendations for {restaurant_name}")
         print(f"👤 User has {len(user_favorite_dishes)} favorite dishes")
-        
-        # Get actual menu items from multiple sources (with caching)
-        menu_service = MenuDataService()
-        menu_items = menu_service.get_restaurant_menu(restaurant_place_id, restaurant_name)
-        
+
+        hunger_raw = context_weights.get("hungerLevel")
+        spice_raw = context_weights.get("spiceTolerance")
+
+        context = RecommendationContext(
+            hunger_level=_map_hunger_level(hunger_raw),
+            craving_tags=context_weights.get("selectedCravings", []) or [],
+            spice_preference=(spice_raw or 3) / 5.0,
+            budget_min=None,
+            budget_max=None,
+            friend_selected_item_ids=[fs.get("id") for fs in friend_selections if fs.get("id")],
+            restaurant_specific_signals={"name": restaurant_name},
+        )
+
+        legacy_engine = RecommendationEngine()
+        menu_service = MenuDataService(recommendation_engine=legacy_engine)
+        algorithm = SmartRecommendationAlgorithm(
+            menu_data_service=menu_service,
+            legacy_engine=legacy_engine,
+        )
+
+        menu_items = menu_service.get_menu_items_with_features(
+            restaurant_place_id=restaurant_place_id,
+            restaurant_name=restaurant_name,
+        )
+
         if not menu_items:
-            print(f"⚠️  No menu items found for {restaurant_name}")
+            print(f"⚠️ No menu items found for {restaurant_name}")
             return {
                 "restaurant": {
                     "place_id": restaurant_place_id,
-                    "name": restaurant_name
+                    "name": restaurant_name,
                 },
                 "recommendations": [],
                 "total_count": 0,
-                "message": f"No menu items available for {restaurant_name}. Try adding some menu items manually."
+                "message": f"No menu items available for {restaurant_name}. Try adding some menu items manually.",
             }
-        
-        # Use smart recommendation algorithm
-        smart_algorithm = SmartRecommendationAlgorithm()
-        scored_recommendations = smart_algorithm.score_menu_items(
+
+        scored_recommendations = algorithm.generate_recommendations_from_payload(
             menu_items=menu_items,
-            user_favorite_dishes=user_favorite_dishes,
-            user_dietary_restrictions=user_dietary_constraints,
-            context_weights=context_weights,
-            friend_selections=friend_selections,
+            restaurant_place_id=restaurant_place_id,
             restaurant_name=restaurant_name,
-            restaurant_place_id=restaurant_place_id
+            user_favorite_dishes=user_favorite_dishes,
+            user_dietary_constraints=user_dietary_constraints,
+            context=context,
         )
-        
+
+        recommendations_payload = [
+            {
+                "id": scored.item.item_id,
+                "name": scored.item.name,
+                "description": scored.item.description,
+                "price": scored.item.price,
+                "category": scored.item.course,
+                "sentiment_score": scored.item.sentiment_score,
+                "score": scored.score,
+                "components": scored.components,
+                "explanations": scored.explanations,
+            }
+            for scored in scored_recommendations
+        ]
+
         return {
             "restaurant": {
                 "place_id": restaurant_place_id,
-                "name": restaurant_name
+                "name": restaurant_name,
             },
-            "recommendations": scored_recommendations,
-            "total_count": len(scored_recommendations),
-            "message": f"Found {len(scored_recommendations)} personalized recommendations based on real menu items"
+            "recommendations": recommendations_payload,
+            "total_count": len(recommendations_payload),
+            "message": f"Found {len(recommendations_payload)} personalized recommendations based on real menu items",
         }
-        
-    except Exception as e:
-        print(f"❌ Smart recommendations error: {str(e)}")
+
+    except HTTPException:
+        raise
+    except Exception as exc:  # pragma: no cover - debug logging
         import traceback
+
+        print(f"❌ Smart recommendations error: {exc}")
         print(f"❌ Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(exc))
 
 @router.post("/analyze-taste-profile")
 async def analyze_taste_profile(request: Request):

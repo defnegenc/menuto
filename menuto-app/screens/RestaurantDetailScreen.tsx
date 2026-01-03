@@ -49,52 +49,59 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
   const [searchText, setSearchText] = useState('');
   const [filteredDishes, setFilteredDishes] = useState<ParsedDish[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedMenuType, setSelectedMenuType] = useState<string>('all');
+  const [showMenuUrlModal, setShowMenuUrlModal] = useState(false);
+  const [menuUrls, setMenuUrls] = useState<string[]>(['']);
 
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   
   // Simple flag to prevent duplicate loads
   const hasLoadedRef = useRef(false);
   const restaurantId = restaurant.place_id;
+  // Contract: RestaurantDetailScreen should always have a stable place_id.
+  // App.tsx remounts this screen via `key={selectedRestaurant.place_id}`.
+  const restaurantKey = restaurant.place_id;
   
   // Track current request to cancel it when switching restaurants
   const currentRequestRef = useRef<AbortController | null>(null);
+  const currentParseRequestRef = useRef<AbortController | null>(null);
+  const opSeqRef = useRef(0);
+  const textParseInFlightRef = useRef(false);
+  const abortReasonMapRef = useRef<WeakMap<AbortController, string>>(new WeakMap());
+
+  const abortWithReason = useCallback((controller: AbortController, reason: string) => {
+    try {
+      abortReasonMapRef.current.set(controller, reason);
+    } catch {}
+    try {
+      controller.abort();
+    } catch {}
+  }, []);
   
   // ScrollView ref for scrolling to favorites
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Load menu when restaurant changes
+  // Load menu on mount. We rely on App.tsx key-remount to switch restaurants.
+  // This avoids aborting parses due to transient restaurant identity churn.
   useEffect(() => {
-    console.log(`🔄 Restaurant changed to: ${restaurant.name} (${restaurant.place_id})`);
-    
-    // Cancel any existing request when switching restaurants
-    if (currentRequestRef.current) {
-      console.log(`🛑 Cancelling previous request for ${restaurant.name}`);
-      currentRequestRef.current.abort();
-      currentRequestRef.current = null;
-    }
-    
-    // IMMEDIATELY reset loading states for the new restaurant
-    setIsLoading(false);
-    setIsParsing(false);
-    
-    // Reset all state for this restaurant
-    setMenuDishes([]);
-    setShowPasteModal(false);
-    setShowAddMoreOptions(false);
-    setMenuText('');
-    setSearchText('');
-    setFilteredDishes([]);
-    setSelectedCategory('all');
-    setLoadingMessageIndex(0);
-    
-    // Reset the loaded flag when restaurant changes
+    console.log(`🔄 RestaurantDetailScreen mounted for: ${restaurant.name} (${restaurant.place_id})`);
+    opSeqRef.current += 1;
     hasLoadedRef.current = false;
-    
-    // Load the menu after a small delay to ensure state is reset
-    setTimeout(() => {
-      loadRestaurantMenu();
-    }, 50);
-  }, [restaurant.place_id, restaurant.name]);
+    loadRestaurantMenu({ force: true });
+
+    return () => {
+      console.log(`🧹 RestaurantDetailScreen unmounting for: ${restaurant.name} (${restaurant.place_id})`);
+      if (currentRequestRef.current) {
+        abortWithReason(currentRequestRef.current, "unmount_menu_load");
+        currentRequestRef.current = null;
+      }
+      if (currentParseRequestRef.current) {
+        abortWithReason(currentParseRequestRef.current, "unmount_parse");
+        currentParseRequestRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
 
   // Rotating loading messages
@@ -118,8 +125,10 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
     "⭐ Chef's special coming up"
   ];
 
-  const loadRestaurantMenu = useCallback(async () => {
-    if (isLoading || isParsing) return; // Prevent concurrent loads
+  const loadRestaurantMenu = useCallback(async (opts?: { force?: boolean }) => {
+    if (!opts?.force && (isLoading || isParsing)) return; // Prevent concurrent loads unless forced
+
+    const seq = opSeqRef.current;
     
     // Set loaded flag to prevent duplicate calls
     hasLoadedRef.current = true;
@@ -127,11 +136,14 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
     // Create new abort controller for this request
     const abortController = new AbortController();
     currentRequestRef.current = abortController;
+    const timeoutId = setTimeout(() => abortController.abort(), 60000);
     
     try {
       setIsLoading(true);
       const response = await api.getRestaurantMenu(restaurant.name, restaurant.place_id, abortController);
       
+      if (opSeqRef.current !== seq) return; // stale response
+
       if (response.dishes && Array.isArray(response.dishes)) {
         // Backend returns dishes directly with their categories
         console.log(`✅ Loaded ${response.dishes.length} dishes with categories:`, response.dishes.map((d: any) => d.category));
@@ -146,9 +158,14 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
       }
     } catch (error) {
       console.error(`Error loading menu for ${restaurant.name}:`, error);
-      setMenuDishes([]);
+      if (opSeqRef.current === seq) {
+        setMenuDishes([]);
+      }
     } finally {
-      setIsLoading(false);
+      clearTimeout(timeoutId);
+      if (opSeqRef.current === seq) {
+        setIsLoading(false);
+      }
       // Clear the current request reference
       if (currentRequestRef.current === abortController) {
         currentRequestRef.current = null;
@@ -157,23 +174,83 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
   }, [restaurant.name, restaurant.place_id, isLoading, isParsing]);
 
   const handleAddMenuPDF = async () => {
-    Alert.prompt(
-      'Add Menu PDF',
-      'Enter the URL of the menu PDF:',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Add', 
-          onPress: async (url) => {
-            if (url) {
-              await parseMenuFromUrl(url);
-            }
+    setMenuUrls(['']);
+    setShowMenuUrlModal(true);
+  };
+
+  const handleSubmitMenuUrls = async () => {
+    const urls = menuUrls.map(u => (u || '').trim()).filter(Boolean);
+    if (urls.length === 0) {
+      Alert.alert('Error', 'Please add at least one menu URL.');
+      return;
+    }
+    const invalid = urls.find(u => !/^https?:\/\//i.test(u));
+    if (invalid) {
+      Alert.alert('Error', `Invalid URL: ${invalid}`);
+      return;
+    }
+
+    setShowMenuUrlModal(false);
+    setShowAddMoreOptions(false);
+    setIsParsing(true);
+
+    // Fire-and-forget: call backend ingest, then poll for completion
+    console.log('🚀 Ingesting menu URLs for:', restaurant.name, urls);
+
+    try {
+      const ingestResult = await api.ingestMenus(
+        restaurant.place_id,
+        restaurant.name,
+        urls
+      );
+      console.log('✅ Ingest accepted:', ingestResult);
+
+      // Poll for completion (background parsing may take a while)
+      const ingestId = ingestResult.ingest_id;
+      let attempts = 0;
+      const maxAttempts = 60; // 60 * 3s = 3 minutes max
+
+      const poll = async (): Promise<void> => {
+        attempts++;
+        try {
+          const status = await api.getIngestStatus(restaurant.place_id, ingestId);
+          console.log(`📊 Ingest ${ingestId} status:`, status.status, status.url_status);
+
+          if (status.status === 'done' || status.status === 'failed') {
+            // Count successes/failures
+            const ok = Object.values(status.url_status).filter(s => s === 'done').length;
+            const failed = Object.values(status.url_status).filter(s => s === 'failed').length;
+
+            setIsParsing(false);
+            await loadRestaurantMenu({ force: true });
+            Alert.alert(
+              status.status === 'done' ? 'Done!' : 'Completed with errors',
+              `Parsed ${ok} menu${ok === 1 ? '' : 's'}${failed ? `, failed ${failed}` : ''}.`
+            );
+            return;
           }
+
+          // Still running, poll again
+          if (attempts < maxAttempts) {
+            setTimeout(poll, 3000);
+          } else {
+            setIsParsing(false);
+            Alert.alert('Timeout', 'Menu parsing is taking longer than expected. Check back later.');
+          }
+        } catch (pollError) {
+          console.error('Poll error:', pollError);
+          setIsParsing(false);
         }
-      ],
-      'plain-text',
-      'https://example.com/menu.pdf'
-    );
+      };
+
+      // Start polling after a short delay
+      setTimeout(poll, 2000);
+
+    } catch (error) {
+      console.error('❌ Ingest failed:', error);
+      setIsParsing(false);
+      Alert.alert('Error', 'Failed to start menu parsing. Please try again.');
+    }
   };
 
   const handlePasteMenuText = () => {
@@ -183,7 +260,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
   const handleSearchMenu = (text: string) => {
     setSearchText(text);
     if (text.trim()) {
-      const filtered = nonFavoriteDishes.filter(dish => 
+      const filtered = menuDishes.filter(dish => 
         dish.name.toLowerCase().includes(text.toLowerCase()) ||
         (dish.description && dish.description.toLowerCase().includes(text.toLowerCase()))
       );
@@ -258,31 +335,53 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
 
   const parseMenuFromUrl = async (url: string) => {
     console.log(`🔄 Starting URL parsing for: ${restaurant.name}`);
+    const seq = opSeqRef.current;
     setShowAddMoreOptions(false);
     setIsParsing(true);
+    const abortController = new AbortController();
+    currentParseRequestRef.current = abortController;
+    const timeoutId = setTimeout(() => abortController.abort(), 60000);
     try {
-      const response = await api.parseAndStoreMenu(url, restaurant.name, restaurant.place_id);
+      const response = await api.parseAndStoreMenu(url, restaurant.name, restaurant.place_id, abortController);
       if (response.success) {
+        if (opSeqRef.current !== seq) return;
         setMenuDishes(response.dishes);
         console.log(`✅ URL parsing completed for: ${restaurant.name}`);
         Alert.alert('Success', `Added ${response.count} dishes to the menu!`);
         
         // Add a small delay before trying to fetch the menu again
         setTimeout(() => {
-          loadRestaurantMenu();
+          if (opSeqRef.current === seq) {
+            loadRestaurantMenu();
+          }
         }, 2000); // 2 second delay
       }
     } catch (error) {
-      console.error('Menu parsing error:', error);
+      // Aborts are expected when navigating away or replacing an in-flight request
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('ℹ️ URL parse aborted (stale request / navigation).');
+        return;
+      }
+      console.error('❌ Menu parsing error:', error);
       Alert.alert('Error', 'Failed to parse menu. Please check the URL and try again.');
     } finally {
-      setIsParsing(false);
+      clearTimeout(timeoutId);
+      if (currentParseRequestRef.current === abortController) {
+        currentParseRequestRef.current = null;
+      }
+      if (opSeqRef.current === seq) {
+        setIsParsing(false);
+      }
     }
   };
 
   const parseMenuFromScreenshot = async (imageUri: string) => {
     setShowAddMoreOptions(false);
     setIsParsing(true);
+    const seq = opSeqRef.current;
+    const abortController = new AbortController();
+    currentParseRequestRef.current = abortController;
+    const timeoutId = setTimeout(() => abortController.abort(), 60000);
     try {
       console.log('📸 Parsing menu screenshot for:', restaurant.name);
       console.log('📸 Image URI:', imageUri);
@@ -290,12 +389,14 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
       const result = await api.parseMenuFromScreenshot(
         imageUri,
         restaurant.name,
-        restaurant.vicinity || ''
+        restaurant.place_id || '',
+        abortController
       );
       
       console.log('✅ Menu parsing result:', JSON.stringify(result, null, 2));
       
       if (result && result.dishes && result.dishes.length > 0) {
+        if (opSeqRef.current !== seq) return;
         Alert.alert(
           'Success!', 
           `Menu parsed successfully! Found ${result.dishes.length} dishes.`,
@@ -303,7 +404,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
         );
         
         // Refresh the menu after parsing
-        await loadRestaurantMenu();
+        await loadRestaurantMenu({ force: true });
       } else {
         Alert.alert(
           'No Dishes Found', 
@@ -313,6 +414,11 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
       }
       
     } catch (error) {
+      // Aborts are expected when navigating away or replacing an in-flight request
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('ℹ️ Screenshot parse aborted (stale request / navigation).');
+        return;
+      }
       console.error('❌ Error parsing menu screenshot:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       Alert.alert(
@@ -321,11 +427,22 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
         [{ text: 'OK' }]
       );
     } finally {
-      setIsParsing(false);
+      clearTimeout(timeoutId);
+      if (currentParseRequestRef.current === abortController) {
+        currentParseRequestRef.current = null;
+      }
+      if (opSeqRef.current === seq) {
+        setIsParsing(false);
+      }
     }
   };
 
   const parseMenuFromText = async () => {
+    // Prevent duplicate invocations (e.g. double-tap submit / re-entrancy)
+    if (textParseInFlightRef.current) {
+      console.log('ℹ️ parseMenuFromText ignored: already in flight');
+      return;
+    }
     if (!menuText.trim()) {
       Alert.alert('Error', 'Please paste some menu text first.');
       return;
@@ -337,46 +454,90 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
     
     setShowAddMoreOptions(false);
     setIsParsing(true);
-    
+    textParseInFlightRef.current = true;
+    const seq = opSeqRef.current;
+
+    // Cancel any in-flight parse before starting a new one (prevents double-submit races)
+    if (currentParseRequestRef.current) {
+      try {
+        console.log('🛑 Aborting previous parse before starting new text parse');
+        abortWithReason(currentParseRequestRef.current, "replaced_by_new_text_parse");
+      } catch {}
+      currentParseRequestRef.current = null;
+    }
+
+    // Fire-and-forget: use ingest endpoint so parsing continues even if user navigates away
     try {
-      const result = await api.parseMenuFromText(
-        menuText.trim(),
+      console.log('🚀 Ingesting menu text for:', restaurant.name, 'length:', menuText.trim().length);
+
+      const ingestResult = await api.ingestMenuText(
+        restaurant.place_id,
         restaurant.name,
-        restaurant.vicinity || ''
+        menuText.trim()
       );
-      
-      console.log('✅ Menu parsing result:', JSON.stringify(result, null, 2));
-      
-      if (result && result.dishes && result.dishes.length > 0) {
-        Alert.alert(
-          'Success!', 
-          `Menu parsed successfully! Found ${result.dishes.length} dishes.`,
-          [{ text: 'OK' }]
-        );
-        
-        // Clear the text input
-        setMenuText('');
-        
-        // Refresh the menu after parsing
-        await loadRestaurantMenu();
-      } else {
-        Alert.alert(
-          'No Dishes Found', 
-          'The text was processed but no menu items were found. Please try a different format or check your input.',
-          [{ text: 'OK' }]
-        );
-      }
-      
+      console.log('✅ Text ingest accepted:', ingestResult);
+
+      // Poll for completion
+      const ingestId = ingestResult.ingest_id;
+      let attempts = 0;
+      const maxAttempts = 60; // 60 * 3s = 3 minutes max
+
+      const poll = async (): Promise<void> => {
+        attempts++;
+        try {
+          const status = await api.getIngestStatus(restaurant.place_id, ingestId);
+          console.log(`📊 Text ingest ${ingestId} status:`, status.status);
+
+          if (status.status === 'done' || status.status === 'failed') {
+            const success = status.status === 'done';
+
+            if (opSeqRef.current !== seq) return;
+            setIsParsing(false);
+            textParseInFlightRef.current = false;
+
+            if (success && status.results?.text?.dish_count > 0) {
+              setMenuText('');
+              await loadRestaurantMenu({ force: true });
+              Alert.alert('Success!', `Menu parsed! Found ${status.results.text.dish_count} dishes.`);
+            } else if (success) {
+              Alert.alert('No Dishes Found', 'The text was processed but no menu items were found.');
+            } else {
+              const errMsg = status.results?.text?.error || 'Unknown error';
+              Alert.alert('Error', `Failed to parse menu: ${errMsg}`);
+            }
+            return;
+          }
+
+          // Still running, poll again
+          if (attempts < maxAttempts) {
+            setTimeout(poll, 3000);
+          } else {
+            if (opSeqRef.current === seq) {
+              setIsParsing(false);
+              textParseInFlightRef.current = false;
+            }
+            Alert.alert('Timeout', 'Menu parsing is taking longer than expected. Check back later.');
+          }
+        } catch (pollError) {
+          console.error('Poll error:', pollError);
+          if (opSeqRef.current === seq) {
+            setIsParsing(false);
+            textParseInFlightRef.current = false;
+          }
+        }
+      };
+
+      // Start polling after a short delay
+      setTimeout(poll, 2000);
+
     } catch (error) {
-      console.error('❌ Error parsing menu text:', error);
+      console.error('❌ Text ingest failed:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      Alert.alert(
-        'Error', 
-        `Failed to parse menu: ${errorMessage}`,
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setIsParsing(false);
+      Alert.alert('Error', `Failed to start menu parsing: ${errorMessage}`);
+      if (opSeqRef.current === seq) {
+        setIsParsing(false);
+      }
+      textParseInFlightRef.current = false;
     }
   };
 
@@ -455,6 +616,12 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
         console.log('💾 Saving updated user (removed):', updatedUser);
         setUser(updatedUser, userId);
       }
+      
+      // If we're in search mode, add the dish back to filtered results
+      if (wasFromSearch) {
+        const updatedFilteredDishes = [...filteredDishes, dish];
+        setFilteredDishes(updatedFilteredDishes);
+      }
     } else {
       console.log('⭐ Adding dish to favorites');
       // Add to favorites
@@ -478,15 +645,18 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
 
       // If added from search results, scroll to favorites and handle search clearing
       if (wasFromSearch) {
+        // Remove the dish from filtered results immediately
+        const updatedFilteredDishes = filteredDishes.filter(d => d.name !== dish.name);
+        setFilteredDishes(updatedFilteredDishes);
+        
         // Scroll to favorites section after a short delay to allow state update
         setTimeout(() => {
           scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         }, 100);
         
-        // Clear search if it was the only result
+        // Clear search only if it was the only result
         if (wasOnlySearchResult) {
           setSearchText('');
-          setFilteredDishes([]);
         }
       }
     }
@@ -511,9 +681,35 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
     return menuDishes.filter(d => !isDishFavorite(d));
   }, [menuDishes, isDishFavorite]);
 
+  const availableMenuTypes = useMemo(() => {
+    const set = new Set<string>();
+    for (const d of menuDishes) {
+      set.add(((d.menu_type || 'menu') as string).toLowerCase());
+    }
+    const arr = Array.from(set);
+    arr.sort();
+    return arr;
+  }, [menuDishes]);
+
+  // Auto-select first menu type when multiple are available
+  useEffect(() => {
+    if (availableMenuTypes.length > 1 && !availableMenuTypes.includes(selectedMenuType)) {
+      setSelectedMenuType(availableMenuTypes[0]);
+    } else if (availableMenuTypes.length === 1) {
+      // Only one menu type, no need to filter
+      setSelectedMenuType(availableMenuTypes[0]);
+    }
+  }, [availableMenuTypes]);
+
+  const menuTypeFilteredDishes = useMemo(() => {
+    // If only one menu type or selected matches, show all non-favorites
+    if (availableMenuTypes.length <= 1) return nonFavoriteDishes;
+    return nonFavoriteDishes.filter(d => ((d.menu_type || 'menu') as string).toLowerCase() === selectedMenuType);
+  }, [nonFavoriteDishes, selectedMenuType, availableMenuTypes]);
+
   const groupedDishes = useMemo(() => {
     const categories: { [key: string]: ParsedDish[] } = {};
-    nonFavoriteDishes.forEach(dish => {
+    menuTypeFilteredDishes.forEach(dish => {
       const category = dish.category || 'other';
       if (!categories[category]) {
         categories[category] = [];
@@ -521,14 +717,14 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
       categories[category].push(dish);
     });
     return categories;
-  }, [nonFavoriteDishes]);
+  }, [menuTypeFilteredDishes]);
 
   return (
     <SafeAreaView style={styles.container}>
       <Header 
         onBack={onBack}
         restaurantName={restaurant.name}
-        restaurantAddress={restaurant.vicinity.split(',').slice(0, 3).join(', ')}
+        restaurantAddress={(restaurant.vicinity ?? 'Location unknown').split(',').slice(0, 3).join(', ')}
       />
 
       {isLoading && (
@@ -641,7 +837,11 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
               <View style={styles.menuHeader}>
                 <View style={styles.menuTitleRow}>
                   <Text style={[styles.sectionTitle, theme.typography.h2.fancy]}>Menu</Text>
-                  {!showAddMoreOptions && (
+                  {showAddMoreOptions ? (
+                    <TouchableOpacity onPress={() => setShowAddMoreOptions(false)}>
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                  ) : (
                     <TouchableOpacity style={styles.addMoreButton} onPress={() => setShowAddMoreOptions(true)}>
                       <Text style={styles.addMoreButtonText}>+ Add More Items</Text>
                     </TouchableOpacity>
@@ -653,42 +853,68 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                       onAddMenuPDF={handleAddMenuPDF}
                       onPasteMenuText={handlePasteMenuText}
                       onAddPhoto={handleAddPhoto}
-                      onCancel={() => setShowAddMoreOptions(false)}
+                      compact
                     />
                   </View>
                 )}
               </View>
 
-              {/* Category Filter Buttons */}
-              <View style={styles.categoryFilterContainer}>
-                <TouchableOpacity 
-                  style={[
-                    styles.categoryFilterButton, 
-                    selectedCategory === 'all' && styles.categoryFilterButtonActive
-                  ]}
-                  onPress={() => setSelectedCategory('all')}
-                >
-                  <Text style={[
-                    styles.categoryFilterText,
-                    selectedCategory === 'all' && styles.categoryFilterTextActive
-                  ]}>All</Text>
-                </TouchableOpacity>
+              {/* Menu Type Tabs (Lunch/Dinner/etc - top-level selection) */}
+              {availableMenuTypes.length > 1 && (
+                <View style={styles.menuTypeTabsContainer}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.menuTypeTabsScroll}>
+                    {availableMenuTypes.map((p) => (
+                      <TouchableOpacity 
+                        key={p}
+                        style={[
+                          styles.menuTypeTab, 
+                          selectedMenuType === p && styles.menuTypeTabActive
+                        ]}
+                        onPress={() => setSelectedMenuType(p)}
+                      >
+                        <Text style={[
+                          styles.menuTypeTabText,
+                          selectedMenuType === p && styles.menuTypeTabTextActive
+                        ]}>{p.charAt(0).toUpperCase() + p.slice(1)}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
 
-                {Object.keys(groupedDishes).map((category) => (
+              {/* Category Filter Pills (Starter/Main/etc - secondary filter) */}
+              <View style={styles.categoryFilterSection}>
+                <Text style={styles.categoryFilterLabel}>Filter by course</Text>
+                <View style={styles.categoryFilterContainer}>
                   <TouchableOpacity 
-                    key={category}
                     style={[
                       styles.categoryFilterButton, 
-                      selectedCategory === category && styles.categoryFilterButtonActive
+                      selectedCategory === 'all' && styles.categoryFilterButtonActive
                     ]}
-                    onPress={() => setSelectedCategory(category)}
+                    onPress={() => setSelectedCategory('all')}
                   >
                     <Text style={[
                       styles.categoryFilterText,
-                      selectedCategory === category && styles.categoryFilterTextActive
-                    ]}>{category.charAt(0).toUpperCase() + category.slice(1)}</Text>
+                      selectedCategory === 'all' && styles.categoryFilterTextActive
+                    ]}>All</Text>
                   </TouchableOpacity>
-                ))}
+
+                  {Object.keys(groupedDishes).map((category) => (
+                    <TouchableOpacity 
+                      key={category}
+                      style={[
+                        styles.categoryFilterButton, 
+                        selectedCategory === category && styles.categoryFilterButtonActive
+                      ]}
+                      onPress={() => setSelectedCategory(category)}
+                    >
+                      <Text style={[
+                        styles.categoryFilterText,
+                        selectedCategory === category && styles.categoryFilterTextActive
+                      ]}>{category.charAt(0).toUpperCase() + category.slice(1)}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
 
               {selectedCategory === 'all' ? (
@@ -768,6 +994,61 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
               returnKeyType="default"
               blurOnSubmit={false}
             />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Menu URL Modal (multi-URL with + button) */}
+      <Modal
+        visible={showMenuUrlModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowMenuUrlModal(false)}>
+              <Text style={styles.modalCancelButton}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Add Menu URLs</Text>
+            <TouchableOpacity onPress={handleSubmitMenuUrls}>
+              <Text style={styles.modalSubmitButton}>Parse</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.modalContent}>
+            <Text style={styles.modalInstructions}>
+              Add one or more menu URLs (PDF/website). We’ll parse and save them to this restaurant.
+            </Text>
+
+            {menuUrls.map((value, idx) => (
+              <View key={`menu-url-${idx}`} style={styles.menuUrlRow}>
+                <TextInput
+                  style={[styles.menuUrlInput, { flex: 1 }]}
+                  value={value}
+                  onChangeText={(text) => {
+                    setMenuUrls(prev => prev.map((p, i) => (i === idx ? text : p)));
+                  }}
+                  placeholder="https://example.com/menu.pdf"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {menuUrls.length > 1 && (
+                  <TouchableOpacity
+                    style={styles.removeUrlButton}
+                    onPress={() => setMenuUrls(prev => prev.filter((_, i) => i !== idx))}
+                  >
+                    <Text style={styles.removeUrlButtonText}>Remove</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+
+            <TouchableOpacity
+              style={styles.addUrlButton}
+              onPress={() => setMenuUrls(prev => [...prev, ''])}
+            >
+              <Text style={styles.addUrlButtonText}>+ Add another URL</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -874,6 +1155,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: theme.typography.fontFamilies.semibold,
   },
+  cancelButtonText: {
+    color: theme.colors.text.secondary,
+    fontSize: 16,
+    fontFamily: theme.typography.fontFamilies.regular,
+  },
   addMoreContainer: {
     width: '100%',
   },
@@ -944,6 +1230,50 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontFamily: theme.typography.fontFamilies.regular,
   },
+  menuUrlRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+  },
+  menuUrlInput: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 10,
+    padding: theme.spacing.md,
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.primary,
+    backgroundColor: theme.colors.surface,
+    fontFamily: theme.typography.fontFamilies.regular,
+  },
+  addUrlButton: {
+    marginTop: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surface,
+  },
+  addUrlButtonText: {
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.primary,
+    fontFamily: theme.typography.fontFamilies.semibold,
+  },
+  removeUrlButton: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: 8,
+    backgroundColor: theme.colors.secondary,
+  },
+  removeUrlButtonText: {
+    color: theme.colors.text.light,
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: theme.typography.fontFamilies.semibold,
+  },
   textInput: {
     flex: 1,
     backgroundColor: theme.colors.surface,
@@ -957,27 +1287,65 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   // Updated category filter styles to match the Figma design
+  menuTypeTabsContainer: {
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  menuTypeTabsScroll: {
+    flexGrow: 0,
+  },
+  menuTypeTab: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    marginRight: 8,
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
+  },
+  menuTypeTabActive: {
+    borderBottomColor: theme.colors.secondary,
+  },
+  menuTypeTabText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text.secondary,
+    fontFamily: theme.typography.fontFamilies.semibold,
+  },
+  menuTypeTabTextActive: {
+    color: theme.colors.secondary,
+  },
+  categoryFilterSection: {
+    marginBottom: 16,
+  },
+  categoryFilterLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: theme.colors.text.secondary,
+    fontFamily: theme.typography.fontFamilies.medium,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   categoryFilterContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 20,
   },
   categoryFilterButton: {
-    backgroundColor: theme.colors.chipDefault, // Light pink background
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 25, // Very rounded corners like in the image
-    borderWidth: 0, // No border for unselected state
+    backgroundColor: theme.colors.chipDefault,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 0,
   },
   categoryFilterButtonActive: {
     backgroundColor: theme.colors.secondary, // Dark red when selected
     borderWidth: 0,
   },
   categoryFilterText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
-    color: theme.colors.text.primary, // Black text for unselected
+    color: theme.colors.text.primary,
     fontFamily: theme.typography.fontFamilies.medium,
   },
   categoryFilterTextActive: {

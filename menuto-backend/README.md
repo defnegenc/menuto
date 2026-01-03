@@ -113,6 +113,63 @@ DishScore = 0.35×PersonalMatch + 0.30×ReviewConsensus + 0.25×SocialAffinity +
 
 ## Development
 
+### Running tests (no external calls)
+
+Install dev deps:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+Run tests:
+
+```bash
+cd menuto-backend
+pytest
+```
+
+### Debugging menu parsing
+
+All parsing endpoints support a `debug=1` flag (where applicable) to return stage timings + LLM usage for cost/latency troubleshooting. Responses also include a `request_id` so you can correlate backend logs with a specific request.
+
+Top user-facing failure cases (and how to reproduce):
+
+1) **Menu URL is reachable, but HEAD is blocked / content-type is missing**
+- Symptom: parsing silently falls back to HTML or mis-detects PDF/image
+- Repro:
+
+```bash
+curl -sS -X POST -F "url=https://example.com/menu" -F "restaurant_name=Demo" "http://127.0.0.1:8080/menu-parser/parse-url?debug=1"
+```
+
+2) **PDF is scanned / extraction yields almost no text**
+- Symptom: 400 with `pdf_too_little_text`
+- Repro:
+
+```bash
+curl -sS -X POST -F "url=https://example.com/menu.pdf" -F "restaurant_name=Demo" "http://127.0.0.1:8080/menu-parser/parse-url?debug=1"
+```
+
+3) **OCR fails (blurry/low-contrast image, unsupported format)**
+- Symptom: 400 with `ocr_failed` or `image_extraction_failed`
+- Repro (upload a screenshot):
+
+```bash
+curl -sS -X POST -F "menu_image=@/path/to/menu.jpg" -F "restaurant_name=Demo" "http://127.0.0.1:8080/menu-parsing/parse-screenshot"
+```
+
+4) **LLM returns malformed JSON**
+- Symptom: intermittent 502 `llm_failed` (we retry once with stronger instructions)
+- Repro (use any URL and inspect debug):
+
+```bash
+curl -sS -X POST -F "url=https://example.com/menu" -F "restaurant_name=Demo" "http://127.0.0.1:8080/menu-parser/parse-url?debug=1"
+```
+
+5) **LLM returns empty response / upstream timeout**
+- Symptom: 502 `llm_empty_response` or `llm_failed`
+- Repro: set a very low upstream timeout (for local experiments) or test with a slow URL; inspect `debug.llm.*` fields.
+
 ### Add New Features
 1. Create new router in `app/routers/`
 2. Add business logic in `app/services/` 

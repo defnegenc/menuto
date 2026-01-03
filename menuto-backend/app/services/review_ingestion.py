@@ -1,3 +1,13 @@
+"""
+menuto-backend/app/services/review_ingestion.py
+
+What this is:
+- Helpers to fetch restaurant reviews (Google/Yelp) and optionally enrich them with OpenAI.
+
+Why we keep it:
+- Used by /reviews/* endpoints (routers/reviews.py) to ingest reviews for restaurants.
+"""
+
 import requests
 import openai
 from typing import List, Dict, Optional
@@ -6,7 +16,10 @@ from dotenv import load_dotenv
 import time
 import json
 
-load_dotenv()
+try:
+    load_dotenv()
+except Exception as e:
+    _ = e
 
 class ReviewIngestion:
     def __init__(self):

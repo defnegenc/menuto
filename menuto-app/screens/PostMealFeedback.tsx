@@ -310,7 +310,7 @@ export const PostMealFeedback: React.FC<PostMealFeedbackProps> = ({
               <Text style={styles.loadingText}>Loading menu...</Text>
             ) : filteredDishes.length > 0 ? (
               filteredDishes.map((dishItem, index) => (
-                <View key={dishItem.id || `search-dish-${index}`} style={styles.searchResultItem}>
+                <View key={`search-dish-${index}-${dishItem.id ?? dishItem.name}`} style={styles.searchResultItem}>
                   <MenuItemCard
                     dish={dishItem}
                     onPress={() => handleDishSelect(dishItem)}

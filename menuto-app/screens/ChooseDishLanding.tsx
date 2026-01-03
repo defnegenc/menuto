@@ -44,6 +44,8 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
   const [isLoadingMenu, setIsLoadingMenu] = useState(false);
   const [showQuestions, setShowQuestions] = useState(false);
   const [showTextModal, setShowTextModal] = useState(false);
+  const [showMenuUrlModal, setShowMenuUrlModal] = useState(false);
+  const [menuUrls, setMenuUrls] = useState<string[]>(['']);
   const [menuText, setMenuText] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   
@@ -135,13 +137,76 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
   };
 
   const handleAddMenuPDF = async () => {
-    // For PDF, we'll need to implement file picker
-    // For now, show an alert that this feature is coming soon
-    Alert.alert(
-      'PDF Upload',
-      'PDF menu upload is coming soon! For now, you can paste the menu text or take a photo.',
-      [{ text: 'OK' }]
-    );
+    if (!selectedRestaurant) {
+      Alert.alert('Error', 'No restaurant selected');
+      return;
+    }
+
+    setMenuUrls(['']);
+    setShowMenuUrlModal(true);
+  };
+
+  const handleSubmitMenuUrls = async () => {
+    if (!selectedRestaurant) {
+      Alert.alert('Error', 'No restaurant selected');
+      return;
+    }
+
+    const urls = menuUrls.map(u => (u || '').trim()).filter(Boolean);
+    if (urls.length === 0) {
+      Alert.alert('Error', 'Please add at least one menu URL.');
+      return;
+    }
+    const invalid = urls.find(u => !/^https?:\/\//i.test(u));
+    if (invalid) {
+      Alert.alert('Error', `Invalid URL: ${invalid}`);
+      return;
+    }
+
+    try {
+      setShowMenuUrlModal(false);
+      setIsParsing(true);
+      console.log('🔗 Ingesting menu URLs for:', selectedRestaurant.name, urls);
+
+      // Use fire-and-forget ingest with polling (same as RestaurantDetailScreen)
+      const ingestResult = await api.ingestMenus(
+        selectedRestaurant.place_id,
+        selectedRestaurant.name,
+        urls
+      );
+      console.log('✅ Ingest accepted:', ingestResult);
+      const ingestId = ingestResult.ingest_id;
+
+      // Poll for completion
+      let done = false;
+      let attempts = 0;
+      const maxAttempts = 60; // ~3 min max
+      while (!done && attempts < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 3000));
+        attempts++;
+        try {
+          const status = await api.getIngestStatus(selectedRestaurant.place_id, ingestId);
+          console.log(`📊 Ingest status (${attempts}):`, status.status, status.url_status);
+          if (status.status === 'done' || status.status === 'failed') {
+            done = true;
+            const successCount = Object.values(status.url_status).filter((s) => s === 'done').length;
+            const failCount = Object.values(status.url_status).filter((s) => s === 'failed').length;
+            Alert.alert(
+              'Done!',
+              `Parsed ${successCount} menu${successCount === 1 ? '' : 's'}${failCount ? `, failed ${failCount}` : ''}.`
+            );
+          }
+        } catch (pollErr) {
+          console.error('Polling error:', pollErr);
+        }
+      }
+      if (!done) {
+        Alert.alert('Timeout', 'Menu parsing is taking longer than expected. Please check back later.');
+      }
+      await handleRestaurantSelection(selectedRestaurant);
+    } finally {
+      setIsParsing(false);
+    }
   };
 
   const handlePasteMenuText = () => {
@@ -163,30 +228,59 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
     setShowTextModal(false);
 
     try {
-      console.log('Parsing menu text for:', selectedRestaurant.name);
+      console.log('🚀 Ingesting menu text for:', selectedRestaurant.name);
       
-      const result = await api.parseMenuFromText(
-        menuText.trim(),
+      // Use fire-and-forget ingest with polling (same as RestaurantDetailScreen)
+      const ingestResult = await api.ingestMenuText(
+        selectedRestaurant.place_id,
         selectedRestaurant.name,
-        selectedRestaurant.vicinity || ''
+        menuText.trim()
       );
-      
-      console.log('Menu parsing result:', result);
-      
-      Alert.alert(
-        'Success!', 
-        `Menu parsed successfully! Found ${result.dishes?.length || 0} dishes.`,
-        [{ text: 'OK' }]
-      );
-      
-      // Clear the text input
-      setMenuText('');
+      console.log('✅ Text ingest accepted:', ingestResult);
+      const ingestId = ingestResult.ingest_id;
+
+      // Poll for completion
+      let done = false;
+      let attempts = 0;
+      const maxAttempts = 60; // ~3 min max
+      while (!done && attempts < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 3000));
+        attempts++;
+        try {
+          const status = await api.getIngestStatus(selectedRestaurant.place_id, ingestId);
+          console.log(`📊 Text ingest status (${attempts}):`, status.status);
+          if (status.status === 'done' || status.status === 'failed') {
+            done = true;
+            if (status.status === 'done') {
+              const dishCount = status.results?.text?.dish_count || 0;
+              Alert.alert(
+                'Success!',
+                `Menu parsed successfully! Found ${dishCount} dishes.`,
+                [{ text: 'OK' }]
+              );
+              setMenuText('');
+            } else {
+              const errorMsg = status.results?.text?.error || 'Unknown error';
+              Alert.alert('Error', `Failed to parse menu: ${errorMsg}`, [{ text: 'OK' }]);
+            }
+          }
+        } catch (pollErr) {
+          console.error('Polling error:', pollErr);
+        }
+      }
+      if (!done) {
+        Alert.alert('Timeout', 'Menu parsing is taking longer than expected. Please check back later.');
+      }
       
       // Refresh the menu after parsing
       await handleRestaurantSelection(selectedRestaurant);
       
     } catch (error) {
-      console.error('Error parsing menu text:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('ℹ️ Menu text ingest aborted');
+        return;
+      }
+      console.error('Error ingesting menu text:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       Alert.alert(
         'Error', 
@@ -277,7 +371,7 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
       const result = await api.parseMenuFromScreenshot(
         imageUri,
         selectedRestaurant.name,
-        selectedRestaurant.vicinity || ''
+        selectedRestaurant.place_id
       );
       
       console.log('✅ Menu parsing result:', JSON.stringify(result, null, 2));
@@ -691,6 +785,61 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
           </View>
         </View>
       </Modal>
+
+      {/* Menu URL Modal (multi-URL with + button) */}
+      <Modal
+        visible={showMenuUrlModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowMenuUrlModal(false)}>
+              <Text style={styles.modalCancelButton}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Add Menu URLs</Text>
+            <TouchableOpacity onPress={handleSubmitMenuUrls}>
+              <Text style={styles.modalSubmitButton}>Parse</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.modalContent}>
+            <Text style={styles.modalInstructions}>
+              Add one or more menu URLs (PDF/website). We’ll parse and save them to this restaurant.
+            </Text>
+
+            {menuUrls.map((value, idx) => (
+              <View key={`menu-url-${idx}`} style={styles.menuUrlRow}>
+                <TextInput
+                  style={[styles.menuUrlInput, { flex: 1 }]}
+                  value={value}
+                  onChangeText={(text) => {
+                    setMenuUrls(prev => prev.map((p, i) => (i === idx ? text : p)));
+                  }}
+                  placeholder="https://example.com/menu.pdf"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {menuUrls.length > 1 && (
+                  <TouchableOpacity
+                    style={styles.removeUrlButton}
+                    onPress={() => setMenuUrls(prev => prev.filter((_, i) => i !== idx))}
+                  >
+                    <Text style={styles.removeUrlButtonText}>Remove</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+
+            <TouchableOpacity
+              style={styles.addUrlButton}
+              onPress={() => setMenuUrls(prev => [...prev, ''])}
+            >
+              <Text style={styles.addUrlButtonText}>+ Add another URL</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -954,6 +1103,50 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     textAlignVertical: 'top',
+  },
+  menuUrlRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+  },
+  menuUrlInput: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 10,
+    padding: theme.spacing.md,
+    fontSize: theme.typography.sizes.md,
+    color: theme.colors.text.primary,
+    backgroundColor: theme.colors.surface,
+    fontFamily: theme.typography.fontFamilies.regular,
+  },
+  addUrlButton: {
+    marginTop: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.surface,
+  },
+  addUrlButtonText: {
+    fontSize: theme.typography.sizes.md,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.primary,
+    fontFamily: theme.typography.fontFamilies.semibold,
+  },
+  removeUrlButton: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: 8,
+    backgroundColor: theme.colors.secondary,
+  },
+  removeUrlButtonText: {
+    color: theme.colors.text.light,
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: theme.typography.fontFamilies.semibold,
   },
   parsingContainer: {
     flex: 1,

@@ -9,7 +9,6 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
 import { loadFonts } from './utils/fonts';
 import { theme } from './theme';
-import { CrashReporter } from './components/CrashReporter';
 import { debugLog } from './utils/debug';
 import { Buffer } from 'buffer';
 
@@ -31,7 +30,6 @@ import { RestaurantSearchScreen } from './screens/RestaurantSearchScreen';
 import { useStore } from './store/useStore';
 import { ParsedDish, FavoriteRestaurant } from './types';
 import { api, setAuthTokenGetter, ensureUserProfile, isAuthGetterWired } from './services/api';
-import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Onboarding completion helpers
 const hasTastePrefs = (u?: any) => {
@@ -603,13 +601,11 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ErrorBoundary>
       <SafeAreaProvider>
         <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
           <AppContent />
         </ClerkProvider>
       </SafeAreaProvider>
-    </ErrorBoundary>
   );
 }
 

@@ -26,10 +26,10 @@ interface DishRecommendationsProps {
 }
 
 interface Recommendation {
-  id: number;
+  id: string | number;
   name: string;
   description: string;
-  price?: string;
+  price?: string | number | null;
   category: string;
   dietary_tags: string[];
   ingredients: string[];
@@ -102,7 +102,39 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
       );
 
       console.log('✅ Smart recommendations received:', response);
-      const newRecommendations = response.recommendations || [];
+      const rawRecs = response.recommendations || [];
+
+      // Normalize backend payload into the UI shape (backend may return different keys)
+      const newRecommendations: Recommendation[] = (rawRecs || []).map((r: any, idx: number) => {
+        const explanations = Array.isArray(r?.explanations) ? r.explanations : [];
+        const reasonFromExplanations =
+          explanations.length > 0 ? explanations.slice(0, 3).join(' | ') : '';
+
+        return {
+          id: r?.id ?? `${restaurant.place_id}-${idx}`,
+          name: r?.name ?? 'Unknown dish',
+          description: r?.description ?? '',
+          price: r?.price ?? null,
+          category: r?.category ?? 'main',
+          dietary_tags: r?.dietary_tags ?? [],
+          ingredients: r?.ingredients ?? [],
+          avg_rating: r?.avg_rating,
+          source: r?.source ?? 'smart',
+          recommendation_score: r?.score ?? r?.recommendation_score ?? 0,
+          score_breakdown: r?.score_breakdown ?? {
+            customer_praise: 0,
+            taste_compatibility: 0,
+            craving_match: 0,
+            friend_boost: 0,
+          },
+          recommendation_reason:
+            r?.recommendation_reason ??
+            r?.reason ??
+            reasonFromExplanations ??
+            'Matches your preferences | Popular pick | Good fit for tonight',
+          friend_recommendation: r?.friend_recommendation,
+        };
+      });
       setRecommendations(newRecommendations);
       setFilteredRecommendations(newRecommendations);
       
@@ -164,9 +196,9 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
     }
   };
 
-  const formatRecommendationReason = (reason: string) => {
+  const formatRecommendationReason = (reason?: string) => {
     // Split by "|" separator (backend now sends 3 bullets separated by |)
-    const reasons = reason
+    const reasons = (reason ?? '')
       .split('|')
       .map(r => r.trim())
       .filter(r => r.length > 0)

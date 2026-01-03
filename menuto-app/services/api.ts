@@ -1,11 +1,14 @@
 import { UserPreferences, RecommendationResponse, MenuScanResult } from '../types';
 
 // Change this to your backend URL
-const API_BASE = process.env.EXPO_PUBLIC_API_URL;
-if (!API_BASE) {
-  throw new Error('Missing EXPO_PUBLIC_API_URL in build');
+const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8080';
+
+// Log but don't crash if missing in production
+if (!process.env.EXPO_PUBLIC_API_URL) {
+  console.warn('⚠️ EXPO_PUBLIC_API_URL not set, using default:', API_BASE);
+} else {
+  console.log('🔌 API_BASE =', API_BASE);
 }
-console.log('🔌 API_BASE =', API_BASE);
 
 // Helper function to get Clerk token
 let authTokenGetter: (() => Promise<string | null>) | null = null;
@@ -52,14 +55,23 @@ async function request(path: string, opts: RequestInit = {}) {
     
     if (!res.ok) {
       const body = await res.text();
+      console.error(`❌ API Error [${res.status}] ${path}:`, body);
+      
+      // Special handling for auth errors
+      if (res.status === 401) {
+        console.error('🔐 Authentication failed - token may be invalid/expired');
+      }
+      
       throw new Error(`${res.status} ${body}`);
     }
     return res.json();
   } catch (error) {
     clearTimeout(timeoutId);
     if (error instanceof Error && error.name === 'AbortError') {
+      console.error('⏱️ Request timeout:', path);
       throw new Error('Request timeout - backend may be unreachable');
     }
+    console.error('❌ Request failed:', path, error);
     throw error;
   }
 }
@@ -452,7 +464,7 @@ class MenutoAPI {
       }
       
       const placeIdParam = placeId || restaurantName;
-      const response = await fetch(`${API_BASE}/menu/menu/restaurant/${encodeURIComponent(placeIdParam)}?restaurant_name=${encodeURIComponent(restaurantName)}`, {
+      const response = await fetch(`${API_BASE}/menu/restaurant/${encodeURIComponent(placeIdParam)}?restaurant_name=${encodeURIComponent(restaurantName)}&all_menus=1`, {
         signal: controller.signal
       });
       
@@ -481,7 +493,7 @@ class MenutoAPI {
     }
   }
 
-  // Parse and store menu from URL
+  // Parse and store menu from URL (synchronous - waits for parsing to complete)
   async parseAndStoreMenu(menuUrl: string, restaurantName: string, restaurantUrl: string = '', abortController?: AbortController): Promise<any> {
     try {
       const formData = new FormData();
@@ -496,7 +508,9 @@ class MenutoAPI {
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text().catch(() => '');
+        console.error('parseAndStoreMenu failed:', response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status}${errorText ? ` - ${errorText}` : ''}`);
       }
       
       return await response.json();
@@ -504,6 +518,71 @@ class MenutoAPI {
       console.error('Parse and store menu error:', error);
       throw error;
     }
+  }
+
+  /**
+   * Fire-and-forget menu ingestion: accepts multiple URLs, returns immediately,
+   * parsing happens in the background. Poll getIngestStatus() or refetch menu.
+   */
+  async ingestMenus(
+    placeId: string,
+    restaurantName: string,
+    urls: string[]
+  ): Promise<{ accepted: boolean; ingest_id: string; urls: string[]; message: string }> {
+    const response = await fetch(`${API_BASE}/menu/restaurant/${encodeURIComponent(placeId)}/ingest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ urls, restaurant_name: restaurantName }),
+    });
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      throw new Error(`Ingest failed: ${response.status} ${errorText}`);
+    }
+    return response.json();
+  }
+
+  /**
+   * Poll for background ingest job status.
+   */
+  async getIngestStatus(
+    placeId: string,
+    ingestId: string
+  ): Promise<{
+    ingest_id: string;
+    status: 'pending' | 'running' | 'done' | 'failed';
+    urls: string[];
+    url_status: Record<string, string>;
+    results: Record<string, any>;
+    elapsed_seconds: number;
+  }> {
+    const response = await fetch(
+      `${API_BASE}/menu/restaurant/${encodeURIComponent(placeId)}/ingest-status/${ingestId}`
+    );
+    if (!response.ok) {
+      throw new Error(`Ingest status fetch failed: ${response.status}`);
+    }
+    return response.json();
+  }
+
+  /**
+   * Fire-and-forget text menu ingestion: accepts menu text, returns immediately,
+   * parsing happens in the background. Poll getIngestStatus() or refetch menu.
+   */
+  async ingestMenuText(
+    placeId: string,
+    restaurantName: string,
+    menuText: string
+  ): Promise<{ accepted: boolean; ingest_id: string; message: string }> {
+    const response = await fetch(`${API_BASE}/menu/restaurant/${encodeURIComponent(placeId)}/ingest-text`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ menu_text: menuText, restaurant_name: restaurantName }),
+    });
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      throw new Error(`Text ingest failed: ${response.status} ${errorText}`);
+    }
+    return response.json();
   }
 
   // Parse menu from screenshot using OpenAI Vision
@@ -542,12 +621,23 @@ class MenutoAPI {
   }
 
   // Parse menu from text
-  async parseMenuFromText(menuText: string, restaurantName: string, restaurantUrl: string = '', abortController?: AbortController): Promise<any> {
+  // NOTE: The backend currently accepts restaurant_url; we treat that as placeId for stable storage.
+  async parseMenuFromText(
+    menuText: string,
+    restaurantName: string,
+    placeId: string,
+    vicinity: string = '',
+    abortController?: AbortController
+  ): Promise<any> {
     try {
       const formData = new FormData();
       formData.append('menu_text', menuText);
       formData.append('restaurant_name', restaurantName);
-      formData.append('restaurant_url', restaurantUrl);
+      // Back-compat: existing backend expects restaurant_url; we use placeId for stable keying.
+      formData.append('restaurant_url', placeId);
+      // Forward-compat: send explicit fields; backend can start reading these without breaking clients.
+      formData.append('place_id', placeId);
+      formData.append('vicinity', vicinity);
       
       const response = await fetch(`${API_BASE}/menu-parsing/parse-text`, {
         method: 'POST',
@@ -556,11 +646,17 @@ class MenutoAPI {
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
       
       return await response.json();
     } catch (error) {
+      // AbortError is normal when caller cancels (navigation / new request)
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('ℹ️ Parse menu from text aborted');
+        throw error;
+      }
       console.error('Parse menu from text error:', error);
       throw error;
     }

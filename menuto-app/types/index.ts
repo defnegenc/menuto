@@ -46,6 +46,10 @@ export interface ParsedDish {
   avg_rating?: number;
   restaurant_id: string;
   is_user_added?: boolean;
+  // Optional menu metadata (useful for multi-PDF: lunch vs dinner vs brunch)
+  menu_id?: string;
+  menu_url?: string;
+  menu_type?: string;
 }
 
 export interface Restaurant {

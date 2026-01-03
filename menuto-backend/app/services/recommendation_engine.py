@@ -1,3 +1,14 @@
+"""
+menuto-backend/app/services/recommendation_engine.py
+
+What this is:
+- Legacy review + LLM based engine used to extract dish signals from Google reviews and model taste.
+
+Why we keep it:
+- Used by /smart-recommendations via MenuDataService and SmartRecommendationAlgorithm.
+- Also used by review ingestion helpers.
+"""
+
 import openai
 import os
 from typing import List, Dict, Any, Optional
@@ -6,7 +17,10 @@ from app.models import Restaurant, Dish
 import requests
 from dotenv import load_dotenv
 
-load_dotenv()
+try:
+    load_dotenv()
+except Exception as e:
+    _ = e
 
 class RecommendationEngine:
     def __init__(self):
