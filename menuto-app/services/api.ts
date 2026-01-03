@@ -3,31 +3,19 @@ import { UserPreferences, RecommendationResponse, MenuScanResult } from '../type
 // Change this to your backend URL
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8080';
 
-// Log but don't crash if missing in production
-if (!process.env.EXPO_PUBLIC_API_URL) {
-  console.warn('⚠️ EXPO_PUBLIC_API_URL not set, using default:', API_BASE);
-} else {
-  console.log('🔌 API_BASE =', API_BASE);
-}
-
 // Helper function to get Clerk token
 let authTokenGetter: (() => Promise<string | null>) | null = null;
 
 export const setAuthTokenGetter = (getter: () => Promise<string | null>) => {
   authTokenGetter = getter;
-  console.log('🧲 api.ts: authTokenGetter wired');
 };
 
 export const isAuthGetterWired = () => !!authTokenGetter;
 
 const getAuthToken = async (): Promise<string | null> => {
-  console.log('🔍 getAuthToken called, authTokenGetter exists:', !!authTokenGetter);
   if (authTokenGetter) {
-    const token = await authTokenGetter();
-    console.log('🔍 getAuthToken result:', token ? `SUCCESS (${token.length} chars)` : 'NULL');
-    return token;
+    return await authTokenGetter();
   }
-  console.log('❌ getAuthToken: No authTokenGetter available');
   return null;
 };
 
@@ -36,9 +24,6 @@ async function request(path: string, opts: RequestInit = {}) {
   const headers = new Headers(opts.headers || {});
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
-    console.log('🔐 sending auth header to', path);
-  } else {
-    console.log('⚠️ request(): no token for', path);
   }
   
   // Add 10 second timeout to prevent hanging
@@ -55,23 +40,16 @@ async function request(path: string, opts: RequestInit = {}) {
     
     if (!res.ok) {
       const body = await res.text();
-      console.error(`❌ API Error [${res.status}] ${path}:`, body);
-      
-      // Special handling for auth errors
-      if (res.status === 401) {
-        console.error('🔐 Authentication failed - token may be invalid/expired');
-      }
-      
+      console.error(`API Error [${res.status}] ${path}:`, body);
       throw new Error(`${res.status} ${body}`);
     }
     return res.json();
   } catch (error) {
     clearTimeout(timeoutId);
     if (error instanceof Error && error.name === 'AbortError') {
-      console.error('⏱️ Request timeout:', path);
+      console.error('Request timeout:', path);
       throw new Error('Request timeout - backend may be unreachable');
     }
-    console.error('❌ Request failed:', path, error);
     throw error;
   }
 }
@@ -529,9 +507,15 @@ class MenutoAPI {
     restaurantName: string,
     urls: string[]
   ): Promise<{ accepted: boolean; ingest_id: string; urls: string[]; message: string }> {
+    const token = await getAuthToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
     const response = await fetch(`${API_BASE}/menu/restaurant/${encodeURIComponent(placeId)}/ingest`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ urls, restaurant_name: restaurantName }),
     });
     if (!response.ok) {
@@ -555,8 +539,15 @@ class MenutoAPI {
     results: Record<string, any>;
     elapsed_seconds: number;
   }> {
+    const token = await getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
     const response = await fetch(
-      `${API_BASE}/menu/restaurant/${encodeURIComponent(placeId)}/ingest-status/${ingestId}`
+      `${API_BASE}/menu/restaurant/${encodeURIComponent(placeId)}/ingest-status/${ingestId}`,
+      { headers }
     );
     if (!response.ok) {
       throw new Error(`Ingest status fetch failed: ${response.status}`);
@@ -573,9 +564,15 @@ class MenutoAPI {
     restaurantName: string,
     menuText: string
   ): Promise<{ accepted: boolean; ingest_id: string; message: string }> {
+    const token = await getAuthToken();
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
     const response = await fetch(`${API_BASE}/menu/restaurant/${encodeURIComponent(placeId)}/ingest-text`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({ menu_text: menuText, restaurant_name: restaurantName }),
     });
     if (!response.ok) {
@@ -691,11 +688,8 @@ class MenutoAPI {
     try {
       // Basic validation
       if (!userId || userId === 'undefined') {
-        console.error('❌ Invalid user ID format:', userId);
         throw new Error('Invalid user ID format - must be a proper Clerk user ID');
       }
-      
-      console.log('🔍 API: Validating user ID:', userId);
       
       // Destructure to remove any incoming id/created_at/updated_at from prefs
       const { id: _dropId, created_at: _c, updated_at: _u, ...cleanPrefs } = preferences || {};
@@ -716,8 +710,6 @@ class MenutoAPI {
       
       // Make sure the *correct* id is last so it cannot be overridden
       const payload = { ...cleanPrefs, id: userId };
-      console.log('💾 Saving user preferences:', { userId, payload });
-      console.log('🔍 DEBUG: Username in payload:', payload.username);
       
       return await request(`/users/${userId}/preferences`, {
         method: 'POST',
@@ -725,7 +717,7 @@ class MenutoAPI {
         body: JSON.stringify(payload),
       });
     } catch (error) {
-      console.error('❌ Save user preferences error:', error);
+      console.error('Save user preferences error:', error);
       // Return a mock response so the app continues working
       return { success: true, message: 'Stored locally only' };
     }
@@ -733,14 +725,12 @@ class MenutoAPI {
 
   async getUserPreferences(userId: string): Promise<any> {
     try {
-      console.log('📥 Getting user preferences for:', userId);
       return await request(`/users/${userId}/preferences`);
     } catch (error) {
       if (error instanceof Error && error.message.includes('404')) {
-        console.log('📥 User not found (404) - will create new profile');
         return null; // Return null so the client knows to create one
       }
-      console.error('❌ Get user preferences error:', error);
+      console.error('Get user preferences error:', error);
       throw error;
     }
   }
@@ -773,7 +763,7 @@ class MenutoAPI {
         body: JSON.stringify(payload),
       });
     } catch (error) {
-      console.error('❌ Update user preferences error:', error);
+      console.error('Update user preferences error:', error);
       throw error;
     }
   }
@@ -859,18 +849,12 @@ export async function ensureUserProfile(userId: string, email?: string) {
     
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
-      console.log('🔐 sending auth header to', path);
     } else {
-      console.log('⚠️ request(): no token available for', path);
-      
       // If no token, try one more time with a small delay
       await new Promise(resolve => setTimeout(resolve, 100));
       const retryToken = await getAuthToken();
       if (retryToken) {
         headers.set('Authorization', `Bearer ${retryToken}`);
-        console.log('🔐 retry successful - sending auth header to', path);
-      } else {
-        console.log('⚠️ retry failed - no token for', path);
       }
     }
     
@@ -883,14 +867,13 @@ export async function ensureUserProfile(userId: string, email?: string) {
   }
 
   try {
-    console.log('🔄 Creating user profile for:', userId);
     return await request(`/users/${userId}/preferences`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
   } catch (error) {
-    console.error('❌ Ensure user profile error:', error);
+    console.error('Ensure user profile error:', error);
     // Return the payload as fallback so the app can continue
     return payload;
   }

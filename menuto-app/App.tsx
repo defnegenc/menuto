@@ -120,64 +120,7 @@ function AppContent() {
     debugLog('✅ Auth token getter configured');
   }, [getToken, appIsReady]);
 
-  useEffect(() => {
-    const debugToken = async () => {
-      if (!appIsReady || !isLoaded || !clerkUser || !getToken) {
-        return;
-      }
-      
-      try {
-        console.log('🔍 DEBUG: Attempting to get token...');
-        const token = await getToken({ template: 'backend', skipCache: true });
-        
-        if (!token) {
-          console.error('❌ DEBUG: Token is null/undefined');
-          return;
-        }
-        
-        console.log('✅ DEBUG: Token obtained, length:', token.length);
-        console.log('🔑 DEBUG: Token preview:', token.substring(0, 100) + '...');
-        
-        const parts = token.split('.');
-        if (parts.length === 3) {
-          const payloadJson = Buffer.from(parts[1], 'base64').toString('utf-8');
-          const payload = JSON.parse(payloadJson);
-          console.log('📋 DEBUG: Token payload:', JSON.stringify(payload, null, 2));
-          console.log('🎯 DEBUG: Audience:', payload.aud);
-          console.log('🎯 DEBUG: Issuer:', payload.iss);
-          console.log('🎯 DEBUG: Subject (User ID):', payload.sub);
-          console.log('🎯 DEBUG: Expires:', new Date(payload.exp * 1000).toISOString());
-          
-          console.log('🧪 DEBUG: Testing API call...');
-          const apiUrl = process.env.EXPO_PUBLIC_API_URL;
-          const response = await fetch(`${apiUrl}/users/${payload.sub}/preferences`, {
-            method: 'GET',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          });
-          
-          console.log('🧪 DEBUG: API response status:', response.status);
-          
-          if (response.ok) {
-            const data = await response.json();
-            console.log('✅ DEBUG: API call successful:', data);
-          } else {
-            const errorText = await response.text();
-            console.error('❌ DEBUG: API call failed:', response.status, errorText);
-            console.log('🔧 DEBUG: Test manually with:');
-            console.log(`curl -H "Authorization: Bearer ${token.substring(0, 50)}..." \\\n  ${apiUrl}/users/${payload.sub}/preferences`);
-          }
-        }
-      } catch (error) {
-        console.error('❌ DEBUG: Token debug error:', error);
-      }
-    };
-    
-    const timer = setTimeout(debugToken, 2000);
-    return () => clearTimeout(timer);
-  }, [appIsReady, isLoaded, clerkUser, getToken]);
+  // Token debug effect removed for production
 
   // Load user data when Clerk user is available (after first render)
   useEffect(() => {
@@ -243,25 +186,73 @@ function AppContent() {
               setCurrentScreen('onboarding');
             }
           } else {
-            debugLog('↩️ No profile yet. Creating one…');
+            // No backend profile exists - this could mean:
+            // 1. Brand new user who just signed up with Clerk
+            // 2. Existing Clerk user whose backend profile was deleted
+            
+            // Check if this is likely a deleted account scenario
+            // Clerk's createdAt is a Date object or timestamp
+            const accountAgeMs = clerkUser.createdAt 
+              ? (typeof clerkUser.createdAt === 'number' 
+                  ? Date.now() - clerkUser.createdAt 
+                  : Date.now() - new Date(clerkUser.createdAt).getTime())
+              : 0;
+            
+            const isLikelyDeletedAccount = accountAgeMs > 60000; // Account older than 1 minute
+            
+            if (isLikelyDeletedAccount) {
+              // Backend profile missing for an existing Clerk account
+              // This suggests the backend data was deleted - sign them out completely
+              debugLog('🚨 Backend profile missing for existing Clerk account - forcing re-authentication');
+              Alert.alert(
+                'Account Not Found',
+                'Your account data could not be found. Please sign in again to create a new account.',
+                [{ 
+                  text: 'OK',
+                  onPress: async () => {
+                    try {
+                      if (isSignedIn) {
+                        await signOut();
+                      }
+                    } catch (signOutError) {
+                      console.error('❌ Failed to sign out:', signOutError);
+                    }
+                    setUser(null, 'SIGNED_OUT');
+                    setCurrentScreen('signIn');
+                  }
+                }]
+              );
+              return;
+            }
+            
+            // Brand new user - try to create profile
+            debugLog('↩️ No profile yet. Creating one for new user…');
             try {
               const email = clerkUser.primaryEmailAddress?.emailAddress ?? undefined;
               const created = await ensureUserProfile(clerkUser.id, email);
               setUser(created, clerkUser.id);
               setCurrentScreen('onboarding');
             } catch (createError) {
-              debugLog('⚠️ Failed to create profile, continuing to onboarding anyway:', createError);
-              // Create minimal local profile
-              setUser({
-                id: clerkUser.id,
-                preferred_cuisines: [],
-                spice_tolerance: 3,
-                price_preference: 2,
-                dietary_restrictions: [],
-                favorite_restaurants: [],
-                favorite_dishes: [],
-              }, clerkUser.id);
-              setCurrentScreen('onboarding');
+              debugLog('⚠️ Failed to create profile:', createError);
+              // If profile creation fails, sign out and ask them to try again
+              Alert.alert(
+                'Setup Error',
+                'Failed to create your account. Please sign in again.',
+                [{ 
+                  text: 'OK',
+                  onPress: async () => {
+                    try {
+                      if (isSignedIn) {
+                        await signOut();
+                      }
+                    } catch (signOutError) {
+                      console.error('❌ Failed to sign out:', signOutError);
+                    }
+                    setUser(null, 'SIGNED_OUT');
+                    setCurrentScreen('signIn');
+                  }
+                }]
+              );
             }
             return;
           }
@@ -288,9 +279,15 @@ function AppContent() {
             debugLog('✅ Signed out due to invalid token');
             return;
           }
-          // If we can't load user data, assume it's a new user
-          debugLog('↩️ Assuming new user due to error, going to onboarding');
-          setCurrentScreen('onboarding');
+          // Only navigate to onboarding if we have a Clerk user (authenticated)
+          // Otherwise, stay on sign-in screen
+          if (clerkUser) {
+            debugLog('↩️ Assuming new user due to error, going to onboarding');
+            setCurrentScreen('onboarding');
+          } else {
+            debugLog('❌ No Clerk user - staying on sign-in screen');
+            setCurrentScreen('signIn');
+          }
         }
       } else if (!clerkUser) {
         debugLog('❌ App.tsx: No Clerk user available - user needs to sign in');
@@ -345,6 +342,13 @@ function AppContent() {
   // Update screen based on user state - only on initial load
   useEffect(() => {
     if (!appIsReady) return;
+    
+    // CRITICAL: If there's no clerkUser (not authenticated), always force sign-in
+    if (!clerkUser) {
+      debugLog('🚨 No clerkUser detected - forcing sign-in screen');
+      setCurrentScreen('signIn');
+      return;
+    }
     
     // Only auto-navigate if we're on the sign-in screen or onboarding screens
     // Don't interfere with navigation when user is already in the main app

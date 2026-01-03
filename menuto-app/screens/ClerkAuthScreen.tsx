@@ -23,9 +23,11 @@ interface Props {
 
 export function ClerkAuthScreen({ onAuthComplete }: Props) {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email'); // Toggle between email and phone
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -65,39 +67,29 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
     
     (async () => {
       try {
-        console.log('🔄 ClerkAuthScreen: Persisting user with Clerk ID:', authUserId);
-        
         // Try to load existing user data first
         try {
           const userData = await api.getUserPreferences(authUserId);
           if (userData) {
-            console.log('✅ ClerkAuthScreen: Found existing user data');
             let updatedUser = userData;
             if (pendingUserPayload) {
               const mergedPayload = Object.fromEntries(
                 Object.entries(pendingUserPayload).filter(([, value]) => value !== undefined && value !== null)
               );
               updatedUser = { ...userData, ...mergedPayload };
-              console.log('🔄 ClerkAuthScreen: Merging pending payload into existing user profile');
               await api.saveUserPreferences(authUserId, updatedUser);
             }
             setUser(updatedUser, authUserId);
           } else {
-            console.log('🔄 ClerkAuthScreen: No existing data, creating new user in Supabase');
             // Create user in Supabase with the pending payload
             const userToCreate = { id: authUserId, ...pendingUserPayload };
             await api.saveUserPreferences(authUserId, userToCreate);
-            console.log('✅ ClerkAuthScreen: User created in Supabase');
             setUser(userToCreate, authUserId);
           }
         } catch (error) {
-          console.log('❌ ClerkAuthScreen: Failed to load user data, creating new user in Supabase');
           // Create user in Supabase with the pending payload
           const userToCreate = { id: authUserId, ...pendingUserPayload };
-          console.log('🔍 DEBUG: User to create:', userToCreate);
-          console.log('🔍 DEBUG: Username in userToCreate:', userToCreate.username);
           await api.saveUserPreferences(authUserId, userToCreate);
-          console.log('✅ ClerkAuthScreen: User created in Supabase');
           setUser(userToCreate, authUserId);
         }
         
@@ -109,7 +101,7 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
           onAuthComplete();
         }, 100);
       } catch (e) {
-        console.log('❌ ClerkAuthScreen: Failed to upsert user in Supabase', e);
+        console.error('Failed to save user data:', e);
         Alert.alert('Error', 'Failed to save user data. Please try again.');
       }
     })();
@@ -117,28 +109,15 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
 
   // Add null checks for Clerk hooks
   if (!signIn || !signUp || !setActive || !setActiveSignUp) {
-    console.log('❌ ClerkAuthScreen: Clerk hooks not available:', {
-      signIn: !!signIn,
-      signUp: !!signUp, 
-      setActive: !!setActive,
-      setActiveSignUp: !!setActiveSignUp
-    });
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
-          <Text style={styles.title}>Clerk Loading...</Text>
-          <Text style={styles.subtitle}>
-            {!signIn && 'Missing signIn hook. '}
-            {!signUp && 'Missing signUp hook. '}
-            {!setActive && 'Missing setActive hook. '}
-            {!setActiveSignUp && 'Missing setActiveSignUp hook. '}
-          </Text>
+          <Text style={styles.title}>Loading...</Text>
+          <Text style={styles.subtitle}>Please wait while we initialize authentication.</Text>
         </View>
       </SafeAreaView>
     );
   }
-
-  // Removed excessive console logs
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -146,7 +125,25 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
   };
 
   const validatePassword = (password: string) => {
-    return password.length >= 6;
+    // More robust password validation
+    if (password.length < 8) {
+      return { valid: false, message: 'Password must be at least 8 characters long' };
+    }
+    // Check for at least one letter and one number (common requirement)
+    if (!/[a-zA-Z]/.test(password)) {
+      return { valid: false, message: 'Password must contain at least one letter' };
+    }
+    if (!/[0-9]/.test(password)) {
+      return { valid: false, message: 'Password must contain at least one number' };
+    }
+    return { valid: true, message: '' };
+  };
+
+  const validatePhoneNumber = (phone: string) => {
+    // Basic E.164 format validation (international format)
+    // Should start with + followed by country code and number
+    const e164Regex = /^\+[1-9]\d{1,14}$/;
+    return e164Regex.test(phone);
   };
 
   const validateUsername = (username: string) => {
@@ -163,25 +160,19 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
 
     setIsLoading(true);
     try {
-      console.log('Attempting to verify email with code...');
       await signUpAttempt.attemptEmailAddressVerification({
         code: verificationCode.trim()
       });
-
-      console.log('Email verified, completing signup...');
       
       // Activate the Clerk session first
       await setActiveSignUp({ session: signUpAttempt.createdSessionId });
-      console.log('✅ Clerk session activated after email verification');
 
       // Use the actual Clerk user ID - never fall back to generated IDs
       const userId = signUpAttempt.createdUserId;
       if (!userId) {
-        console.error('❌ No Clerk user ID available after verification');
         Alert.alert('Error', 'Unable to create user profile. Please try again.');
         return;
       }
-      console.log('🔄 Email verification: Preparing user payload for Clerk ID:', userId);
       const sanitizedPayload = {
         name: name.trim() || undefined,
         username: username.trim() || undefined,
@@ -202,7 +193,6 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
         'Account created successfully!'
       );
     } catch (error: any) {
-      console.error('Verification error:', error);
       Alert.alert('Error', error.errors?.[0]?.message || 'Verification failed');
     } finally {
       setIsLoading(false);
@@ -210,11 +200,8 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
   };
 
   const handleAuth = async () => {
-    console.log('🔐 Auth start', { isSignUp, emailLength: email.length, hasClerkHooks: !!signIn && !!signUp });
-    
     // Check if user is already signed in
     if (authUserId && !isSignUp) {
-      console.log('🔄 User already signed in, proceeding with auth complete');
       onAuthComplete();
       return;
     }
@@ -250,8 +237,9 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
       return;
     }
 
-    if (!validatePassword(password)) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      Alert.alert('Password Requirements', passwordValidation.message);
       return;
     }
 
@@ -261,7 +249,6 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
     }
 
     setIsLoading(true);
-    console.log('Starting auth process...', { isSignUp, email });
 
     try {
       if (isSignUp) {
@@ -271,14 +258,11 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
           emailAddress: email,
           password,
         });
-        console.log('Sign up result:', result);
 
         if (result.status === 'complete') {
-          console.log('Sign up completed, setting active session...');
           await setActiveSignUp({ session: result.createdSessionId });
           await setLastAuth({ method: 'email_password_sign_up', identifier: email.trim() || undefined, ts: Date.now() });
           
-          console.log('Creating user profile in Supabase...');
           const sanitizedPayload = {
             name: name.trim() || undefined,
             username: username.trim() || undefined,
@@ -292,7 +276,6 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
             favorite_dishes: [],
           };
           
-          console.log('🔄 Sign-up: Preparing user payload for Clerk ID:', result.createdUserId);
           setPendingUserPayload(sanitizedPayload);
 
           Alert.alert(
@@ -300,25 +283,19 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
             'Account created successfully!'
           );
         } else if (result.status === 'missing_requirements') {
-          console.log('Sign up needs email verification...');
-          
           // Check if email verification is needed
           if (result.verifications?.emailAddress) {
-            console.log('Preparing email verification...');
             try {
               await result.prepareEmailAddressVerification();
               setSignUpAttempt(result);
               setShowVerification(true);
             } catch (error) {
-              console.error('Email verification error:', error);
               Alert.alert('Error', 'Failed to send verification email. Please try again.');
             }
           } else {
-            console.log('Other missing requirements:', result.requiredFields);
             Alert.alert('Error', 'Please complete all required fields.');
           }
         } else {
-          console.log('Sign up not complete, status:', result.status);
           Alert.alert('Error', `Signup status: ${result.status}`);
         }
       } else {
@@ -327,7 +304,6 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
           identifier: email,
           password,
         });
-        console.log('Sign-in result status:', result.status);
 
         if (result.status === 'complete') {
           await setActive({ session: result.createdSessionId });
@@ -335,7 +311,6 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
           
           // For sign-in, don't set pending payload - let App.tsx load existing user data
           // The App.tsx useEffect will detect the new authUserId and load user data
-          console.log('✅ Sign-in complete, App.tsx will handle loading user data');
           
           Alert.alert(
             'Success', 
@@ -344,7 +319,6 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
         }
       }
     } catch (error: any) {
-      console.error('Auth error:', error);
       const msg = error?.errors?.[0]?.message || error?.message || 'Authentication failed';
       // Common Clerk error when user tries to sign in but doesn't exist
       if (!isSignUp && typeof msg === 'string' && msg.toLowerCase().includes("couldn't find your account")) {
