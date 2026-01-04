@@ -37,7 +37,7 @@ export const NoMenuState: React.FC<Props> = ({
       
       <View style={styles.buttonsContainer}>
         <TouchableOpacity style={styles.button} onPress={onAddMenuPDF}>
-          <Text style={styles.buttonText}>📄 Add Menu PDF</Text>
+          <Text style={styles.buttonText}>🔗 Add Menu Link</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.button} onPress={onPasteMenuText}>

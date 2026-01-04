@@ -805,7 +805,7 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
 
           <View style={styles.modalContent}>
             <Text style={styles.modalInstructions}>
-              Add one or more menu URLs (PDF/website). We’ll parse and save them to this restaurant.
+              Add one or more menu links (website, PDF, or image). We'll parse and save them to this restaurant.
             </Text>
 
             {menuUrls.map((value, idx) => (
@@ -816,7 +816,7 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
                   onChangeText={(text) => {
                     setMenuUrls(prev => prev.map((p, i) => (i === idx ? text : p)));
                   }}
-                  placeholder="https://example.com/menu.pdf"
+                  placeholder="https://example.com/menu or menu.pdf"
                   autoCapitalize="none"
                   autoCorrect={false}
                 />

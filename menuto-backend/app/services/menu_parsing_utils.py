@@ -173,26 +173,53 @@ class DishItem(BaseModel):
 
     @validator("category")
     def normalize_category(cls, v: str) -> str:
-        category = (v or "").lower().strip()
-        mapping = {
+        """
+        Category normalization - PRESERVES original section names for rich menus.
+        
+        Only normalizes generic English categories to maintain consistency.
+        Preserves specific section names like "Antipasti", "Pasta", "Pesci", etc.
+        """
+        category = (v or "").strip()
+        if not category:
+            return "main"
+        
+        # Lowercase for comparison only
+        category_lower = category.lower()
+        
+        # Only normalize generic English categories
+        # DO NOT normalize specific section names (Antipasti, Pasta, Pesci, etc.)
+        generic_mappings = {
+            # Only map obviously generic English terms
             "appetizer": "starter",
-            "starter": "starter",
             "appetizers": "starter",
-            "main": "main",
             "mains": "main",
             "entree": "main",
             "entrée": "main",
-            "entrees": "main",
-            "entrées": "main",
-            "dessert": "dessert",
             "desserts": "dessert",
             "sweet": "dessert",
-            "drink": "beverage",
             "drinks": "beverage",
-            "beverage": "beverage",
             "beverages": "beverage",
+            "cocktail": "beverage",
+            "cocktails": "beverage",
+            "wine": "beverage",
+            "soups": "soup",
+            "salads": "salad",
+            "sides": "side",
         }
-        return mapping.get(category, "main")
+        
+        # If it's a generic term, normalize it
+        if category_lower in generic_mappings:
+            return generic_mappings[category_lower]
+        
+        # If it's already a canonical term (starter/main/etc.), keep lowercase version
+        canonical_categories = {
+            "starter", "main", "dessert", "beverage", "soup", "salad", "side"
+        }
+        if category_lower in canonical_categories:
+            return category_lower
+        
+        # Otherwise, PRESERVE the original category name (for Antipasti, Pasta, etc.)
+        return category
 
 
 def parse_price_robust(price) -> Optional[float]:

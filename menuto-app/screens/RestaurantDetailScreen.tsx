@@ -751,21 +751,21 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
             />
           ) : (
             <View style={styles.menuContainer}>
-              {/* Search Results - Show above favorites when searching */}
+              {/* Fixed Search Bar - Always at the top, never remounts */}
+              <View style={styles.searchContainer}>
+                <SearchBar
+                  value={searchText}
+                  onChangeText={handleSearchMenu}
+                  placeholder="Search the menu..."
+                />
+              </View>
+
+              {/* Search Results - Show when searching */}
               {searchText.trim() && (
                 <View style={styles.searchResultsSection}>
                   <Text style={[styles.sectionTitle, theme.typography.h2.fancy]}>
                     Search Results
                   </Text>
-                  
-                  {/* Search Bar */}
-                  <View style={styles.searchContainer}>
-                    <SearchBar
-                      value={searchText}
-                      onChangeText={handleSearchMenu}
-                      placeholder="Search the menu..."
-                    />
-                  </View>
                   
                   {filteredDishes.map((dish, index) => (
                     <MenuItemCard
@@ -784,17 +784,6 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
               {/* Your Favorites Section */}
               <View style={styles.favoritesSection}>
                 <Text style={[styles.sectionTitle, theme.typography.h2.fancy]}>Your Favorites</Text>
-                
-                {/* Search Bar - Only show when not searching */}
-                {!searchText.trim() && (
-                  <View style={styles.searchContainer}>
-                    <SearchBar
-                      value={searchText}
-                      onChangeText={handleSearchMenu}
-                      placeholder="Search the menu..."
-                    />
-                  </View>
-                )}
                 {(() => {
                   const favoriteDishes = getFavoriteDishesForRestaurant();
                   return favoriteDishes.length > 0 ? (
@@ -1017,7 +1006,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
           
           <View style={styles.modalContent}>
             <Text style={styles.modalInstructions}>
-              Add one or more menu URLs (PDF/website). We’ll parse and save them to this restaurant.
+              Add one or more menu links (website, PDF, or image). We'll parse and save them to this restaurant.
             </Text>
 
             {menuUrls.map((value, idx) => (
@@ -1028,7 +1017,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                   onChangeText={(text) => {
                     setMenuUrls(prev => prev.map((p, i) => (i === idx ? text : p)));
                   }}
-                  placeholder="https://example.com/menu.pdf"
+                  placeholder="https://example.com/menu or menu.pdf"
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
