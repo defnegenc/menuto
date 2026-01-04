@@ -599,6 +599,12 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
 
     if (isAlreadyFavorite) {
       console.log('🗑️ Removing dish from favorites');
+      // Track favorite removal
+      if (dish.id && restaurant.place_id) {
+        api.trackDishFavorite(String(dish.id), restaurant.place_id, 'remove')
+          .catch(err => console.warn('Failed to track favorite removal:', err));
+      }
+      
       // Remove from favorites
       const updatedUser = {
         ...user,
@@ -624,6 +630,12 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
       }
     } else {
       console.log('⭐ Adding dish to favorites');
+      // Track favorite addition
+      if (dish.id && restaurant.place_id) {
+        api.trackDishFavorite(String(dish.id), restaurant.place_id, 'add')
+          .catch(err => console.warn('Failed to track favorite addition:', err));
+      }
+      
       // Add to favorites
       const updatedUser = {
         ...user,
@@ -781,13 +793,12 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                 </View>
               )}
 
-              {/* Your Favorites Section */}
-              <View style={styles.favoritesSection}>
-                <Text style={[styles.sectionTitle, theme.typography.h2.fancy]}>Your Favorites</Text>
-                {(() => {
-                  const favoriteDishes = getFavoriteDishesForRestaurant();
-                  return favoriteDishes.length > 0 ? (
-                    
+              {/* Your Favorites Section - Only show if user has favorites for this restaurant */}
+              {(() => {
+                const favoriteDishes = getFavoriteDishesForRestaurant();
+                return favoriteDishes.length > 0 ? (
+                  <View style={styles.favoritesSection}>
+                    <Text style={[styles.sectionTitle, theme.typography.h2.fancy]}>Your Favorites</Text>
                     <View style={styles.favoritesCards}>
                       {favoriteDishes.map((favorite, index) => {
                         // Find the full dish data from menuDishes
@@ -819,9 +830,9 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                         );
                       })}
                     </View>
-                  ) : null;
-                })()}
-              </View>
+                  </View>
+                ) : null;
+              })()}
 
               <View style={styles.menuHeader}>
                 <View style={styles.menuTitleRow}>

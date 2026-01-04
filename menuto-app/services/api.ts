@@ -183,7 +183,16 @@ class MenutoAPI {
         params.append('location', location);
       }
       
-      const response = await fetch(`${API_BASE}/api/places/search?${params}`);
+      // Include auth token so backend can prioritize user's home_base
+      const token = await getAuthToken();
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`${API_BASE}/api/places/search?${params}`, {
+        headers
+      });
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -822,6 +831,164 @@ class MenutoAPI {
       return response.json();
     } catch (error) {
       console.error('Get favorite dishes error:', error);
+      throw error;
+    }
+  }
+
+  // Behavioral tracking methods for recommendations
+  async trackDishView(dishId: string, restaurantPlaceId: string, viewDurationSeconds?: number): Promise<void> {
+    try {
+      const token = await getAuthToken();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_BASE}/smart-recommendations/track/view`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          dish_id: dishId,
+          restaurant_place_id: restaurantPlaceId,
+          view_duration_seconds: viewDurationSeconds,
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn('Failed to track dish view:', response.statusText);
+        // Don't throw - tracking is best-effort
+      }
+    } catch (error) {
+      console.warn('Error tracking dish view:', error);
+      // Don't throw - tracking is best-effort
+    }
+  }
+
+  async trackDishRating(
+    dishId: string,
+    restaurantPlaceId: string,
+    rating: number,
+    wouldOrderAgain?: boolean,
+    feedbackText?: string,
+    hungerLevelWhenOrdered?: number
+  ): Promise<void> {
+    try {
+      const token = await getAuthToken();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_BASE}/smart-recommendations/track/rating`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          dish_id: dishId,
+          restaurant_place_id: restaurantPlaceId,
+          rating,
+          would_order_again: wouldOrderAgain,
+          feedback_text: feedbackText,
+          hunger_level_when_ordered: hungerLevelWhenOrdered,
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn('Failed to track dish rating:', response.statusText);
+      }
+    } catch (error) {
+      console.warn('Error tracking dish rating:', error);
+    }
+  }
+
+  async trackDishOrder(
+    dishId: string,
+    restaurantPlaceId: string,
+    hungerLevel?: number,
+    cravings?: string[]
+  ): Promise<void> {
+    try {
+      const token = await getAuthToken();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_BASE}/smart-recommendations/track/order`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          dish_id: dishId,
+          restaurant_place_id: restaurantPlaceId,
+          hunger_level: hungerLevel,
+          cravings: cravings,
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn('Failed to track dish order:', response.statusText);
+      }
+    } catch (error) {
+      console.warn('Error tracking dish order:', error);
+    }
+  }
+
+  async trackDishFavorite(
+    dishId: string,
+    restaurantPlaceId: string,
+    action: 'add' | 'remove'
+  ): Promise<void> {
+    try {
+      const token = await getAuthToken();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_BASE}/smart-recommendations/track/favorite`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          dish_id: dishId,
+          restaurant_place_id: restaurantPlaceId,
+          action: action,
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn('Failed to track dish favorite:', response.statusText);
+      }
+    } catch (error) {
+      console.warn('Error tracking dish favorite:', error);
+    }
+  }
+
+  async getPopularDishes(restaurantPlaceId: string, limit: number = 10): Promise<any> {
+    try {
+      const token = await getAuthToken();
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await request(
+        `/smart-recommendations/restaurant/${restaurantPlaceId}/popular-dishes?limit=${limit}`,
+        {
+          method: 'GET',
+          headers,
+        }
+      );
+
+      return response;
+    } catch (error) {
+      console.error('Error getting popular dishes:', error);
       throw error;
     }
   }

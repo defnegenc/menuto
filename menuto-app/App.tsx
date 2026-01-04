@@ -324,6 +324,7 @@ function AppContent() {
   };
   
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('signIn');
+  const [initialNavigationDone, setInitialNavigationDone] = useState(false);
   const [selectedDish, setSelectedDish] = useState<ParsedDish | null>(null);
   const [selectedRestaurant, setSelectedRestaurant] = useState<FavoriteRestaurant | null>(null);
   const [userPreferences, setUserPreferences] = useState<{
@@ -341,12 +342,13 @@ function AppContent() {
 
   // Update screen based on user state - only on initial load
   useEffect(() => {
-    if (!appIsReady) return;
+    if (!appIsReady || !isLoaded) return;
     
     // CRITICAL: If there's no clerkUser (not authenticated), always force sign-in
     if (!clerkUser) {
       debugLog('🚨 No clerkUser detected - forcing sign-in screen');
       setCurrentScreen('signIn');
+      setInitialNavigationDone(true);
       return;
     }
     
@@ -360,8 +362,9 @@ function AppContent() {
     if (shouldAutoNavigate) {
       const newScreen = getInitialScreen();
       setCurrentScreen(newScreen);
+      setInitialNavigationDone(true);
     }
-  }, [appIsReady, clerkUser, user]);
+  }, [appIsReady, isLoaded, clerkUser, user]);
 
   const handleAuthComplete = () => {
     debugLog('🔄 handleAuthComplete called, user state:', { 
@@ -582,7 +585,7 @@ function AppContent() {
     }
   };
 
-  if (!appIsReady || !isLoaded) {
+  if (!appIsReady || !isLoaded || !initialNavigationDone) {
     return (
       <View style={styles.container}>
         <StatusBar style="dark" />

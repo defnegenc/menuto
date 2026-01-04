@@ -208,6 +208,18 @@ export const PostMealFeedback: React.FC<PostMealFeedbackProps> = ({
   const submitFeedback = async () => {
     setIsSubmitting(true);
     try {
+      // Track rating for recommendations
+      if (selectedDish.restaurantPlaceId && selectedDish.id) {
+        const wouldOrderAgain = rating >= 4; // Assume if rating 4+ they'd order again
+        await api.trackDishRating(
+          String(selectedDish.id),
+          selectedDish.restaurantPlaceId,
+          rating,
+          wouldOrderAgain,
+          feedback || undefined
+        ).catch(err => console.warn('Failed to track rating:', err));
+      }
+      
       await onComplete(rating, feedback);
     } catch (error) {
       console.error('Error submitting feedback:', error);

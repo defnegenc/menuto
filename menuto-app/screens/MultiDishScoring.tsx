@@ -92,6 +92,21 @@ export const MultiDishScoring: React.FC<MultiDishScoringProps> = ({
           restaurant_id: restaurant.place_id
         }));
 
+      // Track ratings for all dishes
+      for (const dish of selectedDishes) {
+        const ratingValue = ratings[dish.id];
+        if (ratingValue && dish.id) {
+          const wouldOrderAgain = addToFavorites[dish.id] || false;
+          await api.trackDishRating(
+            String(dish.id),
+            restaurant.place_id,
+            ratingValue,
+            wouldOrderAgain,
+            feedback[dish.id] || undefined
+          ).catch(err => console.warn('Failed to track rating:', err));
+        }
+      }
+
       if (favoriteDishes.length > 0) {
         // Add restaurant to favorites if it's not already there
         const isRestaurantAlreadyFavorited = user?.favorite_restaurants?.some(

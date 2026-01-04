@@ -10,7 +10,10 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Menuto uses the camera so you can snap menu photos / scan QR menus.",
         "NSPhotoLibraryUsageDescription": "Allow photo library access to attach pictures.",
-        "NSPhotoLibraryAddUsageDescription": "Allow saving photos you take in the app."
+        "NSPhotoLibraryAddUsageDescription": "Allow saving photos you take in the app.",
+        "NSLocationWhenInUseUsageDescription": "Menuto needs your location to recommend nearby restaurants and dishes.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Menuto needs your location to recommend nearby restaurants and dishes.",
+        "NSLocationAlwaysUsageDescription": "Menuto needs your location to recommend nearby restaurants and dishes."
 
       }
     },
