@@ -270,31 +270,33 @@ class MenuParser:
                 details={"url": url, "error": str(e)},
             )
     
-    def scrape_structured_html(self, url: str) -> List[Dict]:
-        """Step 1 & 2: Scrape HTML with structure preservation"""
+    def scrape_structured_html(self, url: str) -> str:
+        """
+        Simple, robust HTML scraping that returns clean text for LLM parsing.
+        No site-specific logic - let the LLM handle structure recognition.
+        """
         try:
+            logger.info(f"📥 Fetching HTML from {url}")
             response = requests.get(url, headers=self.headers, timeout=15)
             response.raise_for_status()
             
             soup = BeautifulSoup(response.content, 'html.parser')
             
-            # Remove unwanted elements that might contaminate the menu
-            for element in soup([
-                "script", "style", "nav", "footer", "header",
-                "iframe", "noscript", "aside", "form",
-                # Common ad/tracking containers
-                "[class*='advertisement']", "[class*='promo']",
-                "[id*='ad']", "[id*='banner']"
-            ]):
+            # Remove noise elements
+            for element in soup(['script', 'style', 'nav', 'footer', 'header', 'iframe', 'noscript']):
                 element.decompose()
             
-            # Try structured extraction first
-            structured_content = self._extract_structured_menu(soup)
-            if structured_content:
-                return structured_content
+            # Get clean text with preserved line breaks
+            text = soup.get_text(separator='\n', strip=True)
             
-            # Fallback to general content extraction
-            return self._extract_general_content(soup)
+            # Clean up excessive whitespace
+            lines = [line.strip() for line in text.split('\n') if line.strip()]
+            clean_text = '\n'.join(lines)
+            
+            logger.info(f"✅ Extracted {len(clean_text)} characters of text from HTML")
+            logger.info(f"📝 Preview (first 500 chars): {clean_text[:500]}...")
+            
+            return clean_text
             
         except Exception as e:
             logger.error(f"HTML scraping failed: {e}")
@@ -305,255 +307,9 @@ class MenuParser:
                 details={"url": url, "error": str(e)},
             )
     
-    def _extract_structured_menu(self, soup: BeautifulSoup) -> List[Dict]:
-        """Extract menu items with preserved structure and section context"""
-        menu_items = []
-        
-        # Try to find section-based menus first (like Antipasti, Pasta, Entrees, etc.)
-        section_items = self._extract_sectioned_menu(soup)
-        if section_items:
-            return section_items
-        
-        # High-signal selectors for menu content
-        menu_selectors = [
-            '[data-testid*="menu"]',
-            '[role="menu"]',
-            '.menu',
-            '.menu-section',
-            '.menu-item',
-            '.food-item',
-            '.dish-item',
-            '.item',
-            'li[class*="menu"]',
-            'div[class*="menu"]'
-        ]
-        
-        for selector in menu_selectors:
-            elements = soup.select(selector)
-            if elements:
-                logger.info(f"Found {len(elements)} elements with selector: {selector}")
-                
-                for element in elements:
-                    item = self._extract_menu_item(element)
-                    if item and item.get('name'):
-                        menu_items.append(item)
-                
-                if menu_items:
-                    return menu_items
-        
-        return []
-    
-    def _extract_sectioned_menu(self, soup: BeautifulSoup) -> List[Dict]:
-        """Extract menu organized by sections (Appetizers, Mains, etc.)"""
-        menu_items = []
-        
-        # STRATEGY 1: Squarespace-style menus (Primola, etc.)
-        # Look for .menu-section patterns - be more flexible with container detection
-        menu_container = (
-            soup.find('div', class_=re.compile(r'menu-wrapper|menus|menu-container|menu-content')) or
-            soup.find('section', class_=re.compile(r'menu|food')) or
-            soup.find('div', id=re.compile(r'menu|food'))
-        )
-        
-        # Try to find sections within container, or fall back to whole page
-        search_scope = menu_container if menu_container else soup
-        
-        squarespace_sections = search_scope.find_all('div', class_=re.compile(r'menu-section|section-menu'))
-        
-        if squarespace_sections:
-            logger.info(f"🎯 Found Squarespace-style menu with {len(squarespace_sections)} sections")
-            for section in squarespace_sections:
-                # Get section title with more flexible selectors
-                section_title_elem = (
-                    section.find('div', class_=re.compile(r'menu-section-title|section-title')) or
-                    section.find('h2') or
-                    section.find('h3') or
-                    section.find('h4', class_=re.compile(r'title|header'))
-                )
-                section_name = section_title_elem.get_text(strip=True) if section_title_elem else None
-                
-                if section_name:
-                    logger.info(f"📋 Processing section: {section_name}")
-                else:
-                    logger.warning(f"⚠️ Section found but no title element")
-                
-                # Find all menu items in this section with more flexible selectors
-                items = (
-                    section.find_all('div', class_='menu-item') or
-                    section.find_all('div', class_=re.compile(r'item|dish')) or
-                    section.find_all('li', class_=re.compile(r'menu-item|dish'))
-                )
-                logger.info(f"   Found {len(items)} items in section '{section_name}'")
-                
-                for item in items:
-                    # More flexible field extraction
-                    title_elem = (
-                        item.find('div', class_='menu-item-title') or
-                        item.find('h3') or
-                        item.find('h4') or
-                        item.find('strong') or
-                        item.find('span', class_=re.compile(r'title|name'))
-                    )
-                    desc_elem = (
-                        item.find('div', class_='menu-item-description') or
-                        item.find('p', class_=re.compile(r'description|desc')) or
-                        item.find('p')
-                    )
-                    price_elem = (
-                        item.find('div', class_=re.compile(r'menu-item-price|price')) or
-                        item.find('span', class_=re.compile(r'price|cost'))
-                    )
-                    
-                    name = title_elem.get_text(strip=True) if title_elem else None
-                    description = desc_elem.get_text(strip=True) if desc_elem else ''
-                    price_text = price_elem.get_text(strip=True) if price_elem else ''
-                    
-                    if name and len(name) > 2:
-                        menu_items.append({
-                            'name': name,
-                            'description': description,
-                            'price_text': price_text,
-                            'section': section_name,
-                            'raw_element': item.get_text(strip=True)
-                        })
-                        logger.debug(f"   ✓ Added: {name[:50]}")
-                    else:
-                        logger.warning(f"   ✗ Skipped item (no name or too short): {name}")
-            
-            if menu_items and len(menu_items) > 3:
-                logger.info(f"✅ Extracted {len(menu_items)} total items from Squarespace menu")
-                # Log section breakdown
-                section_counts = {}
-                for item in menu_items:
-                    section = item.get('section', 'Unknown')
-                    section_counts[section] = section_counts.get(section, 0) + 1
-                logger.info(f"📊 Section breakdown: {section_counts}")
-                return menu_items
-            else:
-                logger.warning(f"⚠️ Found {len(menu_items)} items but need at least 3 to proceed")
-        
-        # STRATEGY 2: Generic section-based parsing with improved header detection
-        current_section = None
-        section_keywords = [
-            'appetizer', 'starter', 'antipasti', 'entree', 'main', 'pasta', 
-            'dessert', 'drink', 'beverage', 'soup', 'salad', 'fish', 'meat',
-            'seafood', 'poultry', 'vegetarian', 'side', 'dolce', 'primi',
-            'secondi', 'contorni', 'zuppe', 'insalate', 'verdure', 'pesci',
-            'breakfast', 'lunch', 'dinner', 'brunch', 'sandwich', 'burger',
-            'pizza', 'taco', 'wrap', 'bowl', 'platter', 'combo'
-        ]
-        
-        # Search in menu container if found, otherwise whole page
-        search_scope = menu_container if menu_container else soup
-        
-        for element in search_scope.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'div', 'p', 'li', 'dt', 'dd', 'section']):
-            # Check if this is a section header
-            if element.name in ['h1', 'h2', 'h3', 'h4', 'h5', 'dt', 'section']:
-                text = element.get_text(strip=True)
-                # Check if it's a menu category header
-                if text and len(text) < 50:
-                    text_lower = text.lower()
-                    if any(keyword in text_lower for keyword in section_keywords):
-                        current_section = text
-                        logger.info(f"Found menu section: {current_section}")
-                        continue
-            
-            # Check if this might be a menu item
-            text = element.get_text(strip=True)
-            if current_section and text and 5 < len(text) < 300:
-                # Skip navigation/header/footer
-                if element.name in ['nav', 'header', 'footer']:
-                    continue
-                
-                # Skip if element has classes suggesting it's not a menu item
-                classes = ' '.join(element.get('class', []))
-                if any(skip in classes.lower() for skip in ['nav', 'header', 'footer', 'ad', 'promo', 'banner']):
-                    continue
-                
-                # Try to extract dish info
-                lines = [line.strip() for line in text.split('\n') if line.strip()]
-                if lines:
-                    name = lines[0]
-                    description = ' '.join(lines[1:]) if len(lines) > 1 else ''
-                    
-                    # Look for price in the element
-                    price_match = re.search(r'[\$€£¥]\s*\d+[.,]?\d*', text)
-                    price_text = price_match.group(0) if price_match else ''
-                    
-                    # Avoid adding section headers as dishes
-                    if name != current_section and (not name.isupper() or len(name) > 15):
-                        menu_items.append({
-                            'name': name,
-                            'description': description,
-                            'price_text': price_text,
-                            'section': current_section,
-                            'raw_element': text
-                        })
-        
-        # Only return if we found sections with items
-        if menu_items and len(menu_items) > 3:
-            logger.info(f"Extracted {len(menu_items)} items from sectioned menu")
-            return menu_items
-        
-        return []
-    
-    def _extract_menu_item(self, element) -> Optional[Dict]:
-        """Extract individual menu item with structure"""
-        try:
-            # Look for name, description, and price in the element or its children
-            name_elem = (
-                element.select_one('.name, .title, .dish-name, h3, h4, [class*="name"]') or
-                element.find(['h3', 'h4', 'h5', 'strong', 'b'])
-            )
-            
-            desc_elem = (
-                element.select_one('.description, .desc, .details, p') or
-                element.find('p')
-            )
-            
-            price_elem = (
-                element.select_one('.price, [class*="price"], .cost') or
-                element.find(text=re.compile(r'[\$€£¥]?\d+[.,]?\d*'))
-            )
-            
-            name = name_elem.get_text(strip=True) if name_elem else ""
-            description = desc_elem.get_text(strip=True) if desc_elem else ""
-            price_text = price_elem.get_text(strip=True) if hasattr(price_elem, 'get_text') else str(price_elem) if price_elem else ""
-            
-            if name:
-                return {
-                    'name': name,
-                    'description': description,
-                    'price_text': price_text,
-                    'raw_element': element.get_text(strip=True)
-                }
-        
-        except Exception as e:
-            logger.debug(f"Error extracting menu item: {e}")
-        
-        return None
-    
-    def _extract_general_content(self, soup: BeautifulSoup) -> List[Dict]:
-        """Fallback: extract general content when structured extraction fails"""
-        # Look for text that might be menu items
-        potential_items = []
-        
-        # Find elements that might contain menu items
-        for element in soup.find_all(['div', 'p', 'li'], class_=re.compile(r'(item|dish|food|menu)', re.I)):
-            text = element.get_text(strip=True)
-            if len(text) > 10 and len(text) < 500:  # Reasonable length for menu items
-                potential_items.append({
-                    'name': text.split('\n')[0][:100],  # First line as name
-                    'description': text,
-                    'price_text': '',
-                    'raw_element': text
-                })
-        
-        return potential_items[:20]  # Limit to avoid overwhelming LLM
-    
     def parse_with_llm_strict(
         self,
-        content: Union[str, List[Dict]],
+        content: str,
         restaurant_name: str = "",
         *,
         request_id: str = "",
@@ -567,15 +323,10 @@ class MenuParser:
         """
         rid = request_id or self._new_request_id()
         try:
-            if isinstance(content, list):
-                # Structured content from HTML
-                logger.info(f"[{rid}] 🤖 Creating structured prompt with {len(content)} items")
-                prompt = self._create_structured_prompt(content, restaurant_name)
-                logger.info(f"[{rid}] 📝 Prompt preview (first 500 chars): {prompt[:500]}...")
-            else:
-                # Raw text from OCR/PDF
-                logger.info(f"[{rid}] 🤖 Creating text prompt with {len(content)} chars")
-                prompt = self._create_text_prompt(content, restaurant_name)
+            # Always use text prompt now - no more structured/unstructured distinction
+            logger.info(f"[{rid}] 🤖 Creating prompt with {len(content)} chars")
+            prompt = self._create_text_prompt(content, restaurant_name)
+            logger.info(f"[{rid}] 📝 Prompt preview (first 500 chars): {prompt[:500]}...")
             
             def _call_openai(user_prompt: str) -> str:
                 logger.info(f"[{rid}] 🚀 Calling OpenAI {model}...")
@@ -788,159 +539,48 @@ class MenuParser:
                 details={"restaurant_name": restaurant_name, "error": str(e)},
             )
     
-    def _create_structured_prompt(self, items: List[Dict], restaurant_name: str) -> str:
-        """Create prompt for structured HTML content"""
-        # Check if items have section information
-        has_sections = any(item.get('section') for item in items)
-        
-        if has_sections:
-            # Group items by section
-            sections_text = []
-            current_section = None
-            section_items = []
-            
-            for item in items:
-                section = item.get('section', 'Other')
-                if section != current_section:
-                    if section_items:
-                        sections_text.append(f"\n{current_section}:\n" + "\n".join(section_items))
-                    current_section = section
-                    section_items = []
-                
-                name = item.get('name', '')
-                desc = item.get('description', '')
-                price = item.get('price_text', '')
-                section_items.append(f"  - {name}{': ' + desc if desc else ''}{' (' + price + ')' if price else ''}")
-            
-            # Add last section
-            if section_items:
-                sections_text.append(f"\n{current_section}:\n" + "\n".join(section_items))
-            
-            items_formatted = "\n".join(sections_text)
-        else:
-            # Fallback to simple list
-            items_formatted = "\n".join([
-                f"Item {i+1}: {item.get('name', '')} - {item.get('description', '')} - {item.get('price_text', '')}"
-                for i, item in enumerate(items[:50])
-            ])
-        
-    def _create_structured_prompt(self, items: List[Dict], restaurant_name: str) -> str:
-        """Create prompt for structured HTML content"""
-        # Check if items have section information
-        has_sections = any(item.get('section') for item in items)
-        
-        if has_sections:
-            # Group items by section
-            sections_text = []
-            current_section = None
-            section_items = []
-            
-            for item in items:
-                section = item.get('section', 'Other')
-                if section != current_section:
-                    if section_items:
-                        sections_text.append(f"\n{current_section}:\n" + "\n".join(section_items))
-                    current_section = section
-                    section_items = []
-                
-                name = item.get('name', '')
-                desc = item.get('description', '')
-                price = item.get('price_text', '')
-                section_items.append(f"  - {name}{': ' + desc if desc else ''}{' (' + price + ')' if price else ''}")
-            
-            # Add last section
-            if section_items:
-                sections_text.append(f"\n{current_section}:\n" + "\n".join(section_items))
-            
-            items_formatted = "\n".join(sections_text)
-        else:
-            # Fallback to simple list
-            items_formatted = "\n".join([
-                f"Item {i+1}: {item.get('name', '')} - {item.get('description', '')} - {item.get('price_text', '')}"
-                for i, item in enumerate(items[:50])
-            ])
-        
+    def _create_text_prompt(self, text: str, restaurant_name: str) -> str:
+        """Create prompt for text content - works for both HTML text and OCR/PDF"""
+        # Use up to 12000 chars to handle large menus (about 3000 tokens input)
+        menu_text = text[:12000]
         return f"""
-Parse these menu items from {restaurant_name} and return a JSON object with a "dishes" array and "cuisine_type".
+Parse this restaurant menu from {restaurant_name} and return a JSON object with a "dishes" array and "cuisine_type".
 
-Menu items organized by section:
-{items_formatted}
+IMPORTANT INSTRUCTIONS:
+1. Extract ALL dishes from ALL sections
+2. For the "category" field, use the EXACT section name from the menu (e.g., "Antipasti", "Pasta", "Desserts", "Soups")
+3. DO NOT normalize categories to generic terms like "starter" or "main" - preserve the original section names
+4. If there are no clear sections, use generic categories: starter, main, dessert, beverage, soup, salad, side
 
-Return ONLY a JSON object with this exact structure:
+Menu text:
+{menu_text}
+
+Return ONLY a JSON object with this structure:
 {{
   "dishes": [
     {{
       "name": "dish name",
-      "description": "dish description",
+      "description": "short description",
       "price": 12.99,
       "category": "Antipasti",
       "ingredients": ["ingredient1", "ingredient2"],
-      "dietary_tags": ["vegetarian", "gluten-free"],
-      "preparation_style": ["grilled", "fried"]
+      "dietary_tags": ["vegetarian"],
+      "preparation_style": ["grilled"]
     }}
   ],
   "cuisine_type": "italian"
 }}
 
-CRITICAL RULES - PRESERVE SECTION NAMES:
-- Use the EXACT section name from the menu as the "category" field
-- If a dish is under "Antipasti:", set category to "Antipasti" 
-- If a dish is under "Pasta:", set category to "Pasta"
-- If a dish is under "Soups:", set category to "Soups"
-- If a dish is under "Salads:", set category to "Salads"
-- DO NOT normalize to generic categories like "starter" or "main"
-- PRESERVE the original section name exactly as shown above
-
-CRITICAL - DO NOT HALLUCINATE:
-- Extract ONLY dishes that are explicitly listed in the menu items above
-- DO NOT add dishes that are not in the provided menu text
-- DO NOT make up or infer dishes based on the restaurant type
-- Extract EXACTLY what is shown, nothing more
-
-Other guidelines:
-- Extract prices from the text (numbers after $, €, £, ¥)
-- Infer ingredients from descriptions when possible
-- Add dietary_tags only if explicitly mentioned (vegetarian, vegan, gluten-free, spicy)
-- Determine cuisine_type from dish names, descriptions, and restaurant name
-- Common cuisine types: italian, mediterranean, mexican, chinese, japanese, indian, thai, french, american, greek, turkish, lebanese, vietnamese, korean, spanish, moroccan, ethiopian, caribbean, brazilian, peruvian
-- Return ONLY the JSON object, no other text
-"""
-    
-    def _create_text_prompt(self, text: str, restaurant_name: str) -> str:
-        """Create prompt for raw text content"""
-        # Use up to 12000 chars to handle large menus (about 3000 tokens input)
-        menu_text = text[:12000]
-        return f"""
-Parse this ENTIRE restaurant menu text from {restaurant_name} and return a JSON object with a "dishes" array and "cuisine_type".
-
-IMPORTANT: Extract ALL dishes from ALL sections of the menu including:
-- Appetizers, Starters
-- Main courses, Entrees  
-- Soups, Salads
-- Sides
-- Desserts
-- Drinks, Beverages
-- Lunch/Dinner specials
-- Any other menu sections
-
-Menu text:
-{menu_text}
-
-Return ONLY a JSON object. Keep descriptions SHORT (max 20 words). Omit empty arrays.
-
-{{
-  "dishes": [
-    {{"name": "dish name", "description": "short description", "price": 12.99, "category": "starter", "dietary_tags": ["vegetarian"]}}
-  ],
-  "cuisine_type": "nepalese"
-}}
-
 Rules:
 - Extract ALL dishes from the entire menu
-- Categories: starter, main, side, dessert, beverage, soup, salad
+- Use EXACT section names as categories when present (Antipasti, Pasta, Soups, etc.)
+- Only use generic categories if no sections are evident
+- Extract prices as numbers (convert "$12.99" to 12.99)
+- Keep descriptions under 30 words
 - Only include dietary_tags if explicitly mentioned (vegetarian, vegan, gluten-free, spicy)
-- Keep descriptions under 20 words
-- Return ONLY valid JSON
+- Only include ingredients explicitly listed
+- Determine cuisine_type from dish names and restaurant name
+- Return ONLY valid JSON, no markdown, no commentary
 """
     
     def post_process_dishes(self, dishes: List[Dict]) -> List[Dict]:
