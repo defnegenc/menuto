@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 import { UnifiedHeader } from '../components/UnifiedHeader';
@@ -9,6 +9,12 @@ import { SelectionDishCard } from '../components/SelectionDishCard';
 import { SearchBar } from '../components/SearchBar';
 import { api } from '../services/api';
 import { useStore } from '../store/useStore';
+
+// Utility function to capitalize first letter
+const capitalizeText = (text: string): string => {
+  if (!text) return text;
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};
 
 interface DishRecommendationsProps {
   restaurant: {
@@ -60,6 +66,29 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
   const [selectedDishes, setSelectedDishes] = useState<Recommendation[]>([]);
   const [searchText, setSearchText] = useState('');
   const [filteredRecommendations, setFilteredRecommendations] = useState<Recommendation[]>([]);
+  const [showRationaleModal, setShowRationaleModal] = useState(false);
+  const [selectedRationale, setSelectedRationale] = useState<string>('');
+
+  // Helper functions defined first
+  const hasUserHadDish = (dishName: string) => {
+    if (!user?.favorite_dishes) return false;
+    
+    return user.favorite_dishes.some(favorite => 
+      favorite.dish_name.toLowerCase() === dishName.toLowerCase()
+    );
+  };
+
+  const getTopRecommendation = (recommendations: Recommendation[]) => {
+    if (!recommendations || recommendations.length === 0) return null;
+    // Find first recommendation that user hasn't already had
+    for (const recommendation of recommendations) {
+      if (!hasUserHadDish(recommendation.name)) {
+        return recommendation;
+      }
+    }
+    // If all dishes have been had, return the first one
+    return recommendations[0];
+  };
 
   useEffect(() => {
     loadRecommendations();
@@ -102,7 +131,19 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
       );
 
       console.log('✅ Smart recommendations received:', response);
-      const rawRecs = response.recommendations || [];
+      console.log('📊 Response structure:', {
+        hasRecommendations: !!response.recommendations,
+        recommendationsLength: response.recommendations?.length || 0,
+        dietaryConstraints: userDietaryConstraints,
+        favoriteDishesCount: userFavoriteDishes.length,
+        fullResponse: JSON.stringify(response, null, 2)
+      });
+      
+      // Check for different possible response structures
+      const rawRecs = response.recommendations || response.dishes || response.data || [];
+      
+      console.log('🔍 Raw recommendations:', rawRecs);
+      console.log('🔍 Raw recommendations length:', rawRecs.length);
 
       // Normalize backend payload into the UI shape (backend may return different keys)
       const newRecommendations: Recommendation[] = (rawRecs || []).map((r: any, idx: number) => {
@@ -135,14 +176,25 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
           friend_recommendation: r?.friend_recommendation,
         };
       });
+      console.log('📦 Normalized recommendations:', newRecommendations);
+      console.log('📦 Normalized recommendations length:', newRecommendations.length);
+      
       setRecommendations(newRecommendations);
       setFilteredRecommendations(newRecommendations);
       
       // Auto-select the top recommendation (skip dishes user has already had)
       if (newRecommendations.length > 0) {
         const topRecommendation = getTopRecommendation(newRecommendations);
-        setSelectedDish(topRecommendation);
-        console.log('🎯 Selected top recommendation:', topRecommendation.name, 'User had before:', hasUserHadDish(topRecommendation.name));
+        if (topRecommendation) {
+          setSelectedDish(topRecommendation);
+          console.log('🎯 Selected top recommendation:', topRecommendation.name, 'User had before:', hasUserHadDish(topRecommendation.name));
+        } else {
+          console.log('⚠️ getTopRecommendation returned null even though we have recommendations');
+        }
+      } else {
+        console.log('⚠️ No recommendations received after normalization');
+        console.log('⚠️ Raw response:', JSON.stringify(response, null, 2));
+        console.log('⚠️ Raw recs length:', rawRecs.length);
       }
     } catch (error) {
       console.error('❌ Failed to get recommendations:', error);
@@ -224,24 +276,6 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
     return reasons;
   };
 
-  const hasUserHadDish = (dishName: string) => {
-    if (!user?.favorite_dishes) return false;
-    
-    return user.favorite_dishes.some(favorite => 
-      favorite.dish_name.toLowerCase() === dishName.toLowerCase()
-    );
-  };
-
-  const getTopRecommendation = (recommendations: Recommendation[]) => {
-    // Find first recommendation that user hasn't already had
-    for (const recommendation of recommendations) {
-      if (!hasUserHadDish(recommendation.name)) {
-        return recommendation;
-      }
-    }
-    // If all dishes have been had, return the first one
-    return recommendations[0];
-  };
 
   if (isLoading) {
     return (
@@ -276,77 +310,98 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
         />
       </View>
       
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {selectedDish && (
-          <View style={styles.recommendationSection}>
-            <Text style={styles.recommendationTitle}>
-              Recommendation: <Text style={styles.dishName}>{selectedDish.name}</Text>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {recommendations.length === 0 ? (
+          <View style={styles.noResultsSection}>
+            <Text style={styles.noResultsText}>
+              No recommendations available. Please try again or adjust your preferences.
             </Text>
-            
-            {/* Featured Recommendation Card */}
-            <View style={styles.featuredCard}>
-              <SelectionDishCard
-                dish={{
-                  name: selectedDish.name,
-                  description: selectedDish.description,
-                  score: selectedDish.recommendation_score || 0
-                }}
-                isSelected={selectedDishes.some(d => d.id === selectedDish?.id)}
-                onPress={handleSelectDish}
-                showScore={!hasUserHadDish(selectedDish.name)}
-              />
-            </View>
-
-            {/* Why was this recommended */}
-            <View style={styles.reasoningSection}>
-              <Text style={styles.reasoningTitle}>Why was this recommended?</Text>
-              {formatRecommendationReason(selectedDish.recommendation_reason).map((reason, index) => (
-                <Text key={index} style={styles.reasoningText}>
-                  {index + 1}. {reason}
-                </Text>
-              ))}
-            </View>
-
-
-            {/* Get new recommendation button */}
-            <TouchableOpacity 
-              style={styles.newRecommendationButton}
-              onPress={handleGetNewRecommendation}
-            >
-              <Text style={styles.newRecommendationText}>Get new recommendation</Text>
-            </TouchableOpacity>
           </View>
-        )}
+        ) : (
+          <>
+            {selectedDish && (
+              <View style={styles.recommendationSection}>
+                <Text style={styles.recommendationTitle}>
+                  Recommendation: {capitalizeText(selectedDish.name)}
+                </Text>
+                
+                {/* Featured Recommendation Card */}
+                <View style={styles.featuredCard}>
+                  <MenuItemCard
+                    dish={{
+                      id: String(selectedDish.id),
+                      name: selectedDish.name,
+                      description: selectedDish.description || '',
+                      category: selectedDish.category || 'main',
+                      ingredients: selectedDish.ingredients || [],
+                      dietary_tags: selectedDish.dietary_tags || [],
+                      is_user_added: false,
+                      score: selectedDish.recommendation_score || 0,
+                      explanation: '',
+                      restaurant_id: restaurant.place_id
+                    }}
+                    isSelected={selectedDishes.some(d => d.id === selectedDish?.id)}
+                    onPress={handleSelectDish}
+                    showScore={!hasUserHadDish(selectedDish.name)}
+                    isFeatured={true}
+                    onScorePress={() => {
+                      setSelectedRationale(selectedDish.recommendation_reason || 'No rationale available');
+                      setShowRationaleModal(true);
+                    }}
+                  />
+                </View>
 
-        {/* Other recommendations list */}
-        <View style={styles.allRecommendationsSection}>
-          <Text style={styles.sectionTitle}>
-            {searchText ? `Search Results (${filteredRecommendations.length})` : 'Other recommendations'}
-          </Text>
-          {filteredRecommendations.length > 0 ? (
-            filteredRecommendations
-              .filter((dish) => dish.id !== selectedDish?.id) // Remove the main recommendation from this list
-              .map((dish) => (
-                <SelectionDishCard
-                  key={dish.id}
-                  dish={{
-                    name: dish.name,
-                    description: dish.description,
-                    score: dish.recommendation_score || 0
-                  }}
-                  isSelected={selectedDishes.some(d => d.id === dish.id)}
-                  onPress={() => handleDishSelect(dish)}
-                  showScore={!hasUserHadDish(dish.name)}
-                />
-              ))
-          ) : searchText ? (
-            <View style={styles.noResultsSection}>
-              <Text style={styles.noResultsText}>
-                No dishes found matching "{searchText}"
+                {/* Why was this recommended */}
+                <View style={styles.reasoningSection}>
+                  <Text style={styles.reasoningTitle}>Why was this recommended?</Text>
+                  {formatRecommendationReason(selectedDish.recommendation_reason).map((reason, index) => (
+                    <Text key={index} style={styles.reasoningText}>
+                      {index + 1}. {reason}
+                    </Text>
+                  ))}
+                </View>
+
+                {/* Get new recommendation button */}
+                <TouchableOpacity 
+                  style={styles.newRecommendationButton}
+                  onPress={handleGetNewRecommendation}
+                >
+                  <Text style={styles.newRecommendationText}>Get new recommendation</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Other recommendations list */}
+            <View style={styles.allRecommendationsSection}>
+              <Text style={styles.sectionTitle}>
+                {searchText ? `Search Results (${filteredRecommendations.length})` : selectedDish ? 'Other recommendations' : 'Recommendations'}
               </Text>
+              {filteredRecommendations.length > 0 ? (
+                filteredRecommendations
+                  .filter((dish) => dish.id !== selectedDish?.id) // Remove the main recommendation from this list
+                  .map((dish) => (
+                    <SelectionDishCard
+                      key={dish.id}
+                      dish={{
+                        name: dish.name,
+                        description: dish.description,
+                        score: dish.recommendation_score || 0
+                      }}
+                      isSelected={selectedDishes.some(d => d.id === dish.id)}
+                      onPress={() => handleDishSelect(dish)}
+                      showScore={!hasUserHadDish(dish.name)}
+                    />
+                  ))
+              ) : searchText ? (
+                <View style={styles.noResultsSection}>
+                  <Text style={styles.noResultsText}>
+                    No dishes found matching "{searchText}"
+                  </Text>
+                </View>
+              ) : null}
             </View>
-          ) : null}
-        </View>
+          </>
+        )}
       </ScrollView>
 
       {/* Continue Button */}
@@ -370,6 +425,27 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Rationale Modal */}
+      <Modal
+        visible={showRationaleModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowRationaleModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowRationaleModal(false)}>
+              <Text style={styles.modalCancelButton}>Close</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Recommendation Rationale</Text>
+            <View style={{ width: 60 }} />
+          </View>
+          <View style={styles.modalContent}>
+            <Text style={styles.rationaleText}>{selectedRationale}</Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -381,6 +457,8 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  scrollContent: {
     paddingHorizontal: theme.spacing.lg,
   },
   recommendationSection: {
@@ -392,10 +470,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: theme.colors.text.primary,
     marginBottom: theme.spacing.md,
-  },
-  dishName: {
-    color: theme.colors.secondary,
-    fontWeight: '700',
   },
   featuredCard: {
     marginBottom: theme.spacing.lg,
@@ -415,14 +489,20 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   newRecommendationButton: {
-    alignSelf: 'center',
+    alignSelf: 'flex-start',
     marginTop: theme.spacing.md,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
   },
   newRecommendationText: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.secondary,
-    textDecorationLine: 'underline',
-    fontWeight: '500',
+    fontSize: 12,
+    color: '#000000',
+    fontWeight: theme.typography.weights.medium,
+    fontFamily: theme.typography.fontFamilies.medium,
   },
   allRecommendationsSection: {
     marginBottom: theme.spacing.xl,
@@ -471,5 +551,41 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text.secondary,
     textAlign: 'center',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  modalCancelButton: {
+    fontSize: theme.typography.sizes.md,
+    color: '#000000',
+    fontWeight: theme.typography.weights.medium,
+    fontFamily: theme.typography.fontFamilies.medium,
+  },
+  modalTitle: {
+    fontSize: theme.typography.sizes.lg,
+    fontWeight: theme.typography.weights.semibold,
+    color: '#000000',
+    fontFamily: theme.typography.fontFamilies.semibold,
+  },
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+  },
+  rationaleText: {
+    fontSize: theme.typography.sizes.md,
+    color: '#000000',
+    lineHeight: 24,
+    fontFamily: theme.typography.fontFamilies.regular,
   },
 });
