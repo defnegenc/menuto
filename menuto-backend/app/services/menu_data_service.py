@@ -90,81 +90,109 @@ class MenuDataService:
         Fetch parsed menu items from Supabase.
         Uses the same strategy as menu_api: try place_id first, then fallback to name.
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
         if not supabase:
+            logger.warning("Supabase client not initialized in MenuDataService")
             return []
 
-        # 1) Try to find menu by place_id (preferred)
-        menus = (
-            supabase.table("parsed_menus")
-            .select("*")
-            .eq("place_id", restaurant_place_id)
-            .order("parsed_at", desc=True)
-            .limit(1)
-            .execute()
-        )
-
         menu = None
-        if menus.data:
-            menu = menus.data[0]
-        else:
-            # 2) Fallback: legacy rows where place_id was stored in restaurant_url
-            menus = (
-                supabase.table("parsed_menus")
-                .select("*")
-                .eq("restaurant_url", restaurant_place_id)
-                .order("parsed_at", desc=True)
-                .limit(1)
+        
+        try:
+            # 1) Try to find menu by place_id (preferred)
+            menus_response = supabase.table("parsed_menus") \
+                .select("*") \
+                .eq("place_id", restaurant_place_id) \
+                .order("parsed_at", desc=True) \
+                .limit(1) \
                 .execute()
-            )
-            if menus.data:
-                menu = menus.data[0]
+            
+            if menus_response.data and len(menus_response.data) > 0:
+                menu = menus_response.data[0]
+                logger.info(f"✅ Menu found by place_id for {restaurant_name}. Menu ID: {menu.get('id')}")
             else:
-                # 3) Fallback by name (ilike)
-                menus = (
-                    supabase.table("parsed_menus")
-                    .select("*")
-                    .ilike("restaurant_name", f"%{restaurant_name}%")
-                    .order("parsed_at", desc=True)
-                    .limit(1)
+                # 2) Fallback: legacy rows where place_id was stored in restaurant_url
+                logger.info(f"Menu not found by place_id, trying restaurant_url for {restaurant_name}")
+                menus_response = supabase.table("parsed_menus") \
+                    .select("*") \
+                    .eq("restaurant_url", restaurant_place_id) \
+                    .order("parsed_at", desc=True) \
+                    .limit(1) \
                     .execute()
-                )
-                if menus.data:
-                    menu = menus.data[0]
+                
+                if menus_response.data and len(menus_response.data) > 0:
+                    menu = menus_response.data[0]
+                    logger.info(f"✅ Menu found by restaurant_url for {restaurant_name}. Menu ID: {menu.get('id')}")
+                else:
+                    # 3) Fallback by name (ilike)
+                    logger.info(f"Menu not found by restaurant_url, trying name match for {restaurant_name}")
+                    menus_response = supabase.table("parsed_menus") \
+                        .select("*") \
+                        .ilike("restaurant_name", f"%{restaurant_name}%") \
+                        .order("parsed_at", desc=True) \
+                        .limit(1) \
+                        .execute()
+                    
+                    if menus_response.data and len(menus_response.data) > 0:
+                        menu = menus_response.data[0]
+                        logger.info(f"✅ Menu found by name for {restaurant_name}. Menu ID: {menu.get('id')}")
+        except Exception as e:
+            logger.error(f"❌ Error fetching menu for {restaurant_name}: {e}")
+            return []
 
         if not menu:
+            logger.warning(f"⚠️ No menu found for {restaurant_name} ({restaurant_place_id}) after all attempts")
             return []
 
         # Fetch dishes for this menu
         menu_id = menu.get("id")
-        dishes = (
-            supabase.table("parsed_dishes")
-            .select("*")
-            .eq("menu_id", menu_id)
-            .execute()
-            .data
-            or []
-        )
+        if not menu_id:
+            logger.error(f"❌ Menu found but has no ID for {restaurant_name}")
+            return []
+            
+        try:
+            logger.info(f"🔍 Fetching dishes for menu_id={menu_id} (restaurant: {restaurant_name})")
+            dishes_response = supabase.table("parsed_dishes") \
+                .select("*") \
+                .eq("menu_id", menu_id) \
+                .execute()
+            
+            dishes = dishes_response.data if dishes_response.data else []
+            logger.info(f"✅ Found {len(dishes)} dishes for menu_id={menu_id}")
+        except Exception as e:
+            logger.error(f"❌ Error fetching dishes for menu_id={menu_id} of {restaurant_name}: {e}")
+            return []
+
+        if not dishes:
+            logger.warning(f"⚠️ No dishes found for menu_id={menu_id} of {restaurant_name}")
+            return []
 
         # Convert Supabase dish format to ParsedMenuItem
         parsed_items: List[ParsedMenuItem] = []
         for dish in dishes:
-            parsed_items.append(
-                ParsedMenuItem(
-                    id=str(dish.get("id", "")),
-                    name=dish.get("name", ""),
-                    description=dish.get("description", "") or "",
-                    price=self._normalize_price(dish.get("price")),
-                    category=dish.get("category") or "main",
-                    sentiment_score=None,  # Not stored in parsed_dishes table
-                    metadata={
-                        "source": "parsed_menu",
-                        "menu_id": menu_id,
-                        "ingredients": dish.get("ingredients") or [],
-                        "dietary_tags": dish.get("dietary_tags") or [],
-                    },
+            try:
+                parsed_items.append(
+                    ParsedMenuItem(
+                        id=str(dish.get("id", "")),
+                        name=dish.get("name", ""),
+                        description=dish.get("description", "") or "",
+                        price=self._normalize_price(dish.get("price")),
+                        category=dish.get("category") or "main",
+                        sentiment_score=None,  # Not stored in parsed_dishes table
+                        metadata={
+                            "source": "parsed_menu",
+                            "menu_id": menu_id,
+                            "ingredients": dish.get("ingredients") or [],
+                            "dietary_tags": dish.get("dietary_tags") or [],
+                        },
+                    )
                 )
-            )
+            except Exception as e:
+                logger.error(f"❌ Error converting dish to ParsedMenuItem: {e}")
+                continue
 
+        logger.info(f"✅ Returning {len(parsed_items)} parsed menu items for {restaurant_name}")
         return parsed_items
 
     # ---------------------------------------------------------------------
