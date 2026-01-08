@@ -9,6 +9,7 @@ import {
   Alert,
   TextInput,
   Modal,
+  Dimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -45,11 +46,12 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
   const [showQuestions, setShowQuestions] = useState(false);
   const [showTextModal, setShowTextModal] = useState(false);
   const [showMenuUrlModal, setShowMenuUrlModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
   const [menuUrls, setMenuUrls] = useState<string[]>(['']);
   const [menuText, setMenuText] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   
-  // Question states
+  // Question states - deselected by default (middle of slider)
   const [hungerLevel, setHungerLevel] = useState(3);
   
   // Feedback flow states
@@ -59,7 +61,7 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
   const [selectedDishForFeedback, setSelectedDishForFeedback] = useState<any>(null);
   const [selectedDishesForScoring, setSelectedDishesForScoring] = useState<any[]>([]);
   const [preferenceLevel, setPreferenceLevel] = useState(3);
-  const [selectedCravings, setSelectedCravings] = useState<string[]>([]);
+  const [selectedCravings, setSelectedCravings] = useState<string[]>([]); // Empty by default
   
   const insets = useSafeAreaInsets();
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -121,7 +123,7 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
       if (response.dishes && Array.isArray(response.dishes) && response.dishes.length > 0) {
         console.log(`✅ Menu found for: ${restaurant.name}`);
         setMenuDishes(response.dishes);
-        setShowQuestions(true);
+        setShowQuestions(false); // Don't auto-show questions, wait for Review button
       } else {
         console.log(`❌ No menu found for: ${restaurant.name}`);
         setMenuDishes([]);
@@ -555,7 +557,7 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
       if (isParsing) {
         return (
           <View style={styles.container}>
-            <UnifiedHeader title="Choose Dish" />
+            <UnifiedHeader title="Choose Dish" showUnderline={false} />
             <View style={[styles.parsingContainer, { paddingTop: insets.top }]}>
               <ActivityIndicator size="large" color={theme.colors.primary} />
               <Text style={styles.parsingText}>Parsing your menu...</Text>
@@ -567,91 +569,123 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
 
   return (
     <View style={styles.container}>
-      <UnifiedHeader title="Choose Dish" />
-      
-      {/* Search Bar */}
-      <View style={styles.searchSection}>
-        <SearchBar
-          value={searchText}
-          onChangeText={setSearchText}
-          placeholder="Search restaurants..."
-        />
-      </View>
+      <UnifiedHeader 
+        title="Choose Dish" 
+        showUnderline={false}
+      />
 
       <ScrollView 
         style={styles.scrollView} 
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
         showsVerticalScrollIndicator={false}
       >
-        {!selectedRestaurant ? (
-          <>
-            {/* Instructions */}
-            {!searchText && (
-              <View style={styles.instructionsSection}>
-                <Text style={styles.stepNumber}>1. Find Restaurant</Text>
-                <Text style={styles.stepDescription}>Use the search bar to find the restaurant</Text>
-                
-                <Text style={[styles.stepNumber, { marginTop: theme.spacing.xl }]}>2. Scan Menu</Text>
-                <Text style={styles.stepDescription}>If you're the first user to try this restaurant, add the menu!</Text>
-                
-                <Text style={[styles.stepNumber, { marginTop: theme.spacing.xl }]}>3. Indicate preferences</Text>
-                <Text style={styles.stepDescription}>Let us know what you're in the mood for.</Text>
-              </View>
-            )}
-            
-            {/* Search Results */}
-            {searchText && (
-              <>
-                {searchResults.length > 0 && (
-                  <View style={styles.resultsSection}>
-                    {searchResults.map(renderRestaurantCard)}
-                  </View>
-                )}
-                
-                {/* Loading State */}
-                {isSearching && (
-                  <View style={styles.loadingState}>
-                    <ActivityIndicator size="small" color={theme.colors.primary} />
-                    <Text style={styles.loadingText}>Searching restaurants...</Text>
-                  </View>
-                )}
-                
-                {/* No Results */}
-                {!isSearching && searchResults.length === 0 && (
-                  <View style={styles.emptyState}>
-                    <Text style={styles.emptyStateText}>
-                      No restaurants found for "{searchText}". Try a different search term.
-                    </Text>
-                  </View>
-                )}
-              </>
-            )}
-          </>
-        ) : (
-          <>
-            {/* Selected Restaurant */}
-            <View style={styles.selectedSection}>
-              {renderRestaurantCard(selectedRestaurant)}
+        <>
+          {/* Step 1: Search for restaurant - only show when no search text and no restaurant selected */}
+          {!searchText && !selectedRestaurant && (
+            <View style={styles.stepSection}>
+              <Text style={styles.stepText}>Step 1: Search for a restaurant</Text>
+              <View style={styles.stepUnderline} />
             </View>
-            
-            {isLoadingMenu ? (
-              <View style={styles.loadingState}>
-                <ActivityIndicator size="large" color={theme.colors.primary} />
-                <Text style={styles.loadingText}>Checking menu...</Text>
+          )}
+          
+          {/* Search Bar */}
+          <View style={styles.searchSection}>
+            <SearchBar
+              value={searchText}
+              onChangeText={setSearchText}
+              placeholder="Search restaurants..."
+            />
+          </View>
+          
+          {/* Selected Restaurant Info - Show when restaurant is selected */}
+          {selectedRestaurant && (
+            <View style={styles.selectedRestaurantInfo}>
+              <Text style={styles.selectedRestaurantName}>{selectedRestaurant.name}</Text>
+              <Text style={styles.selectedRestaurantAddress}>
+                {selectedRestaurant.vicinity.split(',').slice(0, 3).join(', ')}
+              </Text>
+            </View>
+          )}
+          
+          {/* Step 2: Show when restaurant is selected but menu not confirmed yet */}
+          {selectedRestaurant && !showQuestions && (
+            <View style={styles.stepSection}>
+              <Text style={styles.stepText}>Step 2: Add or confirm menu</Text>
+              <View style={styles.stepUnderline} />
+            </View>
+          )}
+          
+          {/* Menu confirmed - show when menu is found and confirmed */}
+          {selectedRestaurant && menuDishes.length > 0 && showQuestions && (
+            <>
+              <View style={styles.separatorLine} />
+              <View style={styles.menuConfirmedSection}>
+                <Text style={styles.menuConfirmedText}>Menu confirmed</Text>
+                <TouchableOpacity style={styles.reviewButton} onPress={() => setShowReviewModal(true)}>
+                  <Text style={styles.reviewButtonText}>Review</Text>
+                </TouchableOpacity>
               </View>
-            ) : menuDishes.length > 0 ? (
-              <>
-                {/* Menu Found */}
-                <View style={styles.menuFoundSection}>
-                  <Text style={styles.menuFoundTitle}>Menu found!</Text>
-                  <Text style={styles.menuFoundSubtitle}>Time to choose your dish.</Text>
+              <View style={styles.separatorLine} />
+            </>
+          )}
+          
+          {/* Search Results - only show when searching and no restaurant selected */}
+          {searchText && !selectedRestaurant && (
+            <>
+              {searchResults.length > 0 && (
+                <View style={styles.resultsSection}>
+                  {searchResults.map(renderRestaurantCard)}
                 </View>
-                
-                {showQuestions && (
-                  <View style={styles.questionsSection}>
-                    {/* Hunger Level */}
-                    <View style={styles.questionContainer}>
-                      <Text style={styles.questionTitle}>How hungry are you?</Text>
+              )}
+              
+              {/* Loading State */}
+              {isSearching && (
+                <View style={styles.loadingState}>
+                  <ActivityIndicator size="small" color={theme.colors.primary} />
+                  <Text style={styles.loadingText}>Searching restaurants...</Text>
+                </View>
+              )}
+              
+              {/* No Results */}
+              {!isSearching && searchResults.length === 0 && searchText && !selectedRestaurant && (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>
+                    No restaurants found for "{searchText}". Try a different search term.
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
+          
+          {/* Menu loading and content - show when restaurant is selected */}
+          {selectedRestaurant && (
+            <>
+              {isLoadingMenu ? (
+                <View style={styles.loadingState}>
+                  <ActivityIndicator size="large" color={theme.colors.primary} />
+                  <Text style={styles.loadingText}>Checking menu...</Text>
+                </View>
+              ) : menuDishes.length > 0 ? (
+                <>
+                  {!showQuestions && (
+                    <View style={styles.menuFoundSection}>
+                      <Text style={styles.menuFoundText}>Menu found!</Text>
+                      <TouchableOpacity style={styles.reviewButton} onPress={() => setShowReviewModal(true)}>
+                        <Text style={styles.reviewButtonText}>Review</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  
+                  {showQuestions && (
+                    <>
+                      <View style={styles.stepSection}>
+                        <Text style={styles.stepText}>Step 3: Indicate your preferences</Text>
+                        <View style={styles.stepUnderline} />
+                      </View>
+                      <View style={styles.questionsSection}>
+                      {/* Hunger Level */}
+                      <View style={styles.questionContainer}>
+                        <Text style={styles.questionTitle}>How hungry are you?</Text>
                       <View style={styles.simpleSlider}>
                         <View style={styles.simpleSliderTrack} />
                         <View style={styles.sliderStops}>
@@ -708,45 +742,49 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
                       <Text style={styles.questionTitle}>What are you craving?</Text>
                       <Text style={styles.questionSubtitle}>Select all that apply</Text>
                       <View style={styles.cravingChipsContainer}>
-                        {cravingOptions.map((craving) => (
-                          <TouchableOpacity
-                            key={craving}
-                            style={[
-                              styles.cravingChip,
-                              selectedCravings.includes(craving) && styles.cravingChipSelected
-                            ]}
-                            onPress={() => toggleCraving(craving)}
-                          >
-                            <Text style={[
-                              styles.cravingChipText,
-                              selectedCravings.includes(craving) && styles.cravingChipTextSelected
-                            ]}>
-                              {craving}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
+                        {cravingOptions.map((craving) => {
+                          const isSelected = selectedCravings.includes(craving);
+                          return (
+                            <TouchableOpacity
+                              key={craving}
+                              style={[
+                                styles.cravingChip,
+                                isSelected && styles.cravingChipSelected
+                              ]}
+                              onPress={() => toggleCraving(craving)}
+                            >
+                              <Text style={[
+                                styles.cravingChipText,
+                                isSelected && styles.cravingChipTextSelected
+                              ]}>
+                                {craving}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
                       </View>
                     </View>
                     
-                    {/* Continue Button */}
-                    <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-                      <Text style={styles.continueButtonText}>Continue</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </>
-            ) : (
-              /* No Menu Yet */
-              <View style={styles.noMenuSection}>
-                <NoMenuState
-                  onAddMenuPDF={handleAddMenuPDF}
-                  onPasteMenuText={handlePasteMenuText}
-                  onAddPhoto={handleAddPhoto}
-                />
-              </View>
-            )}
-          </>
-        )}
+                      {/* Continue Button */}
+                      <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
+                        <Text style={styles.continueButtonText}>Continue</Text>
+                      </TouchableOpacity>
+                    </View>
+                    </>
+                  )}
+                </>
+              ) : (
+                <View style={styles.noMenuSection}>
+                  <NoMenuState
+                    onAddMenuPDF={handleAddMenuPDF}
+                    onPasteMenuText={handlePasteMenuText}
+                    onAddPhoto={handleAddPhoto}
+                  />
+                </View>
+              )}
+            </>
+          )}
+        </>
       </ScrollView>
 
       {/* Text Input Modal */}
@@ -782,6 +820,83 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
               textAlignVertical="top"
               autoFocus
             />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Review Menu Modal */}
+      <Modal
+        visible={showReviewModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowReviewModal(false)}>
+              <Text style={styles.modalCancelButton}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Menu Summary</Text>
+            <View style={{ width: 60 }} />
+          </View>
+          
+          <ScrollView style={styles.modalContent}>
+            <Text style={styles.modalInstructions}>
+              Review the menu items found for {selectedRestaurant?.name}
+            </Text>
+            
+            {(() => {
+              // Group dishes by category
+              const grouped: { [key: string]: ParsedDish[] } = {};
+              menuDishes.forEach(dish => {
+                const category = dish.category || 'other';
+                if (!grouped[category]) {
+                  grouped[category] = [];
+                }
+                grouped[category].push(dish);
+              });
+              
+              return Object.keys(grouped).map(category => (
+                <View key={category} style={styles.reviewCategorySection}>
+                  <Text style={styles.reviewCategoryTitle}>
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                  </Text>
+                  {grouped[category].slice(0, 5).map((dish, idx) => (
+                    <View key={idx} style={styles.reviewDishItem}>
+                      <Text style={styles.reviewDishName}>{dish.name}</Text>
+                      {dish.description && (
+                        <Text style={styles.reviewDishDescription}>{dish.description}</Text>
+                      )}
+                    </View>
+                  ))}
+                  {grouped[category].length > 5 && (
+                    <Text style={styles.reviewMoreText}>
+                      + {grouped[category].length - 5} more items
+                    </Text>
+                  )}
+                </View>
+              ));
+            })()}
+          </ScrollView>
+          
+          <View style={styles.reviewModalActions}>
+            <TouchableOpacity 
+              style={styles.reviewActionButton}
+              onPress={() => {
+                setShowReviewModal(false);
+                setShowMenuUrlModal(true);
+              }}
+            >
+              <Text style={styles.reviewActionButtonText}>Add more items</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.reviewActionButton, styles.reviewConfirmButton]}
+              onPress={() => {
+                setShowReviewModal(false);
+                setShowQuestions(true);
+              }}
+            >
+              <Text style={[styles.reviewActionButtonText, styles.reviewConfirmButtonText]}>Confirm</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -844,6 +959,8 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
   );
 }
 
+const screenWidth = Dimensions.get('window').width;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -861,21 +978,60 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
   },
-  instructionsSection: {
+  stepSection: {
     paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.xl,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
   },
-  stepNumber: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.xs,
-    fontFamily: theme.typography.fontFamilies.bold,
-  },
-  stepDescription: {
+  stepText: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.sm,
     fontFamily: theme.typography.fontFamilies.regular,
+  },
+  stepUnderline: {
+    height: 2,
+    width: screenWidth * 0.9,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 2,
+    alignSelf: 'center',
+  },
+  selectedRestaurantInfo: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.sm,
+  },
+  selectedRestaurantName: {
+    fontSize: 20,
+    fontWeight: theme.typography.weights.bold,
+    color: '#000000',
+    fontFamily: theme.typography.fontFamilies.bold,
+    marginBottom: theme.spacing.xs,
+  },
+  selectedRestaurantAddress: {
+    fontSize: 12,
+    color: 'rgba(0, 0, 0, 0.5)',
+    fontFamily: theme.typography.fontFamilies.regularItalic,
+  },
+  restaurantHeaderSection: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.sm,
+  },
+  restaurantHeaderInfo: {
+    flexDirection: 'column',
+  },
+  restaurantNameText: {
+    fontSize: 40,
+    fontWeight: theme.typography.weights.bold,
+    color: '#000000',
+    fontFamily: theme.typography.fontFamilies.bold,
+    marginBottom: 6,
+  },
+  restaurantAddressText: {
+    fontSize: 12,
+    color: 'rgba(0, 0, 0, 0.5)',
+    fontFamily: theme.typography.fontFamilies.regularItalic,
   },
   resultsSection: {
     paddingHorizontal: theme.spacing.lg,
@@ -883,6 +1039,18 @@ const styles = StyleSheet.create({
   selectedSection: {
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.md,
+  },
+  selectedRestaurantSeparator: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+  },
+  separatorLine: {
+    height: 1,
+    backgroundColor: theme.colors.border,
+    marginVertical: theme.spacing.md,
+  },
+  selectedRestaurantContainer: {
+    marginVertical: theme.spacing.sm,
   },
   loadingState: {
     flexDirection: 'row',
@@ -892,8 +1060,8 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   loadingText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
+    fontSize: 12,
+    color: 'rgba(0, 0, 0, 0.5)',
     fontFamily: theme.typography.fontFamilies.regular,
   },
   emptyState: {
@@ -909,32 +1077,56 @@ const styles = StyleSheet.create({
   },
   menuFoundSection: {
     paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.xl,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.md,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  menuFoundTitle: {
-    fontSize: theme.typography.sizes.xxl,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
-    fontFamily: theme.typography.fontFamilies.bold,
+  menuFoundText: {
+    fontSize: 20,
+    fontWeight: theme.typography.weights.medium,
+    color: '#000000',
+    fontFamily: theme.typography.fontFamilies.medium,
+    flex: 1,
   },
-  menuFoundSubtitle: {
-    fontSize: theme.typography.sizes.lg,
-    color: theme.colors.text.secondary,
-    fontFamily: theme.typography.fontFamilies.regular,
+  menuConfirmedSection: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  menuConfirmedText: {
+    fontSize: 20,
+    fontWeight: theme.typography.weights.medium,
+    color: '#000000',
+    fontFamily: theme.typography.fontFamilies.medium,
+    flex: 1,
+  },
+  reviewButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.md,
+    borderRadius: 4,
+  },
+  reviewButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: theme.typography.weights.medium,
+    fontFamily: theme.typography.fontFamilies.medium,
   },
   questionsSection: {
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.lg,
   },
   questionContainer: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: theme.spacing.xxxl,
   },
   questionTitle: {
-    fontSize: theme.typography.sizes.lg,
+    fontSize: 20,
     fontWeight: theme.typography.weights.medium,
-    color: theme.colors.text.primary,
+    color: '#000000',
     marginBottom: theme.spacing.sm,
     fontFamily: theme.typography.fontFamilies.medium,
   },
@@ -948,7 +1140,7 @@ const styles = StyleSheet.create({
   simpleSliderTrack: {
     width: '100%',
     height: 4,
-    backgroundColor: theme.colors.secondary,
+    backgroundColor: theme.colors.primary,
     borderRadius: 2,
   },
   sliderStops: {
@@ -972,7 +1164,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: theme.colors.secondary,
+    backgroundColor: theme.colors.primary,
     ...theme.shadows.md,
   },
   sliderLabels: {
@@ -985,7 +1177,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.fontFamilies.regular,
   },
   continueButton: {
-    backgroundColor: theme.colors.secondary,
+    backgroundColor: theme.colors.primary,
     borderRadius: theme.borderRadius.lg,
     paddingVertical: theme.spacing.lg,
     alignItems: 'center',
@@ -1015,8 +1207,8 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.fontFamilies.regular,
   },
   questionSubtitle: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
+    fontSize: 15,
+    color: '#000000',
     marginBottom: theme.spacing.md,
     fontFamily: theme.typography.fontFamilies.regular,
   },
@@ -1026,24 +1218,25 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   cravingChip: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    backgroundColor: 'transparent',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: theme.colors.primary,
   },
   cravingChipSelected: {
     backgroundColor: theme.colors.primary,
     borderColor: theme.colors.primary,
   },
   cravingChipText: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.text.primary,
-    fontFamily: theme.typography.fontFamilies.medium,
+    fontSize: 13,
+    color: '#000000',
+    fontFamily: theme.typography.fontFamilies.regular,
   },
   cravingChipTextSelected: {
-    color: theme.colors.text.light,
+    color: '#FFFFFF',
+    fontFamily: theme.typography.fontFamilies.medium,
   },
   
   // Modal styles
@@ -1068,12 +1261,12 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: theme.typography.sizes.lg,
     fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.text.primary,
+    color: '#000000',
     fontFamily: theme.typography.fontFamilies.semibold,
   },
   modalSubmitButton: {
     fontSize: theme.typography.sizes.md,
-    color: theme.colors.primary,
+    color: '#000000',
     fontWeight: theme.typography.weights.semibold,
     fontFamily: theme.typography.fontFamilies.semibold,
   },
@@ -1087,7 +1280,7 @@ const styles = StyleSheet.create({
   },
   modalInstructions: {
     fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
+    color: '#000000',
     marginBottom: theme.spacing.lg,
     lineHeight: 20,
     fontFamily: theme.typography.fontFamilies.regular,
@@ -1147,6 +1340,72 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     fontFamily: theme.typography.fontFamilies.semibold,
+  },
+  reviewCategorySection: {
+    marginBottom: theme.spacing.lg,
+  },
+  reviewCategoryTitle: {
+    fontSize: 15,
+    fontWeight: theme.typography.weights.normal,
+    color: '#000000',
+    marginBottom: theme.spacing.sm,
+    fontFamily: theme.typography.fontFamilies.regular,
+  },
+  reviewDishItem: {
+    marginBottom: theme.spacing.sm,
+    paddingBottom: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  reviewDishName: {
+    fontSize: 13,
+    color: '#000000',
+    marginBottom: 4,
+    fontFamily: theme.typography.fontFamilies.regular,
+  },
+  reviewDishDescription: {
+    fontSize: 12,
+    color: 'rgba(0, 0, 0, 0.5)',
+    fontFamily: theme.typography.fontFamilies.regularItalic,
+  },
+  reviewMoreText: {
+    fontSize: 12,
+    color: theme.colors.text.secondary,
+    fontStyle: 'italic',
+    fontFamily: theme.typography.fontFamilies.regular,
+    marginTop: theme.spacing.xs,
+  },
+  reviewModalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.xxxl,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+    gap: theme.spacing.md,
+  },
+  reviewActionButton: {
+    flex: 1,
+    paddingVertical: theme.spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+  },
+  reviewConfirmButton: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  reviewActionButtonText: {
+    fontSize: 12,
+    fontWeight: theme.typography.weights.medium,
+    color: '#000000',
+    fontFamily: theme.typography.fontFamilies.medium,
+  },
+  reviewConfirmButtonText: {
+    color: '#FFFFFF',
   },
   parsingContainer: {
     flex: 1,
