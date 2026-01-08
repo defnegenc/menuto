@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import os
+import time
 from fastapi import APIRouter, HTTPException, Request
 
 from app.services.menu_data_service import MenuDataService
@@ -63,13 +66,39 @@ async def generate_smart_recommendations(
             legacy_engine=legacy_engine,
         )
 
+        print(f"=== CALLING MenuDataService.get_menu_items_with_features ===", flush=True)
+        print(f"Restaurant: {restaurant_name}, Place ID: {restaurant_place_id}", flush=True)
+        
         menu_items = menu_service.get_menu_items_with_features(
             restaurant_place_id=restaurant_place_id,
             restaurant_name=restaurant_name,
         )
+        
+        print(f"=== RETURNED FROM MenuDataService.get_menu_items_with_features ===", flush=True)
+        print(f"Menu items count: {len(menu_items) if menu_items else 0}", flush=True)
+        
+        # #region agent log
+        try:
+            log_path = '/Users/defnegenc/Desktop/menuto-clean/.cursor/debug.log'
+            os.makedirs(os.path.dirname(log_path), exist_ok=True)
+            with open(log_path, 'a') as f:
+                f.write(json.dumps({
+                    'timestamp': time.time(),
+                    'location': 'smart_recommendations.py:generate:after_get_menu_items',
+                    'message': 'After get_menu_items_with_features',
+                    'data': {
+                        'menu_items_count': len(menu_items) if menu_items else 0,
+                        'restaurant_place_id': restaurant_place_id,
+                        'restaurant_name': restaurant_name
+                    },
+                    'hypothesisId': 'H1,H2,H4,H5'
+                }) + '\n')
+        except Exception as e:
+            print(f"DEBUG LOG ERROR: {e}", flush=True)
+        # #endregion
 
         if not menu_items:
-            print(f"⚠️ No menu items found for {restaurant_name}")
+            print(f"⚠️ No menu items found for {restaurant_name}", flush=True)
             return {
                 "restaurant": {
                     "place_id": restaurant_place_id,
