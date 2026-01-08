@@ -775,7 +775,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
               {/* Search Results - Show when searching */}
               {searchText.trim() && (
                 <View style={styles.searchResultsSection}>
-                  <Text style={[styles.sectionTitle, theme.typography.h2.fancy]}>
+                  <Text style={styles.sectionTitle}>
                     Search Results
                   </Text>
                   
@@ -798,7 +798,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                 const favoriteDishes = getFavoriteDishesForRestaurant();
                 return favoriteDishes.length > 0 ? (
                   <View style={styles.favoritesSection}>
-                    <Text style={[styles.sectionTitle, theme.typography.h2.fancy]}>Your Favorites</Text>
+                    <Text style={styles.sectionTitle}>Your Favorites</Text>
                     <View style={styles.favoritesCards}>
                       {favoriteDishes.map((favorite, index) => {
                         // Find the full dish data from menuDishes
@@ -836,10 +836,10 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
 
               <View style={styles.menuHeader}>
                 <View style={styles.menuTitleRow}>
-                  <Text style={[styles.sectionTitle, theme.typography.h2.fancy]}>Menu</Text>
+                  <Text style={styles.sectionTitle}>Menu</Text>
                   {showAddMoreOptions ? (
-                    <TouchableOpacity onPress={() => setShowAddMoreOptions(false)}>
-                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    <TouchableOpacity style={styles.addMoreButton} onPress={() => setShowAddMoreOptions(false)}>
+                      <Text style={styles.addMoreButtonText}>Cancel</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity style={styles.addMoreButton} onPress={() => setShowAddMoreOptions(true)}>
@@ -884,7 +884,6 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
 
               {/* Category Filter Pills (Starter/Main/etc - secondary filter) */}
               <View style={styles.categoryFilterSection}>
-                <Text style={styles.categoryFilterLabel}>Filter by course</Text>
                 <View style={styles.categoryFilterContainer}>
                   <TouchableOpacity 
                     style={[
@@ -921,7 +920,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                 // Show all dishes grouped by category
                 Object.entries(groupedDishes).map(([category, dishes]) => (
                   <View key={category} style={styles.categorySection}>
-                    <Text style={styles.categoryTitle}>{category.toUpperCase()} ({dishes.length} items)</Text>
+                    <Text style={styles.categoryTitle}>{category.charAt(0).toUpperCase() + category.slice(1)} ({dishes.length} items)</Text>
                     {dishes.map((dish, index) => (
                       <MenuItemCard
                         key={dish.id || `dish-${index}`}
@@ -936,7 +935,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                 // Show dishes for selected category only
                 groupedDishes[selectedCategory] && (
                   <View style={styles.categorySection}>
-                    <Text style={styles.categoryTitle}>{selectedCategory.toUpperCase()} ({groupedDishes[selectedCategory].length} items)</Text>
+                    <Text style={styles.categoryTitle}>{selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} ({groupedDishes[selectedCategory].length} items)</Text>
                     {groupedDishes[selectedCategory].map((dish, index) => (
                       <MenuItemCard
                         key={dish.id || `dish-${index}`}
@@ -1067,6 +1066,7 @@ const styles = StyleSheet.create({
   },
   menuContainer: {
     padding: 20,
+    paddingTop: 12,
   },
   searchResultsSection: {
     marginBottom: 24,
@@ -1082,7 +1082,7 @@ const styles = StyleSheet.create({
   },
   // Search container matching MyRestaurants exactly
   searchContainer: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   noResultsText: {
     fontSize: theme.typography.sizes.md,
@@ -1093,8 +1093,11 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.fontFamilies.regular,
   },
   sectionTitle: {
+    fontSize: 25,
+    fontWeight: theme.typography.weights.normal,
+    color: '#000000',
     marginBottom: 12,
-    fontFamily: 'Artifact', // Uses fancy heading style
+    fontFamily: theme.typography.fontFamilies.regular,
   },
   favoritesTitle: {
     fontSize: 18,
@@ -1135,7 +1138,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.fontFamilies.semibold,
   },
   menuHeader: {
-    marginBottom: 20,
+    marginBottom: 0,
   },
   menuTitleRow: {
     flexDirection: 'row',
@@ -1143,22 +1146,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addMoreButton: {
-    backgroundColor: theme.colors.secondary,
+    backgroundColor: 'transparent',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
     alignSelf: 'flex-start',
   },
   addMoreButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: theme.typography.fontFamilies.semibold,
-  },
-  cancelButtonText: {
-    color: theme.colors.text.secondary,
-    fontSize: 16,
-    fontFamily: theme.typography.fontFamilies.regular,
+    color: '#000000',
+    fontSize: 12,
+    fontWeight: theme.typography.weights.medium,
+    fontFamily: theme.typography.fontFamilies.medium,
   },
   addMoreContainer: {
     width: '100%',
@@ -1176,14 +1174,14 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.fontFamilies.bold,
   },
   categorySection: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   categoryTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
+    fontSize: 15,
+    fontWeight: theme.typography.weights.normal,
+    color: '#000000',
     marginBottom: 12,
-    fontFamily: theme.typography.fontFamilies.bold,
+    fontFamily: theme.typography.fontFamilies.regular,
   },
   modalContainer: {
     flex: 1,
@@ -1332,24 +1330,26 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   categoryFilterButton: {
-    backgroundColor: theme.colors.chipDefault,
+    backgroundColor: 'transparent',
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: 0,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
   },
   categoryFilterButtonActive: {
-    backgroundColor: theme.colors.secondary, // Dark red when selected
-    borderWidth: 0,
+    backgroundColor: theme.colors.primary,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
   },
   categoryFilterText: {
     fontSize: 13,
     fontWeight: '500',
-    color: theme.colors.text.primary,
+    color: theme.colors.primary,
     fontFamily: theme.typography.fontFamilies.medium,
   },
   categoryFilterTextActive: {
-    color: '#FFFFFF', // White text when selected
+    color: '#FFFFFF',
     fontFamily: theme.typography.fontFamilies.medium,
   },
 });

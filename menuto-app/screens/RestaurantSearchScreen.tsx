@@ -729,6 +729,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text.secondary,
     marginBottom: theme.spacing.xs,
+    fontFamily: theme.typography.fontFamilies.regularItalic,
   },
   cuisineType: {
     fontSize: theme.typography.sizes.sm,

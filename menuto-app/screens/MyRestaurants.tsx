@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   TextInput,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store/useStore';
@@ -333,7 +334,11 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
 
   return (
     <View style={styles.container}>
-      <UnifiedHeader title="My Restaurants" />
+      {/* Custom Header with left-aligned title and centered underline */}
+      <View style={[styles.customHeader, { paddingTop: insets.top }]}>
+        <Text style={styles.headerTitle}>My restaurants</Text>
+        <View style={styles.headerUnderline} />
+      </View>
       
       {/* Search Bar */}
       <View style={styles.searchSection}>
@@ -459,10 +464,31 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
   );
 }
 
+const screenWidth = Dimensions.get('window').width;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  customHeader: {
+    backgroundColor: theme.colors.background,
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: theme.typography.weights.medium,
+    color: '#000000',
+    fontFamily: theme.typography.fontFamilies.medium,
+    marginBottom: theme.spacing.sm,
+  },
+  headerUnderline: {
+    height: 2,
+    width: screenWidth * 0.9,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 2,
+    alignSelf: 'center',
   },
   searchSection: {
     paddingHorizontal: theme.spacing.lg,
