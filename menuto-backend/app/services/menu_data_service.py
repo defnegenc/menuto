@@ -4,18 +4,28 @@ from __future__ import annotations
 menuto-backend/app/services/menu_data_service.py
 
 What this is:
-- A thin “menu item source” used by smart recommendations.
+- A thin "menu item source" used by smart recommendations.
 
 Why we keep it:
 - /smart-recommendations/generate uses MenuDataService to produce normalized menu items (ItemFeatures).
 - Today it falls back to extracting popular dishes from reviews when no parsed menu is available.
 """
 
+import os
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+from supabase import create_client, Client
+
 from app.services.recommendation_engine import RecommendationEngine
 from app.services.recommendation_types import ItemFeatures
+
+# Initialize Supabase client
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+supabase: Client | None = None
+if SUPABASE_URL and SUPABASE_KEY:
+    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 @dataclass
@@ -77,12 +87,85 @@ class MenuDataService:
         restaurant_name: str,
     ) -> List[ParsedMenuItem]:
         """
-        TODO: Replace with actual Supabase / database lookup once available.
-        Currently returns an empty list so the system falls back to review extraction.
+        Fetch parsed menu items from Supabase.
+        Uses the same strategy as menu_api: try place_id first, then fallback to name.
         """
+        if not supabase:
+            return []
 
-        _ = (restaurant_place_id, restaurant_name)
-        return []
+        # 1) Try to find menu by place_id (preferred)
+        menus = (
+            supabase.table("parsed_menus")
+            .select("*")
+            .eq("place_id", restaurant_place_id)
+            .order("parsed_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+
+        menu = None
+        if menus.data:
+            menu = menus.data[0]
+        else:
+            # 2) Fallback: legacy rows where place_id was stored in restaurant_url
+            menus = (
+                supabase.table("parsed_menus")
+                .select("*")
+                .eq("restaurant_url", restaurant_place_id)
+                .order("parsed_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if menus.data:
+                menu = menus.data[0]
+            else:
+                # 3) Fallback by name (ilike)
+                menus = (
+                    supabase.table("parsed_menus")
+                    .select("*")
+                    .ilike("restaurant_name", f"%{restaurant_name}%")
+                    .order("parsed_at", desc=True)
+                    .limit(1)
+                    .execute()
+                )
+                if menus.data:
+                    menu = menus.data[0]
+
+        if not menu:
+            return []
+
+        # Fetch dishes for this menu
+        menu_id = menu.get("id")
+        dishes = (
+            supabase.table("parsed_dishes")
+            .select("*")
+            .eq("menu_id", menu_id)
+            .execute()
+            .data
+            or []
+        )
+
+        # Convert Supabase dish format to ParsedMenuItem
+        parsed_items: List[ParsedMenuItem] = []
+        for dish in dishes:
+            parsed_items.append(
+                ParsedMenuItem(
+                    id=str(dish.get("id", "")),
+                    name=dish.get("name", ""),
+                    description=dish.get("description", "") or "",
+                    price=self._normalize_price(dish.get("price")),
+                    category=dish.get("category") or "main",
+                    sentiment_score=None,  # Not stored in parsed_dishes table
+                    metadata={
+                        "source": "parsed_menu",
+                        "menu_id": menu_id,
+                        "ingredients": dish.get("ingredients") or [],
+                        "dietary_tags": dish.get("dietary_tags") or [],
+                    },
+                )
+            )
+
+        return parsed_items
 
     # ---------------------------------------------------------------------
     # Source 2: Pseudo-menu from Google reviews
