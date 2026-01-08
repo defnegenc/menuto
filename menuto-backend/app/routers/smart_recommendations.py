@@ -100,6 +100,7 @@ async def generate_smart_recommendations(
                 "score": scored.score,
                 "components": scored.components,
                 "explanations": scored.explanations,
+                "reasoning": scored.reasoning,  # Detailed reasoning for debugging
             }
             for scored in scored_recommendations
         ]

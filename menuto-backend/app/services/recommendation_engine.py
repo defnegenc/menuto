@@ -133,7 +133,7 @@ class RecommendationEngine:
         reviews_text = "\n---\n".join(reviews[:5])  # Limit to 5 reviews to avoid token limits
         
         prompt = f"""
-        Analyze these restaurant reviews for "{restaurant_name}" and extract dishes that customers mention positively:
+        Analyze these restaurant reviews for "{restaurant_name}" and extract SPECIFIC DISHES that customers mention positively:
         
         {reviews_text}
         
@@ -148,15 +148,20 @@ class RecommendationEngine:
           }}
         ]
         
-        Only include dishes mentioned positively by customers. Focus on specific menu items, not general categories.
-        Maximum 8 dishes.
+        CRITICAL RULES:
+        1. ONLY extract SPECIFIC DISH NAMES (e.g., "Chicken Tikka Masala", "Margherita Pizza", "Lobster Roll")
+        2. NEVER extract generic category names like: "desserts", "appetizers", "mains", "entrees", "starters", "sides", "drinks", "beverages", "salads", "pasta", "seafood", "meat", "vegetables"
+        3. If a review mentions "the desserts were great" - DO NOT extract "desserts" as a dish
+        4. Only include dishes mentioned positively by customers
+        5. Focus on specific menu items with actual names
+        6. Maximum 8 dishes
         """
         
         try:
             response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "You are a restaurant review analyst. Extract specific dishes mentioned in reviews. Return only valid JSON."},
+                    {"role": "system", "content": "You are a restaurant review analyst. Extract ONLY SPECIFIC DISH NAMES from reviews. NEVER extract generic category names like 'desserts', 'appetizers', 'mains'. Return only valid JSON."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.1,
@@ -173,10 +178,32 @@ class RecommendationEngine:
                 json_str = json_match.group()
                 dishes = json.loads(json_str)
                 
-                # Clean and validate
+                # Clean and validate - filter out generic category names
+                generic_categories = {
+                    'desserts', 'dessert', 'appetizers', 'appetizer', 'starters', 'starter',
+                    'mains', 'main', 'entrees', 'entree', 'sides', 'side',
+                    'drinks', 'drink', 'beverages', 'beverage', 'cocktails', 'cocktail',
+                    'salads', 'salad', 'soups', 'soup', 'pasta', 'seafood', 'meat',
+                    'vegetables', 'vegetable', 'specials', 'special'
+                }
+                
                 cleaned_dishes = []
                 for dish in dishes:
-                    if dish.get('name') and dish.get('sentiment') == 'positive':
+                    dish_name = (dish.get('name') or '').strip().lower()
+                    
+                    # Skip if it's a generic category name
+                    if dish_name in generic_categories:
+                        continue
+                    
+                    # Skip if name is too short (likely not a real dish)
+                    if len(dish_name) < 3:
+                        continue
+                    
+                    # Skip if name is plural generic category (e.g., "pastas", "salads")
+                    if dish_name.endswith('s') and dish_name[:-1] in generic_categories:
+                        continue
+                    
+                    if dish.get('sentiment') == 'positive':
                         cleaned_dish = {
                             'name': dish['name'].strip(),
                             'description': dish.get('description', '').strip(),

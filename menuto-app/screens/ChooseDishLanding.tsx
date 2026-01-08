@@ -765,11 +765,11 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
                       </View>
                     </View>
                     
-                      {/* Continue Button */}
-                      <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-                        <Text style={styles.continueButtonText}>Continue</Text>
-                      </TouchableOpacity>
-                    </View>
+                    {/* Continue Button */}
+                    <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
+                      <Text style={styles.continueButtonText}>Continue</Text>
+                    </TouchableOpacity>
+                      </View>
                     </>
                   )}
                 </>

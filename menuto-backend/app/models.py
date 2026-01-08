@@ -119,11 +119,14 @@ class ParsedMenu(Base):
     __tablename__ = "parsed_menus"
     
     id = Column(Integer, primary_key=True, index=True)
+    place_id = Column(String, nullable=True, index=True)  # Google Places ID (primary identity)
     restaurant_name = Column(String, nullable=False)
     restaurant_url = Column(String, nullable=False)
     menu_url = Column(String, nullable=False)
     parsed_at = Column(DateTime, default=datetime.utcnow)
     dish_count = Column(Integer, default=0)
+    cuisine_type = Column(String, nullable=True)
+    menu_type = Column(String, nullable=True)
     
     # Relationship to dishes
     dishes = relationship("ParsedDish", back_populates="menu", cascade="all, delete-orphan")
@@ -136,6 +139,7 @@ class ParsedDish(Base):
     menu_id = Column(Integer, ForeignKey("parsed_menus.id"))
     name = Column(String, nullable=False)
     description = Column(String)
+    price = Column(Float, nullable=True)  # Price in restaurant's currency
     category = Column(String, nullable=False)  # breakfast, main, dessert, etc.
     ingredients = Column(JSON)  # List of ingredients
     dietary_tags = Column(JSON)  # List of dietary tags

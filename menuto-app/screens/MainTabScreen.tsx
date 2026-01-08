@@ -48,7 +48,7 @@ export function MainTabScreen({ onSelectRestaurant, onAddRestaurant, onSignOut, 
             borderTopColor: '#E1E8ED',
             borderTopWidth: 1,
           },
-          tabBarActiveTintColor: '#000000',
+          tabBarActiveTintColor: theme.colors.primary, // Changed from '#000000' to theme.colors.primary
           tabBarInactiveTintColor: '#000000',
           tabBarLabelStyle: {
             fontSize: 12,

@@ -470,6 +470,38 @@ async def _run_ingest_job(job: IngestJob):
             logger.info(f"✅ Ingest {job.id} parsed {url} -> {len(dishes_data)} dishes ({menu_type})")
 
         except Exception as e:
+            # Check if this is a duplicate menu error (menu already exists)
+            error_str = str(e).lower()
+            if 'duplicate' in error_str or '23505' in error_str:
+                # Menu already exists - this is SUCCESS, not failure!
+                logger.info(f"✅ Menu for {url} already exists in database - treating as success")
+                
+                # Fetch the existing menu to get its ID and details
+                try:
+                    existing_menu = supabase.table("parsed_menus")\
+                        .select("id, dish_count, menu_type")\
+                        .eq("menu_url", url)\
+                        .eq("place_id", job.place_id)\
+                        .limit(1)\
+                        .execute()
+                    
+                    if existing_menu.data:
+                        menu_data = existing_menu.data[0]
+                        job.url_status[url] = "done"
+                        job.results[url] = {
+                            "success": True,
+                            "menu_id": menu_data["id"],
+                            "menu_type": menu_data.get("menu_type", "menu"),
+                            "dish_count": menu_data.get("dish_count", 0),
+                            "already_existed": True,
+                        }
+                        ok += 1
+                        logger.info(f"✅ Ingest {job.id} - menu {url} already in DB with {menu_data.get('dish_count', 0)} dishes")
+                        continue
+                except Exception as fetch_err:
+                    logger.error(f"Failed to fetch existing menu: {fetch_err}")
+            
+            # Real error - log and mark as failed
             logger.exception(f"❌ Ingest {job.id} failed for {url}")
             job.url_status[url] = "failed"
             job.results[url] = {"success": False, "error": str(e)}

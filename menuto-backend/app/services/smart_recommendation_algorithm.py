@@ -11,6 +11,7 @@ Why we keep it:
 """
 
 from typing import Any, Dict, List, Optional
+import logging
 
 from app.services.recommendation_engine import RecommendationEngine
 from app.services.recommendation_types import (
@@ -20,6 +21,8 @@ from app.services.recommendation_types import (
     ScoredItem,
     UserTasteProfile,
 )
+
+logger = logging.getLogger(__name__)
 
 if False:  # type-checking helper without runtime import cycles
     from app.services.menu_data_service import MenuDataService
@@ -224,19 +227,106 @@ class SmartRecommendationAlgorithm:
     ) -> List[ScoredItem]:
         explained: List[ScoredItem] = []
         for scored in scored_items:
+            # Log detailed reasoning for debugging
+            reasoning_parts = []
+            
+            # Log component scores
+            components = scored.components
+            reasoning_parts.append(f"Component scores: personal_taste={components.get('personal_taste', 0):.2f}, "
+                                  f"sentiment={components.get('sentiment', 0):.2f}, "
+                                  f"craving={components.get('craving', 0):.2f}, "
+                                  f"hunger={components.get('hunger', 0):.2f}, "
+                                  f"spice={components.get('spice', 0):.2f}, "
+                                  f"friend={components.get('friend', 0):.2f}, "
+                                  f"restaurant={components.get('restaurant', 0):.2f}")
+            
+            # Log hunger reasoning
+            hunger_score = components.get("hunger", 0)
+            course = (scored.item.course or "main").lower()
+            if context.hunger_level == HungerLevel.LIGHT:
+                reasoning_parts.append(f"Hunger=LIGHT: course '{course}' scored {hunger_score:.2f} "
+                                      f"(starters/sides=0.8, dessert=0.55, main=0.4)")
+            elif context.hunger_level == HungerLevel.STARVING:
+                reasoning_parts.append(f"Hunger=STARVING: course '{course}' scored {hunger_score:.2f} "
+                                      f"(main=0.8, others=0.4)")
+            else:
+                reasoning_parts.append(f"Hunger=NORMAL: course '{course}' scored {hunger_score:.2f}")
+            
+            # Log craving reasoning
+            if context.craving_tags:
+                craving_score = components.get("craving", 0)
+                item_text = f"{scored.item.name} {scored.item.description}".lower()
+                matched_cravings = [c for c in context.craving_tags if c.lower() in item_text]
+                reasoning_parts.append(f"Craving match: {context.craving_tags} -> matched: {matched_cravings}, score: {craving_score:.2f}")
+            
+            # Log final score
+            reasoning_parts.append(f"Final score: {scored.score:.3f}")
+            
+            reasoning = " | ".join(reasoning_parts)
+            logger.info(f"🧠 Reasoning for '{scored.item.name}': {reasoning}")
             bullets: List[str] = []
-            if scored.components.get("personal_taste", 0) >= 0.6:
-                bullets.append("Matches the dishes you already love")
-            if scored.components.get("sentiment", 0) >= 0.7:
+            components = scored.components
+            
+            # Priority order for explanations (diversity is key - avoid duplicates)
+            # 1. Current mood/cravings (most relevant)
+            craving_score = components.get("craving", 0)
+            if craving_score >= 0.5 and context.craving_tags:
+                craving_text = " and ".join(context.craving_tags)
+                bullets.append(f"Perfect for your {craving_text} craving")
+            
+            # 2. Hunger level (context-specific)
+            hunger_score = components.get("hunger", 0)
+            if hunger_score >= 0.7:
+                if context.hunger_level == HungerLevel.STARVING:
+                    bullets.append("Great for when you're really hungry")
+                elif context.hunger_level == HungerLevel.LIGHT:
+                    bullets.append("Perfect lighter option")
+            
+            # 3. Sentiment (popularity - different from preferences)
+            if components.get("sentiment", 0) >= 0.7:
                 bullets.append("Highly praised by other diners")
-            if scored.components.get("craving", 0) >= 0.5 and context.craving_tags:
-                bullets.append(f"Scratches your {', '.join(context.craving_tags)} craving")
-            if scored.components.get("spice", 0) >= 0.5:
-                bullets.append("Lines up with your spice tolerance")
-            if scored.components.get("friend", 0) >= 0.5:
+            
+            # 4. Personal taste (only if we can be specific, otherwise skip to avoid generic "preferences")
+            personal_taste_score = components.get("personal_taste", 0)
+            if personal_taste_score >= 0.6:
+                item_text = f"{scored.item.name} {scored.item.description}".lower()
+                matched_prefs = []
+                
+                # Check cuisine preferences
+                for cuisine in taste_profile.cuisine_preferences:
+                    if cuisine.lower() in item_text:
+                        matched_prefs.append(f"your love for {cuisine} cuisine")
+                        break
+                
+                # Check dish types
+                for dish_type in taste_profile.dish_types:
+                    if dish_type.lower() in item_text:
+                        matched_prefs.append(f"the {dish_type} dishes you enjoy")
+                        break
+                
+                # Check flavor profile
+                if taste_profile.flavor_profile:
+                    flavor_lower = taste_profile.flavor_profile.lower()
+                    if any(word in item_text for word in ["creamy", "cream"]) and "creamy" in flavor_lower:
+                        matched_prefs.append("your preference for creamy dishes")
+                    elif any(word in item_text for word in ["spicy", "hot"]) and "spicy" in flavor_lower:
+                        matched_prefs.append("your preference for spicy flavors")
+                
+                # Only add if we found something specific (avoid generic "preferences")
+                if matched_prefs:
+                    bullets.append(f"Matches {matched_prefs[0]}")
+            
+            # 5. Spice alignment (only if we don't already have a preference match)
+            if components.get("spice", 0) >= 0.5 and len(bullets) < 2:
+                bullets.append("Matches your spice preference")
+            
+            # 6. Friend boost
+            if components.get("friend", 0) >= 0.5:
                 bullets.append("Friend-approved pick")
+            
+            # Default fallback (only if we have nothing)
             if not bullets:
-                bullets.append("Balanced pick for you tonight")
+                bullets.append("Great choice based on your preferences")
 
             explained.append(
                 ScoredItem(
@@ -244,6 +334,7 @@ class SmartRecommendationAlgorithm:
                     components=scored.components,
                     score=scored.score,
                     explanations=bullets[:3],
+                    reasoning=reasoning,
                 )
             )
         return explained

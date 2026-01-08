@@ -78,4 +78,5 @@ class ScoredItem:
     components: Dict[str, float]
     score: float
     explanations: List[str] = field(default_factory=list)
+    reasoning: str = ""  # Detailed reasoning for debugging
 
