@@ -1,10 +1,10 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
-import { Text } from 'react-native';
 import { MyRestaurants } from './MyRestaurants';
 import { ChooseDishLanding } from './ChooseDishLanding';
 import { ProfileScreen } from './ProfileScreen';
+import { Image, View } from 'react-native';
 
 import { FavoriteRestaurant } from '../types';
 import { theme } from '../theme';
@@ -44,15 +44,16 @@ export function MainTabScreen({ onSelectRestaurant, onAddRestaurant, onSignOut, 
         screenOptions={{
           headerShown: false,
           tabBarStyle: {
-            backgroundColor: '#FFFFFF',
+            backgroundColor: '#FFFEF4',
             borderTopColor: '#E1E8ED',
             borderTopWidth: 1,
           },
-          tabBarActiveTintColor: theme.colors.secondary,
-          tabBarInactiveTintColor: '#7F8C8D',
+          tabBarActiveTintColor: '#000000',
+          tabBarInactiveTintColor: '#000000',
           tabBarLabelStyle: {
             fontSize: 12,
             fontWeight: '500',
+            fontFamily: theme.typography.fontFamilies.medium,
           },
         }}
       >
@@ -61,8 +62,14 @@ export function MainTabScreen({ onSelectRestaurant, onAddRestaurant, onSignOut, 
           component={MyRestaurantsScreen}
           options={{
             tabBarLabel: 'My Restaurants',
-            tabBarIcon: ({ color }) => (
-              <Text style={{ color, fontSize: 16 }}>🍽️</Text>
+            tabBarIcon: ({ focused, color }) => (
+              <View style={{ width: 24, height: 24 }}>
+                <Image 
+                  source={focused ? require('../assets/myrestaurants.png') : require('../assets/myrestaurants-d.png')} 
+                  style={{ width: 24, height: 24 }}
+                  resizeMode="contain"
+                />
+              </View>
             ),
           }}
         />
@@ -71,8 +78,14 @@ export function MainTabScreen({ onSelectRestaurant, onAddRestaurant, onSignOut, 
           component={ChooseDishScreen}
           options={{
             tabBarLabel: 'Choose Dish',
-            tabBarIcon: ({ color }) => (
-              <Text style={{ color, fontSize: 16 }}>🍴</Text>
+            tabBarIcon: ({ focused, color }) => (
+              <View style={{ width: 24, height: 24 }}>
+                <Image 
+                  source={focused ? require('../assets/choosedish.png') : require('../assets/choosedish-d.png')} 
+                  style={{ width: 24, height: 24 }}
+                  resizeMode="contain"
+                />
+              </View>
             ),
           }}
         />
@@ -81,8 +94,14 @@ export function MainTabScreen({ onSelectRestaurant, onAddRestaurant, onSignOut, 
           component={ProfileScreenWrapper}
           options={{
             tabBarLabel: 'Profile',
-            tabBarIcon: ({ color }) => (
-              <Text style={{ color, fontSize: 16 }}>👤</Text>
+            tabBarIcon: ({ focused, color }) => (
+              <View style={{ width: 24, height: 24 }}>
+                <Image 
+                  source={focused ? require('../assets/profile.png') : require('../assets/profile-d.png')} 
+                  style={{ width: 24, height: 24 }}
+                  resizeMode="contain"
+                />
+              </View>
             ),
           }}
         />

@@ -7,6 +7,7 @@ export const loadFonts = async () => {
     await Font.loadAsync({
       'Artifact': require('../assets/fonts/Artifact.otf'),
       'DMSans-Regular': require('../assets/fonts/DMSans-folder/DMSans_24pt-Regular.ttf'),
+      'DMSans-Italic': require('../assets/fonts/DMSans-folder/DMSans_18pt-Italic.ttf'),
       'DMSans-Medium': require('../assets/fonts/DMSans-folder/DMSans_18pt-Medium.ttf'),
       'DMSans-SemiBold': require('../assets/fonts/DMSans-folder/DMSans_24pt-SemiBold.ttf'),
       'DMSans-Bold': require('../assets/fonts/DMSans-folder/DMSans_18pt-Bold.ttf'),
