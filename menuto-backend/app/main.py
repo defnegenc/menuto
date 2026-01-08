@@ -18,13 +18,15 @@ app = FastAPI(title="Menuto API", version="1.0.0")
 @app.on_event("startup")
 async def startup_event():
     """Log startup information to help debug deployment issues"""
+    port = os.getenv('PORT', '8080')
     logger.info("=" * 50)
     logger.info("Menuto API Starting Up")
-    logger.info(f"PORT: {os.getenv('PORT', 'not set')}")
+    logger.info(f"PORT: {port}")
     logger.info(f"DATABASE_URL: {'set' if os.getenv('DATABASE_URL') else 'NOT SET'}")
     logger.info(f"CLERK_ISSUER: {os.getenv('CLERK_ISSUER', 'not set')}")
     logger.info(f"SUPABASE_URL: {'set' if os.getenv('SUPABASE_URL') else 'NOT SET'}")
     logger.info(f"OPENAI_API_KEY: {'set' if os.getenv('OPENAI_API_KEY') else 'NOT SET'}")
+    logger.info(f"Binding to host 0.0.0.0 on port {port}")
     logger.info("=" * 50)
 
 ALLOWED_ORIGINS = [

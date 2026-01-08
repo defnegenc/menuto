@@ -24,5 +24,10 @@ COPY --from=builder /install /usr/local
 # app code from repo root path
 COPY menuto-backend/ ./
 
+# Render provides PORT env var dynamically - must bind to it
+# EXPOSE is just documentation; actual port comes from Render's PORT env var
 EXPOSE 8080
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080} --workers 2"]
+
+# Render sets PORT automatically - bind to it
+# Remove workers for now as they can cause port binding issues on Render
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
