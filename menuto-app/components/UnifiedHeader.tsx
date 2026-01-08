@@ -1,13 +1,20 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../theme';
+
+const screenWidth = Dimensions.get('window').width;
 
 interface Props {
   title: string;
   subtitle?: string;
   onBack?: () => void;
   showBackButton?: boolean;
+  showUnderline?: boolean; // Control whether to show the underline
+  restaurant?: {
+    name: string;
+    vicinity: string;
+  }; // Optional restaurant info to display in header
   // Optional right button props
   rightButton?: {
     text: string;
@@ -21,17 +28,42 @@ export const UnifiedHeader: React.FC<Props> = ({
   subtitle, 
   onBack, 
   showBackButton = false,
+  showUnderline = true, // Default to showing underline
+  restaurant,
   rightButton
 }) => {
   const insets = useSafeAreaInsets();
   
+  // Parse address to show street, city, and state (exclude zip and country)
+  const parseAddress = (vicinity: string) => {
+    const parts = vicinity.split(',').map(part => part.trim());
+    return parts.slice(0, 3).join(', ');
+  };
+  
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        {/* Back button if needed */}
+        {/* Title and subtitle */}
+        <View style={styles.titleRow}>
+          <Text style={styles.headerTitle}>{title}</Text>
+          {restaurant && (
+            <>
+              <Text style={styles.restaurantName}>{restaurant.name}</Text>
+              <Text style={styles.restaurantAddress}>{parseAddress(restaurant.vicinity)}</Text>
+            </>
+          )}
+        </View>
+        {subtitle && (
+          <Text style={styles.headerSubtitle}>{subtitle}</Text>
+        )}
+        
+        {/* Underline */}
+        {showUnderline && <View style={styles.headerUnderline} />}
+        
+        {/* Back button below line */}
         {showBackButton && onBack && (
           <TouchableOpacity 
-            style={styles.backButton} 
+            style={styles.backButtonBelow} 
             onPress={() => {
               console.log('🔙 UnifiedHeader: Back button pressed');
               onBack();
@@ -39,12 +71,6 @@ export const UnifiedHeader: React.FC<Props> = ({
           >
             <Text style={styles.backButtonText}>←</Text>
           </TouchableOpacity>
-        )}
-        
-        {/* Title and subtitle centered */}
-        <Text style={styles.headerTitle}>{title}</Text>
-        {subtitle && (
-          <Text style={styles.headerSubtitle}>{subtitle}</Text>
         )}
         
         {/* Right button if needed */}
@@ -75,41 +101,56 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    paddingBottom: theme.spacing.md,
     position: 'relative',
   },
-  backButton: {
-    position: 'absolute',
-    left: theme.spacing.lg,
-    top: theme.spacing.md,
+  backButtonBelow: {
+    marginTop: theme.spacing.sm,
     padding: theme.spacing.xs,
-    minWidth: 44,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
+    alignSelf: 'flex-start',
   },
   backButtonText: {
-    fontSize: theme.typography.sizes.xl,
+    fontSize: 20,
     color: theme.colors.primary,
     fontWeight: 'bold',
+    fontFamily: theme.typography.fontFamilies.bold,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    marginBottom: theme.spacing.sm,
+    gap: theme.spacing.md,
+    flexWrap: 'wrap',
   },
   headerTitle: {
-    fontSize: theme.typography.sizes.heading,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.secondary,
-    textAlign: 'center',
-    marginBottom: theme.spacing.xs,
-    fontFamily: 'Artifact',
-    lineHeight: theme.typography.sizes.heading * 1.4, // Add text height (lineHeight)
+    fontSize: 20,
+    fontWeight: theme.typography.weights.medium,
+    color: '#000000',
+    fontFamily: theme.typography.fontFamilies.medium,
+  },
+  restaurantName: {
+    fontSize: 20,
+    fontWeight: theme.typography.weights.bold,
+    color: '#000000',
+    fontFamily: theme.typography.fontFamilies.bold,
+  },
+  restaurantAddress: {
+    fontSize: 12,
+    color: 'rgba(0, 0, 0, 0.5)',
+    fontFamily: theme.typography.fontFamilies.regularItalic,
   },
   headerSubtitle: {
     fontSize: theme.typography.sizes.md,
     color: theme.colors.text.secondary,
-    textAlign: 'center',
+    marginBottom: theme.spacing.xs,
     fontFamily: 'DMSans-Regular',
+  },
+  headerUnderline: {
+    height: 2,
+    width: screenWidth * 0.9,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 2,
+    alignSelf: 'center',
   },
   rightButton: {
     position: 'absolute',
@@ -132,8 +173,13 @@ const styles = StyleSheet.create({
   },
   rightButtonLabelPrimary: {
     color: theme.colors.text.light,
+    fontSize: theme.typography.sizes.sm,
+    fontWeight: theme.typography.weights.semibold,
   },
   rightButtonLabelText: {
-    color: theme.colors.primary,
+    color: '#000000',
+    fontSize: 12,
+    fontWeight: theme.typography.weights.medium,
+    fontFamily: theme.typography.fontFamilies.medium,
   },
 });

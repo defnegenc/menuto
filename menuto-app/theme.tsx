@@ -1,17 +1,18 @@
 export const theme = {
   colors: {
     // Primary brand colors
-    primary: '#2C0703',        // Dark burgundy - main brand color
-    secondary: '#890620',      // Rich red - accent color
-    tertiary: '#B6465F',      // Muted rose - tertiary color
+    primary: '#D8131F',        // Red - main brand color
+    secondary: '#FFD9DB',      // Light green - accent color
+    tertiary: '#CCDCB6',      // Light green - tertiary color (same as secondary)
+    darkRed: '#881219',       // Dark red for borders
     
     // Neutral colors
-    background: '#FEFEFE',     // Very light gray background (closer to white)
+    background: '#FFFEF4',     // Cream background
     surface: '#FFFFFF',       // White cards/surfaces
     
     // Text colors
     text: {
-      primary: '#2C0703',      // Dark text (using primary color)
+      primary: '#D8131F',      // Dark text (using primary color)
       secondary: '#7F8C8D', 
       darkGrey: '#4A4A4A',   // Gray text
       light: '#FFFFFF',        // White text
@@ -30,8 +31,8 @@ export const theme = {
     
     // Special colors
     gold: '#FFD700',           // For ratings/stars
-    overlay: 'rgba(44, 7, 3, 0.8)', // Semi-transparent primary
-    chipDefault: '#F0E0E3',    // Light pink for unselected chips
+    overlay: 'rgba(37, 68, 43, 0.8)', // Semi-transparent primary
+    chipDefault: '#CCDCB6',    // Light green for unselected chips
   },
   
   // Typography
@@ -62,6 +63,7 @@ export const theme = {
       thin: 'DMSans-Thin',
       thinItalic: 'DMSans-Thin-Italic',
       regular: 'DMSans-Regular',
+      regularItalic: 'DMSans-Italic',
       medium: 'DMSans-Medium',
       mediumItalic: 'DMSans-Medium-Italic',
       semibold: 'DMSans-SemiBold',
@@ -75,13 +77,13 @@ export const theme = {
         fontSize: 30,
         fontFamily: 'Artifact',
         fontWeight: '700' as const,
-        color: '#890620', // Secondary color
+        color: '#CCDCB6', // Secondary color
       },
       regular: {
         fontSize: 24,
         fontWeight: '700' as const,
         fontFamily: 'DMSans-Bold',
-        color: '#2C0703',
+        color: '#D8131F',
       },
     },
     h2: {
@@ -89,13 +91,13 @@ export const theme = {
         fontSize: 28,
         fontFamily: 'Artifact',
         fontWeight: '700' as const,
-        color: '#890620', // Secondary color
+        color: '#CCDCB6', // Secondary color
       },
       regular: {
         fontSize: 20,
         fontWeight: '600' as const,
         fontFamily: 'DMSans-SemiBold',
-        color: '#2C0703',
+        color: '#D8131F',
       },
     },
     h3: {
@@ -103,13 +105,13 @@ export const theme = {
         fontSize: 20,
         fontFamily: 'Artifact',
         fontWeight: '700' as const,
-        color: '#2C0703', // Primary color
+        color: '#D8131F', // Primary color
       },
       regular: {
         fontSize: 18,
         fontWeight: '500' as const,
         fontFamily: 'DMSans-Medium',
-        color: '#2C0703',
+        color: '#D8131F',
       },
     },
   },
@@ -164,42 +166,42 @@ export const theme = {
   components: {
     button: {
       primary: {
-        backgroundColor: '#2C0703',
+        backgroundColor: '#D8131F',
         color: '#FFFFFF',
       },
       secondary: {
-        backgroundColor: '#890620',
-        color: '#FFFFFF',
+        backgroundColor: '#CCDCB6',
+        color: '#D8131F',
       },
       tertiary: {
-        backgroundColor: '#B6465F',
-        color: '#FFFFFF',
+        backgroundColor: '#CCDCB6',
+        color: '#D8131F',
       },
       outline: {
         backgroundColor: 'transparent',
-        borderColor: '#2C0703',
-        color: '#2C0703',
+        borderColor: '#D8131F',
+        color: '#D8131F',
       },
       ghost: {
         backgroundColor: 'transparent',
-        color: '#2C0703',
+        color: '#D8131F',
       },
     },
     chip: {
       default: {
         backgroundColor: '#FFFFFF',
         borderColor: '#E1E8ED',
-        color: '#2C0703',
+        color: '#D8131F',
       },
       selected: {
-        backgroundColor: '#2C0703',
-        borderColor: '#2C0703',
+        backgroundColor: '#D8131F',
+        borderColor: '#D8131F',
         color: '#FFFFFF',
       },
       accent: {
-        backgroundColor: '#890620',
-        borderColor: '#890620',
-        color: '#FFFFFF',
+        backgroundColor: '#CCDCB6',
+        borderColor: '#CCDCB6',
+        color: '#D8131F',
       },
     },
   },

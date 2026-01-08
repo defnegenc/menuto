@@ -41,30 +41,29 @@ export const SearchRestaurantCard: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: 'transparent',
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.lg,
     marginBottom: theme.spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    ...theme.shadows.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
   },
   restaurantInfo: {
     flex: 1,
   },
   restaurantName: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.text.primary,
+    fontSize: 15,
+    fontWeight: theme.typography.weights.medium,
+    color: '#000000',
     marginBottom: theme.spacing.xs,
-    fontFamily: theme.typography.fontFamilies.semibold,
+    fontFamily: theme.typography.fontFamilies.medium,
   },
   restaurantVicinity: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontSize: 12,
+    color: 'rgba(0, 0, 0, 0.5)',
+    fontFamily: theme.typography.fontFamilies.regularItalic,
   },
   selectionIndicator: {
     marginLeft: theme.spacing.md,

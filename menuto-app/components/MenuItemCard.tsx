@@ -24,6 +24,7 @@ interface MenuItemCardProps {
   isSelected?: boolean;
   showScore?: boolean;
   isFeatured?: boolean;
+  onScorePress?: () => void;
 }
 
 export const MenuItemCard: React.FC<MenuItemCardProps> = ({
@@ -33,7 +34,8 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({
   isFavorite = false,
   isSelected = false,
   showScore = false,
-  isFeatured = false
+  isFeatured = false,
+  onScorePress
 }) => {
   return (
     <TouchableOpacity 
@@ -53,7 +55,9 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({
             <Text style={[styles.dishDescription, isFavorite && styles.dishDescriptionFavorited]}>{capitalizeText(dish.description)}</Text>
           ) : null}
           {showScore && dish.score && (
-            <Text style={styles.scoreText}>Score: {dish.score.toFixed(1)}</Text>
+            <TouchableOpacity onPress={onScorePress} disabled={!onScorePress}>
+              <Text style={styles.scoreText}>Score: {dish.score.toFixed(2)}</Text>
+            </TouchableOpacity>
           )}
         </View>
 
@@ -74,21 +78,16 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#E9E6EA',
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    borderColor: theme.colors.primary,
   },
   lightPinkCard: { 
-    backgroundColor: '#F7E8EB',
-    borderColor: theme.colors.secondary,
+    backgroundColor: 'transparent',
+    borderColor: theme.colors.primary,
   },
   content: { 
     flexDirection: 'row', 
@@ -100,41 +99,46 @@ const styles = StyleSheet.create({
     marginRight: 12 
   },
   dishName: { 
-    fontSize: 16, 
-    fontWeight: '600', 
-    color: theme.colors.text.primary, 
-    marginBottom: 4 
+    fontSize: 13, 
+    fontWeight: theme.typography.weights.normal, 
+    color: '#000000', 
+    marginBottom: 4,
+    fontFamily: theme.typography.fontFamilies.regular,
   },
   dishDescription: { 
-    fontSize: 14, 
-    color: theme.colors.text.secondary, 
-    lineHeight: 18 
+    fontSize: 12, 
+    color: 'rgba(0, 0, 0, 0.5)',
+    lineHeight: 18,
+    fontFamily: theme.typography.fontFamilies.regularItalic,
   },
   dishDescriptionFavorited: {
     color: '#666666', // Darker grey for favorited dishes
   },
 
   addButton: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 4,
     justifyContent: 'center', 
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: theme.colors.secondary,
+    borderColor: theme.colors.primary,
   },
   addButtonActive: {
-    backgroundColor: theme.colors.secondary, 
-    borderColor: theme.colors.secondary,
+    backgroundColor: theme.colors.primary, 
+    borderColor: theme.colors.primary,
   },
   addButtonText: { 
-    fontSize: 14, 
+    fontSize: 11, 
     fontWeight: '600', 
-    color: theme.colors.secondary 
+    color: '#FFFFFF',
+    fontFamily: theme.typography.fontFamilies.semibold,
   },
   addButtonTextActive: { 
-    color: '#FFFFFF' 
+    fontSize: 11,
+    color: '#FFFFFF',
+    fontFamily: theme.typography.fontFamilies.semibold,
   },
   scoreText: {
     fontSize: theme.typography.sizes.sm,
@@ -144,11 +148,11 @@ const styles = StyleSheet.create({
   },
   selectedCard: {
     borderColor: theme.colors.primary,
-    borderWidth: 2,
+    borderWidth: 1,
   },
   featuredCard: {
-    backgroundColor: theme.colors.primary + '10',
+    backgroundColor: 'transparent',
     borderColor: theme.colors.primary,
-    borderWidth: 2,
+    borderWidth: 1,
   },
 });

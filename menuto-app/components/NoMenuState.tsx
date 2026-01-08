@@ -28,7 +28,7 @@ export const NoMenuState: React.FC<Props> = ({
       )}
       {!compact && (
         <>
-          <Text style={styles.title}>No Menu Yet</Text>
+          <Text style={styles.title}>No menu yet.</Text>
           <Text style={styles.subtitle}>
             Add a menu to see dishes and get recommendations.
           </Text>
@@ -37,15 +37,15 @@ export const NoMenuState: React.FC<Props> = ({
       
       <View style={styles.buttonsContainer}>
         <TouchableOpacity style={styles.button} onPress={onAddMenuPDF}>
-          <Text style={styles.buttonText}>🔗 Add Menu Link</Text>
+          <Text style={styles.buttonText}>Add Menu Link</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.button} onPress={onPasteMenuText}>
-          <Text style={styles.buttonText}>📝 Paste Menu Text</Text>
+          <Text style={styles.buttonText}>Paste Menu Text</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.button} onPress={onAddPhoto}>
-          <Text style={styles.buttonText}>📸 Add Menu Photo</Text>
+          <Text style={styles.buttonText}>Add Menu Photo</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -58,25 +58,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-start',
     paddingHorizontal: theme.spacing.xl,
-    paddingVertical: 60,
+    paddingTop: theme.spacing.lg,
+    paddingBottom: 60,
   },
   containerCompact: {
     paddingVertical: theme.spacing.lg,
     paddingHorizontal: 0,
   },
   title: {
-    fontSize: theme.typography.sizes.xxl,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.text.primary,
+    fontSize: 20,
+    fontWeight: theme.typography.weights.medium,
+    color: '#000000',
     marginBottom: theme.spacing.md,
-    fontFamily: theme.typography.fontFamilies.bold,
+    fontFamily: theme.typography.fontFamilies.medium,
     textAlign: 'left',
   },
   subtitle: {
-    fontSize: theme.typography.sizes.lg,
-    color: theme.colors.text.secondary,
+    fontSize: 13,
+    color: '#000000',
     textAlign: 'left',
-    lineHeight: 24,
+    lineHeight: 20,
     marginBottom: theme.spacing.xxxl,
     fontFamily: theme.typography.fontFamilies.regular,
   },
@@ -85,17 +86,18 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md,
   },
   button: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: 'transparent',
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.xl,
-    borderWidth: 2,
-    borderColor: theme.colors.secondary,
-    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.darkRed,
+    alignItems: 'flex-start',
   },
   buttonText: {
-    fontSize: theme.typography.sizes.lg,
+    fontSize: 14,
     fontWeight: theme.typography.weights.medium,
-    color: theme.colors.text.primary,
+    color: '#000000',
     fontFamily: theme.typography.fontFamilies.medium,
+    textAlign: 'left',
   },
 });

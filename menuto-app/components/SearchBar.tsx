@@ -21,21 +21,22 @@ export const SearchBar: React.FC<Props> = ({
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      placeholderTextColor={theme.colors.text.secondary}
+      placeholderTextColor="rgba(0, 0, 0, 0.7)"
     />
   );
 };
 
 const styles = StyleSheet.create({
   searchInput: {
-    backgroundColor: '#F5F5F5', // Light gray background
+    backgroundColor: 'transparent',
     borderRadius: theme.borderRadius.lg,
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
     fontSize: theme.typography.sizes.md,
-    color: '#666666', // Darker gray text
+    color: 'rgba(0, 0, 0, 0.7)',
     fontFamily: theme.typography.fontFamilies.regular,
     marginBottom: theme.spacing.md,
-    // No border
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
   },
 });

@@ -46,11 +46,9 @@ export const Header: React.FC<HeaderProps> = ({
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
     paddingHorizontal: 20,
     paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E1E8ED',
   },
   backButton: {
     marginTop: 0,
@@ -66,19 +64,19 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.fontFamilies.semibold,
   },
   restaurantInfo: {
-    // No margin needed since backButton has bottom margin
+    flexDirection: 'column',
   },
   restaurantName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-    marginBottom: 6,
+    fontSize: 40,
+    fontWeight: theme.typography.weights.bold,
+    color: '#000000',
     fontFamily: theme.typography.fontFamilies.bold,
+    marginBottom: 6,
   },
   restaurantAddress: {
-    fontSize: 16,
-    color: theme.colors.text.secondary,
+    fontSize: 12,
+    color: 'rgba(0, 0, 0, 0.5)',
     fontWeight: '400',
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontFamily: theme.typography.fontFamilies.regularItalic,
   },
 });
