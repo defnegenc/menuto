@@ -13,9 +13,10 @@ import base64
 import json
 import logging
 from typing import List, Dict, Any
-from openai import OpenAI
+import google.generativeai as genai
 import os
 from dotenv import load_dotenv
+from PIL import Image
 
 from app.services.menu_parsing_utils import DishItem
 
@@ -29,10 +30,11 @@ logger = logging.getLogger(__name__)
 
 class ScreenshotMenuParser:
     def __init__(self):
-        api_key = os.getenv('OPENAI_API_KEY')
+        api_key = os.getenv('GOOGLE_GEMINI_API_KEY')
         if not api_key:
-            raise ValueError("OPENAI_API_KEY environment variable is not set")
-        self.client = OpenAI(api_key=api_key)
+            raise ValueError("GOOGLE_GEMINI_API_KEY environment variable is not set")
+        genai.configure(api_key=api_key)
+        self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
     
     def encode_image_to_base64(self, image_path: str) -> str:
         """Convert image to base64 string"""
@@ -96,36 +98,25 @@ Guidelines:
 Return ONLY valid JSON, no other text.
 """
             
-            logger.info("Making OpenAI Vision API call...")
-            response = self.client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": prompt},
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/jpeg;base64,{base64_image}"
-                                }
-                            }
-                        ]
-                    }
-                ],
-                response_format={"type": "json_object"},
-                temperature=0.1,
-                max_tokens=4000,
-                timeout=60
+            logger.info("Making Gemini Vision API call...")
+            # Load image for Gemini
+            img = Image.open(image_path)
+            response = self.model.generate_content(
+                [prompt, img],
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.1,
+                    max_output_tokens=4000,
+                    response_mime_type="application/json",
+                ),
             )
             
-            logger.info("OpenAI response received, parsing JSON...")
-            content = response.choices[0].message.content
+            logger.info("Gemini response received, parsing JSON...")
+            content = response.text
             if not content:
-                logger.warning("OpenAI returned empty message content for vision parse")
+                logger.warning("Gemini returned empty message content for vision parse")
                 return {
                     "success": False,
-                    "message": "OpenAI returned an empty response. Try again with a clearer image.",
+                    "message": "Gemini returned an empty response. Try again with a clearer image.",
                     "dishes": []
                 }
 

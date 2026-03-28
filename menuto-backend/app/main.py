@@ -11,7 +11,19 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
-load_dotenv()
+# First load base .env to get API_ENV, then load .env.dev or .env.prod if needed
+load_dotenv()  # Load base .env first
+api_env = os.getenv("API_ENV", "prod").lower()
+if api_env == "dev":
+    # Load .env.dev which will override values from .env
+    env_file = load_dotenv(".env.dev", override=True)
+    logger.info("Dev mode: Loaded .env.dev file (%s)", "found" if env_file else "not found")
+elif api_env == "prod":
+    # Load .env.prod which will override values from .env
+    env_file = load_dotenv(".env.prod", override=True)
+    logger.info("Production mode: Loaded .env.prod file (%s)", "found" if env_file else "not found")
+else:
+    logger.info("Unknown API_ENV=%s: Using .env file only", api_env)
 
 app = FastAPI(title="Menuto API", version="1.0.0")
 
@@ -21,12 +33,14 @@ async def startup_event():
     port = os.getenv('PORT', '8080')
     logger.info("=" * 50)
     logger.info("Menuto API Starting Up")
-    logger.info(f"PORT: {port}")
-    logger.info(f"DATABASE_URL: {'set' if os.getenv('DATABASE_URL') else 'NOT SET'}")
-    logger.info(f"CLERK_ISSUER: {os.getenv('CLERK_ISSUER', 'not set')}")
-    logger.info(f"SUPABASE_URL: {'set' if os.getenv('SUPABASE_URL') else 'NOT SET'}")
-    logger.info(f"OPENAI_API_KEY: {'set' if os.getenv('OPENAI_API_KEY') else 'NOT SET'}")
-    logger.info(f"Binding to host 0.0.0.0 on port {port}")
+    logger.info("PORT: %s", port)
+    logger.info("DATABASE_URL: %s", "set" if os.getenv("DATABASE_URL") else "NOT SET")
+    logger.info("CLERK_ISSUER: %s", os.getenv("CLERK_ISSUER", "not set"))
+    supabase_url = os.getenv('SUPABASE_URL')
+    logger.info("SUPABASE_URL: %s", supabase_url[:30] + '...' if supabase_url and len(supabase_url) > 30 else supabase_url if supabase_url else "NOT SET")
+    logger.info("SUPABASE_KEY: %s", "set" if os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY") else "NOT SET")
+    logger.info("GOOGLE_GEMINI_API_KEY: %s", "set" if os.getenv("GOOGLE_GEMINI_API_KEY") else "NOT SET")
+    logger.info("Binding to host 0.0.0.0 on port %s", port)
     logger.info("=" * 50)
 
 ALLOWED_ORIGINS = [
@@ -52,6 +66,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ---------------------------------------------------------------------------
+# Router registration
+#
+# API endpoint groups:
+#   /restaurants/*           - Restaurant CRUD and search
+#   /dishes/*                - Dish CRUD
+#   /reviews/*               - Review ingestion
+#   /smart-recommendations/* - AI-powered dish recommendations & behavioral tracking
+#   /menu/*                  - Menu data retrieval
+#   /menu-parser/*           - Menu image/URL parsing  (prefix on router)
+#   /menu-parsing/*          - Menu parse-and-store     (prefix on router)
+#   /users/*                 - User profiles & prefs    (prefix on router)
+#   /api/places/*            - Google Places proxy      (prefix on router)
+# ---------------------------------------------------------------------------
+
 app.include_router(restaurants.router, prefix="/restaurants", tags=["restaurants"])
 app.include_router(dishes.router, prefix="/dishes", tags=["dishes"])
 app.include_router(reviews.router, prefix="/reviews", tags=["reviews"])
@@ -59,10 +88,12 @@ app.include_router(reviews.router, prefix="/reviews", tags=["reviews"])
 app.include_router(smart_recommendations.router, prefix="/smart-recommendations", tags=["smart-recommendations"])
 app.include_router(behavioral_tracking.router, prefix="/smart-recommendations", tags=["behavioral-tracking"])
 app.include_router(menu_api.router, prefix="/menu", tags=["menu-data"])
-app.include_router(menu_parser_api.router)
-app.include_router(menu_parsing.router)
-app.include_router(users.router)
-app.include_router(places.router)
+
+# These routers define their own prefix in their APIRouter() constructor:
+app.include_router(menu_parser_api.router, tags=["menu-parser"])    # prefix="/menu-parser"
+app.include_router(menu_parsing.router, tags=["menu-parsing"])      # prefix="/menu-parsing"
+app.include_router(users.router, tags=["users"])                    # prefix="/users"
+app.include_router(places.router, tags=["places"])                  # prefix="/api/places"
 
 @app.get("/")
 async def root():

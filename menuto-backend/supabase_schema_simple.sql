@@ -48,7 +48,8 @@ CREATE TABLE IF NOT EXISTS parsed_menus (
     restaurant_url text not null default '',
     menu_url text not null default '',
     parsed_at timestamp with time zone default timezone('utc'::text, now()) not null,
-    dish_count integer default 0
+    dish_count integer default 0,
+    cuisine_type text not null default 'restaurant'
 );
 
 -- Create parsed_dishes table if it doesn't exist
@@ -57,6 +58,7 @@ CREATE TABLE IF NOT EXISTS parsed_dishes (
     menu_id bigint references parsed_menus(id) on delete cascade,
     name text not null,
     description text,
+    price double precision,
     category text not null,
     ingredients jsonb default '[]',
     dietary_tags jsonb default '[]',
@@ -65,6 +67,10 @@ CREATE TABLE IF NOT EXISTS parsed_dishes (
     added_by_user_id uuid references auth.users(id),
     added_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
+
+-- Keep schema forward-compatible if these tables already exist
+ALTER TABLE parsed_menus ADD COLUMN IF NOT EXISTS cuisine_type text;
+ALTER TABLE parsed_dishes ADD COLUMN IF NOT EXISTS price double precision;
 
 -- Enable Row Level Security on all tables
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;

@@ -4,8 +4,8 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
     "web": "expo start --web"
   },
   "dependencies": {
@@ -26,7 +26,7 @@
     "expo-splash-screen": "^31.0.10",
     "expo-status-bar": "~2.2.3",
     "expo-updates": "~0.28.17",
-    "expo-web-browser": "~14.2.0",
+    "expo-web-browser": "^15.0.10",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-native": "0.79.5",
@@ -37,10 +37,14 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
-    "@babel/core": "^7.25.2",
-    "@types/react": "^19.1.15",
-    "typescript": "~5.8.3"
+    "@types/node": "^25.0.6",
+    "@types/react": "^19.2.8",
+    "@types/react-native": "^0.72.8"
   },
-  "private": true,
-  "packageManager": "yarn@4.6.0+sha512.5383cc12567a95f1d668fbe762dfe0075c595b4bfff433be478dbbe24e05251a8e8c3eb992a986667c1d53b6c3a9c85b8398c35a960587fbd9fa3a0915406728"
+  "resolutions": {
+    "js-yaml": "^4.1.0"
+  },
+  "overrides": {
+    "js-yaml": "^4.1.0"
+  }
 }

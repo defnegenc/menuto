@@ -101,6 +101,30 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
   
   const [isEditingPreferences, setIsEditingPreferences] = useState(false);
   const [editedPreferencesSpiceTolerance, setEditedPreferencesSpiceTolerance] = useState(user?.spice_tolerance || 3);
+  
+  // Tried dishes state
+  const [triedDishes, setTriedDishes] = useState<any[]>([]);
+  const [loadingTriedDishes, setLoadingTriedDishes] = useState(false);
+
+  // Load tried dishes
+  useEffect(() => {
+    const loadTriedDishes = async () => {
+      if (!userId) return;
+      
+      try {
+        setLoadingTriedDishes(true);
+        const dishes = await api.getTriedDishes(userId);
+        setTriedDishes(dishes || []);
+      } catch (error) {
+        console.error('Failed to load tried dishes:', error);
+        setTriedDishes([]);
+      } finally {
+        setLoadingTriedDishes(false);
+      }
+    };
+    
+    loadTriedDishes();
+  }, [userId]);
 
   // Load user data
   useEffect(() => {
@@ -923,6 +947,41 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
           )}
         </View>
 
+        {/* Dishes You've Tried */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Dishes You've Tried</Text>
+          {loadingTriedDishes ? (
+            <Text style={styles.emptyStateText}>Loading...</Text>
+          ) : triedDishes.length > 0 ? (
+            <View style={styles.chipsContainer}>
+              {triedDishes.map((dish) => (
+                <TouchableOpacity
+                  key={dish.id}
+                  onPress={() => {
+                    // Navigate to dish details or restaurant
+                    if (dish.restaurant_place_id) {
+                      // Could navigate to restaurant detail screen
+                      console.log('Navigate to restaurant:', dish.restaurant_place_id);
+                    }
+                  }}
+                >
+                  <View style={styles.triedDishChip}>
+                    <Text style={styles.triedDishChipText}>
+                      {dish.name}
+                      {dish.rating && ` ⭐ ${dish.rating.toFixed(1)}`}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No dishes tried yet</Text>
+              <Text style={styles.emptyStateSubtext}>Order and rate dishes to see them here</Text>
+            </View>
+          )}
+        </View>
+
         {/* Sign Out Button */}
         {onSignOut && (
           <View style={styles.signOutContainer}>
@@ -1370,6 +1429,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: theme.typography.fontFamilies.semibold,
+  },
+  triedDishChip: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.round,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    minHeight: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  triedDishChipText: {
+    fontSize: 10.5,
+    color: theme.colors.primary,
+    fontWeight: '400',
+    fontFamily: theme.typography.fontFamilies.regular,
   },
   modalContainer: {
     flex: 1,

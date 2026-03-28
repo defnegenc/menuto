@@ -12,7 +12,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStore } from '../store/useStore';
 import { api } from '../services/api';
 import { ParsedDish, FavoriteRestaurant } from '../types';
-import { generateMockRecommendations } from '../services/mockRecommendations';
 import { theme } from '../theme';
 
 interface Props {

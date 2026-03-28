@@ -7,9 +7,6 @@
 .env
 .env.*
 !.env.example
-!.env.production.example
-menuto-backend/.env
-menuto-backend/.env.*
 
 # Node / RN / Expo
 node_modules/
@@ -50,8 +47,10 @@ __pycache__/
 *.so
 .Python
 venv/
+.venv/
 ENV/
 
 # Backup files
 *.bak
 *.root-bak
+.npm-cache/

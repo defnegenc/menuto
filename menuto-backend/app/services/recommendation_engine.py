@@ -9,7 +9,7 @@ Why we keep it:
 - Also used by review ingestion helpers.
 """
 
-import openai
+import google.generativeai as genai
 import os
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
@@ -24,15 +24,16 @@ except Exception as e:
 
 class RecommendationEngine:
     def __init__(self):
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
         google_api_key = os.getenv("GOOGLE_PLACES_API_KEY")
         
         if not api_key:
-            raise ValueError("OpenAI API key not found")
+            raise ValueError("Google Gemini API key not found")
         if not google_api_key:
             raise ValueError("Google Places API key not found")
             
-        self.client = openai.OpenAI(api_key=api_key)
+        genai.configure(api_key=api_key)
+        self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
         self.google_api_key = google_api_key
     
     def analyze_user_taste_profile(self, favorite_dishes: List[Dict[str, str]]) -> Dict[str, Any]:
@@ -65,20 +66,20 @@ class RecommendationEngine:
         """
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "You are a food taste analyst. Return only valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.1,
-                max_tokens=300
+            full_prompt = f"You are a food taste analyst. Return only valid JSON.\n\n{prompt}"
+            response = self.model.generate_content(
+                full_prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.1,
+                    max_output_tokens=300,
+                    response_mime_type="application/json",
+                ),
             )
             
             import json
             import re
             
-            response_content = response.choices[0].message.content
+            response_content = response.text
             # Extract JSON from response
             json_match = re.search(r'\{.*\}', response_content, re.DOTALL)
             if json_match:
@@ -158,20 +159,20 @@ class RecommendationEngine:
         """
         
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "You are a restaurant review analyst. Extract ONLY SPECIFIC DISH NAMES from reviews. NEVER extract generic category names like 'desserts', 'appetizers', 'mains'. Return only valid JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.1,
-                max_tokens=600
+            full_prompt = f"You are a restaurant review analyst. Extract ONLY SPECIFIC DISH NAMES from reviews. NEVER extract generic category names like 'desserts', 'appetizers', 'mains'. Return only valid JSON.\n\n{prompt}"
+            response = self.model.generate_content(
+                full_prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.1,
+                    max_output_tokens=600,
+                    response_mime_type="application/json",
+                ),
             )
             
             import json
             import re
             
-            response_content = response.choices[0].message.content
+            response_content = response.text
             # Extract JSON array from response
             json_match = re.search(r'\[.*\]', response_content, re.DOTALL)
             if json_match:

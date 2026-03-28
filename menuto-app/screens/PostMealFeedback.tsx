@@ -270,10 +270,24 @@ export const PostMealFeedback: React.FC<PostMealFeedbackProps> = ({
       />
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.dishInfo}>
-          <Text style={styles.dishName}>{selectedDish.name}</Text>
-          <Text style={styles.dishDescription}>{selectedDish.description}</Text>
-          <Text style={styles.restaurantName}>at {selectedDish.restaurant}</Text>
+        <View style={styles.dishCardContainer}>
+          <MenuItemCard
+            dish={{
+              id: String(selectedDish.id),
+              name: selectedDish.name,
+              description: selectedDish.description || '',
+              category: 'main',
+              ingredients: [],
+              dietary_tags: [],
+              is_user_added: false,
+              score: 0,
+              explanation: '',
+              restaurant_id: selectedDish.restaurantPlaceId || ''
+            }}
+            isSelected={false}
+            onPress={() => {}}
+            showScore={false}
+          />
         </View>
 
         <View style={styles.ratingSection}>
@@ -370,29 +384,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: theme.spacing.lg,
   },
-  dishInfo: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
+  dishCardContainer: {
     marginTop: theme.spacing.lg,
     marginBottom: theme.spacing.xl,
-    ...theme.shadows.sm,
-  },
-  dishName: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
-  },
-  dishDescription: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.sm,
-  },
-  restaurantName: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.text.secondary,
-    fontStyle: 'italic',
   },
   ratingSection: {
     marginBottom: theme.spacing.xl,

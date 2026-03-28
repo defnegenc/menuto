@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import json
-import os
-import time
+import logging
 from fastapi import APIRouter, HTTPException, Request
 
 from app.services.menu_data_service import MenuDataService
 from app.services.recommendation_engine import RecommendationEngine
 from app.services.recommendation_types import HungerLevel, RecommendationContext
 from app.services.smart_recommendation_algorithm import SmartRecommendationAlgorithm
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -43,9 +43,6 @@ async def generate_smart_recommendations(
                 detail="restaurant_place_id and restaurant_name are required",
             )
 
-        print(f"🤖 Generating smart recommendations for {restaurant_name}")
-        print(f"👤 User has {len(user_favorite_dishes)} favorite dishes")
-
         hunger_raw = context_weights.get("hungerLevel")
         spice_raw = context_weights.get("spiceTolerance")
 
@@ -66,39 +63,12 @@ async def generate_smart_recommendations(
             legacy_engine=legacy_engine,
         )
 
-        print(f"=== CALLING MenuDataService.get_menu_items_with_features ===", flush=True)
-        print(f"Restaurant: {restaurant_name}, Place ID: {restaurant_place_id}", flush=True)
-        
         menu_items = menu_service.get_menu_items_with_features(
             restaurant_place_id=restaurant_place_id,
             restaurant_name=restaurant_name,
         )
-        
-        print(f"=== RETURNED FROM MenuDataService.get_menu_items_with_features ===", flush=True)
-        print(f"Menu items count: {len(menu_items) if menu_items else 0}", flush=True)
-        
-        # #region agent log
-        try:
-            log_path = '/Users/defnegenc/Desktop/menuto-clean/.cursor/debug.log'
-            os.makedirs(os.path.dirname(log_path), exist_ok=True)
-            with open(log_path, 'a') as f:
-                f.write(json.dumps({
-                    'timestamp': time.time(),
-                    'location': 'smart_recommendations.py:generate:after_get_menu_items',
-                    'message': 'After get_menu_items_with_features',
-                    'data': {
-                        'menu_items_count': len(menu_items) if menu_items else 0,
-                        'restaurant_place_id': restaurant_place_id,
-                        'restaurant_name': restaurant_name
-                    },
-                    'hypothesisId': 'H1,H2,H4,H5'
-                }) + '\n')
-        except Exception as e:
-            print(f"DEBUG LOG ERROR: {e}", flush=True)
-        # #endregion
 
         if not menu_items:
-            print(f"⚠️ No menu items found for {restaurant_name}", flush=True)
             return {
                 "restaurant": {
                     "place_id": restaurant_place_id,
@@ -127,9 +97,10 @@ async def generate_smart_recommendations(
                 "category": scored.item.course,
                 "sentiment_score": scored.item.sentiment_score,
                 "score": scored.score,
-                "components": scored.components,
+                "score_breakdown": scored.components,
                 "explanations": scored.explanations,
-                "reasoning": scored.reasoning,  # Detailed reasoning for debugging
+                "recommendation_reason": " | ".join(scored.explanations) if scored.explanations else "Great choice based on your preferences",
+                "reasoning": scored.reasoning,
             }
             for scored in scored_recommendations
         ]
@@ -146,11 +117,8 @@ async def generate_smart_recommendations(
 
     except HTTPException:
         raise
-    except Exception as exc:  # pragma: no cover - debug logging
-        import traceback
-
-        print(f"❌ Smart recommendations error: {exc}")
-        print(f"❌ Traceback: {traceback.format_exc()}")
+    except Exception as exc:
+        logger.error("Smart recommendations error: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=str(exc))
 
 @router.post("/analyze-taste-profile")
@@ -161,20 +129,22 @@ async def analyze_taste_profile(request: Request):
     try:
         data = await request.json()
         user_favorite_dishes = data.get('user_favorite_dishes', [])
-        
+
         if not user_favorite_dishes:
             raise HTTPException(status_code=400, detail="user_favorite_dishes is required")
-        
+
         engine = RecommendationEngine()
         taste_profile = engine.analyze_user_taste_profile(user_favorite_dishes)
-        
+
         return {
             "taste_profile": taste_profile,
             "dishes_analyzed": len(user_favorite_dishes)
         }
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"❌ Taste profile analysis error: {str(e)}")
+        logger.error("Taste profile analysis error: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/explain-recommendation")
@@ -184,21 +154,23 @@ async def explain_recommendation(request: Request):
     """
     try:
         data = await request.json()
-        
+
         dish_data = data.get('dish')
         if not dish_data:
             raise HTTPException(status_code=400, detail="dish data is required")
-        
+
         smart_algorithm = SmartRecommendationAlgorithm()
         explanation = smart_algorithm.explain_recommendation(dish_data)
-        
+
         return {
             "explanation": explanation,
             "success": True
         }
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"❌ Recommendation explanation error: {str(e)}")
+        logger.error("Recommendation explanation error: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/build-taste-profile")
@@ -209,21 +181,23 @@ async def build_taste_profile(request: Request):
     """
     try:
         data = await request.json()
-        
+
         user_favorite_dishes = data.get('user_favorite_dishes', [])
         if not user_favorite_dishes:
             raise HTTPException(status_code=400, detail="user_favorite_dishes is required")
-        
+
         smart_algorithm = SmartRecommendationAlgorithm()
         taste_profile = smart_algorithm.build_user_taste_profile(user_favorite_dishes)
-        
+
         return {
             "taste_profile": taste_profile,
             "dishes_analyzed": len(user_favorite_dishes),
             "success": True,
             "message": f"Built taste profile from {len(user_favorite_dishes)} favorite dishes"
         }
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"❌ Taste profile building error: {str(e)}")
+        logger.error("Taste profile building error: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

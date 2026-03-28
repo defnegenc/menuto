@@ -9,7 +9,7 @@ supabase
 sqlalchemy
 psycopg2-binary
 PyJWT
-openai
+google-generativeai
 PyMuPDF
 beautifulsoup4
 lxml

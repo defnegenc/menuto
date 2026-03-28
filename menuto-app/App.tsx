@@ -159,10 +159,56 @@ function AppContent() {
             debugLog('⚠️ Token attempt failed, continuing without token:', e);
           }
           
-          const userData = await api.getUserPreferences(clerkUser.id).catch(err => {
-            debugLog('⚠️ getUserPreferences failed, will create new profile:', err);
-            return null;
-          });
+          let userData: any = null;
+          try {
+            userData = await api.getUserPreferences(clerkUser.id);
+          } catch (err: any) {
+            // getUserPreferences already returns null for 404s, so errors here are real problems
+            const errorMessage = err?.message || String(err);
+            debugLog('⚠️ getUserPreferences error:', errorMessage);
+            
+            // Check for timeout or network errors - don't treat as "user doesn't exist"
+            if (errorMessage.includes('timeout') || 
+                errorMessage.includes('unreachable') ||
+                errorMessage.includes('Failed to fetch') ||
+                errorMessage.includes('Network request failed')) {
+              debugLog('⚠️ Backend unreachable/timeout - showing error instead of treating as new user');
+              Alert.alert(
+                'Connection Error',
+                'Unable to connect to the server. Please check your internet connection and try again.',
+                [{ text: 'OK' }]
+              );
+              // Don't proceed - stay on sign-in screen or current state
+              return;
+            }
+            
+            // For 401 errors, handle in the outer catch block
+            if (errorMessage.includes('401')) {
+              throw err; // Re-throw to be handled by outer catch
+            }
+            
+            // For other errors (500, etc.), also don't treat as "user doesn't exist"
+            if (errorMessage.includes('500')) {
+              debugLog('⚠️ Server error (500) - backend may be down');
+              Alert.alert(
+                'Server Error',
+                'The server is experiencing issues. Please try again later.',
+                [{ text: 'OK' }]
+              );
+              return;
+            }
+            
+            // Only treat as "user doesn't exist" if it's explicitly a 404
+            // (though getUserPreferences should have handled that already)
+            if (!errorMessage.includes('404')) {
+              debugLog('⚠️ Unexpected error - not treating as user not found');
+              // Re-throw to be handled by outer catch
+              throw err;
+            }
+            
+            // If we get here, it's a 404 (user doesn't exist)
+            userData = null;
+          }
           
           if (userData) {
             debugLog('✅ App.tsx: User data loaded successfully');

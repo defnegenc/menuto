@@ -13,8 +13,8 @@ export const SearchBar: React.FC<Props> = ({
   value,
   onChangeText,
   placeholder = "Search...",
-  style
-}) => {
+  style,
+}: Props) => {
   return (
     <TextInput
       style={[styles.searchInput, style]}

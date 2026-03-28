@@ -12,8 +12,8 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({ 
   onBack, 
   restaurantName, 
-  restaurantAddress 
-}) => {
+  restaurantAddress,
+}: HeaderProps) => {
   const insets = useSafeAreaInsets();
   
   const handleBackPress = () => {

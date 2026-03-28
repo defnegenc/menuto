@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from urllib.parse import urljoin, urlparse
 from uuid import uuid4
 
-import openai
+import google.generativeai as genai
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
@@ -62,16 +62,17 @@ class MenuParser:
     def __init__(self, client: Optional[object] = None):
         """
         client:
-          - Optional injected OpenAI client for tests (must implement .chat.completions.create()).
-          - If omitted, uses OPENAI_API_KEY from env.
+          - Optional injected Gemini client for tests (must implement .generate_content()).
+          - If omitted, uses GOOGLE_GEMINI_API_KEY from env.
         """
         if client is not None:
             self.client = client
         else:
-            api_key = os.getenv("OPENAI_API_KEY")
+            api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
             if not api_key:
-                raise ValueError("OpenAI API key not found. Set OPENAI_API_KEY in .env file")
-            self.client = openai.OpenAI(api_key=api_key)
+                raise ValueError("Google Gemini API key not found. Set GOOGLE_GEMINI_API_KEY in .env file")
+            genai.configure(api_key=api_key)
+            self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
         
         # Headers for requests
         self.headers = {
@@ -314,7 +315,7 @@ class MenuParser:
         *,
         request_id: str = "",
         debug_ctx: Optional[Dict] = None,
-        model: str = "gpt-4o-mini",
+        model: str = "gemini-2.0-flash-exp",
         timeout_s: int = 180,  # 3 minutes for large menus
     ) -> Tuple[List[Dict], str]:
         """Step 4: Parse with strict JSON response and validation.
@@ -328,40 +329,38 @@ class MenuParser:
             prompt = self._create_text_prompt(content, restaurant_name)
             logger.info(f"[{rid}] 📝 Prompt preview (first 500 chars): {prompt[:500]}...")
             
-            def _call_openai(user_prompt: str) -> str:
-                logger.info(f"[{rid}] 🚀 Calling OpenAI {model}...")
+            def _call_gemini(user_prompt: str) -> str:
+                logger.info(f"[{rid}] 🚀 Calling Gemini Flash 3...")
                 t0 = time.perf_counter()
-                resp = self.client.chat.completions.create(
-                    model=model,
-                    messages=[
-                        {"role": "system", "content": "You are a menu parsing expert. Return ONLY a valid JSON object, no markdown, no commentary."},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    temperature=0.1,
-                    max_tokens=16384,  # Max for gpt-4o-mini to handle 80+ dish menus
-                    response_format={"type": "json_object"},
-                    timeout=timeout_s,
+                full_prompt = f"You are a menu parsing expert. Return ONLY a valid JSON object, no markdown, no commentary.\n\n{user_prompt}"
+                resp = self.model.generate_content(
+                    full_prompt,
+                    generation_config=genai.types.GenerationConfig(
+                        temperature=0.1,
+                        max_output_tokens=16384,
+                        response_mime_type="application/json",
+                    ),
                 )
                 t1 = time.perf_counter()
-                logger.info(f"[{rid}] ✅ OpenAI responded in {int((t1 - t0) * 1000)}ms")
+                logger.info(f"[{rid}] ✅ Gemini responded in {int((t1 - t0) * 1000)}ms")
                 if debug_ctx is not None:
-                    usage = getattr(resp, "usage", None)
+                    usage = getattr(resp, "usage_metadata", None)
                     debug_ctx.setdefault("llm", {})
                     debug_ctx["llm"].update(
                         {
-                            "model": model,
+                            "model": "gemini-2.0-flash-exp",
                             "prompt_chars": len(user_prompt or ""),
                             "latency_ms": int((t1 - t0) * 1000),
                             "usage": {
-                                "input_tokens": getattr(usage, "prompt_tokens", None),
-                                "output_tokens": getattr(usage, "completion_tokens", None),
-                                "total_tokens": getattr(usage, "total_tokens", None),
+                                "input_tokens": getattr(usage, "prompt_token_count", None) if usage else None,
+                                "output_tokens": getattr(usage, "candidates_token_count", None) if usage else None,
+                                "total_tokens": getattr(usage, "total_token_count", None) if usage else None,
                             }
                             if usage is not None
                             else None,
                         }
                     )
-                return resp.choices[0].message.content or ""
+                return resp.text or ""
 
             def _log_snippet(tag: str, text: str) -> None:
                 t = (text or "").strip()
@@ -382,9 +381,9 @@ class MenuParser:
                     "INVALID JSON:\n"
                     f"{bad_json_text}"
                 )
-                return _call_openai(repair_prompt)
+                return _call_gemini(repair_prompt)
 
-            response_content = _call_openai(prompt)
+            response_content = _call_gemini(prompt)
             
             if not response_content:
                 logger.error(f"[{rid}] ❌ LLM returned empty response")
@@ -493,7 +492,7 @@ class MenuParser:
                         prompt
                         + "\n\nIMPORTANT: Return ONLY a JSON object matching the required schema. Do not include ``` fences."
                     )
-                    retry_content = _call_openai(retry_prompt)
+                    retry_content = _call_gemini(retry_prompt)
                     _log_snippet("LLM retry output (first/last)", retry_content)
                     coerced_retry = _coerce_json(retry_content)
                     try:

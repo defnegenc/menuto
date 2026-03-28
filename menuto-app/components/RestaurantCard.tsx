@@ -17,8 +17,8 @@ export const RestaurantCard: React.FC<Props> = ({
   dishes,
   onSelectRestaurant,
   onRemoveRestaurant,
-  rank
-}) => {
+  rank,
+}: Props) => {
   // Parse address to show street, city, and state (exclude zip and country)
   const parseAddress = (vicinity: string) => {
     // Split by comma and take first 3 parts (street, city, state)

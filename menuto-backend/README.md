@@ -4,7 +4,7 @@ Upload a menu → AI analyzes it → blends web reviews, your taste history, and
 
 ## Features
 
-- **Menu OCR**: Upload menu photos and extract structured dish data using GPT-4
+- **Menu OCR**: Upload menu photos and extract structured dish data using Gemini Flash 3
 - **Review Ingestion**: Pull reviews from Google Places and Yelp APIs
 - **LLM Enhancement**: Extract sentiment and food attributes from review text
 - **Collaborative Filtering**: K-means clustering to find users with similar taste
@@ -21,7 +21,7 @@ Upload a menu → AI analyzes it → blends web reviews, your taste history, and
    ```bash
    # Create .env file with the following variables:
    # Required API Keys:
-   OPENAI_API_KEY=your-openai-api-key-here
+   GOOGLE_GEMINI_API_KEY=your-google-gemini-api-key-here
    GOOGLE_PLACES_API_KEY=your-google-places-api-key-here
    YELP_API_KEY=your-yelp-api-key-here
    
@@ -82,8 +82,8 @@ POST /dishes/{dish_id}/rate
 ## Architecture
 
 ### Data Flow
-1. **Menu Upload** → OCR → GPT-4 parsing → Structured dishes
-2. **Review Ingestion** → Google/Yelp APIs → GPT-3.5 enrichment → Sentiment + attributes
+1. **Menu Upload** → OCR → Gemini Flash 3 parsing → Structured dishes
+2. **Review Ingestion** → Google/Yelp APIs → Gemini Flash 3 enrichment → Sentiment + attributes
 3. **Collaborative Filtering** → K-means clustering on reviewer taste profiles
 4. **Ranking Engine** → Multi-factor scoring with explainable results
 
@@ -186,4 +186,4 @@ POST /recommendations/update-collaborative-filtering
 - Set up Redis for caching expensive LLM calls
 - Use background tasks for review ingestion
 - Rate limit API calls to Google/Yelp
-- Monitor OpenAI token usage
+- Monitor Gemini API usage

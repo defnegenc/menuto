@@ -9,7 +9,7 @@ Why we keep it:
 """
 
 import requests
-import openai
+import google.generativeai as genai
 from typing import List, Dict, Optional
 import os
 from dotenv import load_dotenv
@@ -25,7 +25,12 @@ class ReviewIngestion:
     def __init__(self):
         self.google_api_key = os.getenv("GOOGLE_PLACES_API_KEY")
         self.yelp_api_key = os.getenv("YELP_API_KEY")
-        self.openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        gemini_api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
+        if gemini_api_key:
+            genai.configure(api_key=gemini_api_key)
+            self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        else:
+            self.model = None
     
     def get_google_reviews(self, place_id: str, max_reviews: int = 50) -> List[Dict]:
         """Fetch reviews from Google Places API"""
@@ -146,16 +151,27 @@ class ReviewIngestion:
         """
         
         try:
-            response = self.openai_client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a review analysis expert. Return valid JSON only."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.1
+            if not self.model:
+                # Fallback if Gemini not configured
+                return {
+                    "sentiment_score": 0.0,
+                    "extracted_attributes": [],
+                    "preparation_feedback": {},
+                    "context_tags": [],
+                    "specific_praise": [],
+                    "specific_complaints": []
+                }
+            
+            full_prompt = f"You are a review analysis expert. Return valid JSON only.\n\n{prompt}"
+            response = self.model.generate_content(
+                full_prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.1,
+                    response_mime_type="application/json",
+                ),
             )
             
-            enriched_data = json.loads(response.choices[0].message.content)
+            enriched_data = json.loads(response.text)
             print(f"✅ LLM enrichment result: {json.dumps(enriched_data, indent=2)}")
             return enriched_data
             
@@ -188,7 +204,7 @@ class ReviewIngestion:
             
             enriched_reviews.append(enriched_review)
             
-            # Rate limiting for OpenAI
+            # Rate limiting for Gemini
             time.sleep(0.1)
         
         return enriched_reviews

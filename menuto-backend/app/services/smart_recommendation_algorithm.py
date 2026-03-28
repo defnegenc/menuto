@@ -225,45 +225,40 @@ class SmartRecommendationAlgorithm:
         taste_profile: UserTasteProfile,
         context: RecommendationContext,
     ) -> List[ScoredItem]:
+        debug_enabled = logger.isEnabledFor(logging.DEBUG)
         explained: List[ScoredItem] = []
         for scored in scored_items:
-            # Log detailed reasoning for debugging
-            reasoning_parts = []
-            
-            # Log component scores
-            components = scored.components
-            reasoning_parts.append(f"Component scores: personal_taste={components.get('personal_taste', 0):.2f}, "
-                                  f"sentiment={components.get('sentiment', 0):.2f}, "
-                                  f"craving={components.get('craving', 0):.2f}, "
-                                  f"hunger={components.get('hunger', 0):.2f}, "
-                                  f"spice={components.get('spice', 0):.2f}, "
-                                  f"friend={components.get('friend', 0):.2f}, "
-                                  f"restaurant={components.get('restaurant', 0):.2f}")
-            
-            # Log hunger reasoning
-            hunger_score = components.get("hunger", 0)
-            course = (scored.item.course or "main").lower()
-            if context.hunger_level == HungerLevel.LIGHT:
-                reasoning_parts.append(f"Hunger=LIGHT: course '{course}' scored {hunger_score:.2f} "
-                                      f"(starters/sides=0.8, dessert=0.55, main=0.4)")
-            elif context.hunger_level == HungerLevel.STARVING:
-                reasoning_parts.append(f"Hunger=STARVING: course '{course}' scored {hunger_score:.2f} "
-                                      f"(main=0.8, others=0.4)")
-            else:
-                reasoning_parts.append(f"Hunger=NORMAL: course '{course}' scored {hunger_score:.2f}")
-            
-            # Log craving reasoning
-            if context.craving_tags:
-                craving_score = components.get("craving", 0)
-                item_text = f"{scored.item.name} {scored.item.description}".lower()
-                matched_cravings = [c for c in context.craving_tags if c.lower() in item_text]
-                reasoning_parts.append(f"Craving match: {context.craving_tags} -> matched: {matched_cravings}, score: {craving_score:.2f}")
-            
-            # Log final score
-            reasoning_parts.append(f"Final score: {scored.score:.3f}")
-            
-            reasoning = " | ".join(reasoning_parts)
-            logger.info(f"🧠 Reasoning for '{scored.item.name}': {reasoning}")
+            reasoning = ""
+            if debug_enabled:
+                # Build detailed reasoning only when DEBUG logging is active
+                reasoning_parts = []
+                components = scored.components
+                reasoning_parts.append(
+                    f"Component scores: personal_taste={components.get('personal_taste', 0):.2f}, "
+                    f"sentiment={components.get('sentiment', 0):.2f}, "
+                    f"craving={components.get('craving', 0):.2f}, "
+                    f"hunger={components.get('hunger', 0):.2f}, "
+                    f"spice={components.get('spice', 0):.2f}, "
+                    f"friend={components.get('friend', 0):.2f}, "
+                    f"restaurant={components.get('restaurant', 0):.2f}"
+                )
+                hunger_score = components.get("hunger", 0)
+                course = (scored.item.course or "main").lower()
+                if context.hunger_level == HungerLevel.LIGHT:
+                    reasoning_parts.append(f"Hunger=LIGHT: course '{course}' scored {hunger_score:.2f}")
+                elif context.hunger_level == HungerLevel.STARVING:
+                    reasoning_parts.append(f"Hunger=STARVING: course '{course}' scored {hunger_score:.2f}")
+                else:
+                    reasoning_parts.append(f"Hunger=NORMAL: course '{course}' scored {hunger_score:.2f}")
+                if context.craving_tags:
+                    craving_score = components.get("craving", 0)
+                    item_text = f"{scored.item.name} {scored.item.description}".lower()
+                    matched_cravings = [c for c in context.craving_tags if c.lower() in item_text]
+                    reasoning_parts.append(f"Craving match: {context.craving_tags} -> matched: {matched_cravings}, score: {craving_score:.2f}")
+                reasoning_parts.append(f"Final score: {scored.score:.3f}")
+                reasoning = " | ".join(reasoning_parts)
+                logger.debug("Reasoning for '%s': %s", scored.item.name, reasoning)
+
             bullets: List[str] = []
             components = scored.components
             

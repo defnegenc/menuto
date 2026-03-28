@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 import { UnifiedHeader } from '../components/UnifiedHeader';
-import { SelectionDishCard } from '../components/SelectionDishCard';
+import { MenuItemCard } from '../components/MenuItemCard';
 import { useStore } from '../store/useStore';
 import { api } from '../services/api';
 
@@ -185,11 +185,18 @@ export const MultiDishScoring: React.FC<MultiDishScoringProps> = ({
 
         {selectedDishes.map((dish) => (
           <View key={dish.id} style={styles.dishSection}>
-            <SelectionDishCard
+            <MenuItemCard
               dish={{
+                id: String(dish.id),
                 name: dish.name,
-                description: dish.description,
-                score: dish.recommendation_score || 0
+                description: dish.description || '',
+                category: dish.category || 'main',
+                ingredients: dish.ingredients || [],
+                dietary_tags: dish.dietary_tags || [],
+                is_user_added: false,
+                score: dish.recommendation_score || 0,
+                explanation: '',
+                restaurant_id: restaurant.place_id
               }}
               isSelected={false}
               onPress={() => {}}

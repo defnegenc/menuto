@@ -30,8 +30,8 @@ export const UnifiedHeader: React.FC<Props> = ({
   showBackButton = false,
   showUnderline = true, // Default to showing underline
   restaurant,
-  rightButton
-}) => {
+  rightButton,
+}: Props) => {
   const insets = useSafeAreaInsets();
   
   // Parse address to show street, city, and state (exclude zip and country)

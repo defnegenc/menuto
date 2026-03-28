@@ -835,6 +835,32 @@ class MenutoAPI {
     }
   }
 
+  async getTriedDishes(userId: string): Promise<any[]> {
+    try {
+      const token = await getAuthToken();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_BASE}/users/${userId}/tried-dishes`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get tried dishes: ${response.statusText}`);
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('Get tried dishes error:', error);
+      throw error;
+    }
+  }
+
   // Behavioral tracking methods for recommendations
   async trackDishView(dishId: string, restaurantPlaceId: string, viewDurationSeconds?: number): Promise<void> {
     try {

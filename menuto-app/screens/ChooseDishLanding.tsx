@@ -28,15 +28,21 @@ import { MultiDishScoring } from './MultiDishScoring';
 
 interface Props {
   onSelectRestaurant?: (restaurant: FavoriteRestaurant) => void;
-  onNavigateToRecommendations?: (restaurant: FavoriteRestaurant, preferences: {
-    hungerLevel: number;
-    preferenceLevel: number;
-    selectedCravings: string[];
-  }) => void;
+  onNavigateToRecommendations?: (
+    restaurant: FavoriteRestaurant,
+    preferences: {
+      hungerLevel: number;
+      preferenceLevel: number;
+      selectedCravings: string[];
+    }
+  ) => void;
 }
 
-export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendations }: Props) {
-  const { user, userId } = useStore();
+export function ChooseDishLanding({
+  onSelectRestaurant,
+  onNavigateToRecommendations,
+}: Props) {
+  const { user } = useStore();
   const [searchText, setSearchText] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -50,10 +56,10 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
   const [menuUrls, setMenuUrls] = useState<string[]>(['']);
   const [menuText, setMenuText] = useState('');
   const [isParsing, setIsParsing] = useState(false);
-  
+
   // Question states - deselected by default (middle of slider)
   const [hungerLevel, setHungerLevel] = useState(3);
-  
+
   // Feedback flow states
   const [showDishRecommendations, setShowDishRecommendations] = useState(false);
   const [showMultiDishScoring, setShowMultiDishScoring] = useState(false);
@@ -61,32 +67,34 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
   const [selectedDishForFeedback, setSelectedDishForFeedback] = useState<any>(null);
   const [selectedDishesForScoring, setSelectedDishesForScoring] = useState<any[]>([]);
   const [preferenceLevel, setPreferenceLevel] = useState(3);
-  const [selectedCravings, setSelectedCravings] = useState<string[]>([]); // Empty by default
-  
+  const [selectedCravings, setSelectedCravings] = useState<string[]>([]);
+  const [mealStructure, setMealStructure] = useState<string>('main');
+
   const insets = useSafeAreaInsets();
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const favoriteRestaurants = user?.favorite_restaurants || [];
 
   // Debounced search effect for external restaurants
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
-    
+
     if (searchText.trim().length >= 2) {
       searchTimeoutRef.current = setTimeout(() => {
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
         searchExternalRestaurants();
       }, 300);
     } else {
       setSearchResults([]);
       setSelectedRestaurant(null);
     }
-    
+
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchText]);
 
   const searchExternalRestaurants = async () => {
@@ -98,14 +106,10 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
     setIsSearching(true);
     try {
       const results = await api.searchPlaces(searchText.trim());
-      console.log('🔍 External search results:', results);
-      
       // Show all restaurants (don't filter out existing favorites for dish selection)
       const allRestaurants = results.restaurants || [];
-      
       setSearchResults(allRestaurants);
     } catch (error) {
-      console.error('External search error:', error);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -115,22 +119,23 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
   const handleRestaurantSelection = async (restaurant: any) => {
     setSelectedRestaurant(restaurant);
     setIsLoadingMenu(true);
-    
+
     try {
       // Check if menu exists
       const response = await api.getRestaurantMenu(restaurant.name, restaurant.place_id);
-      
-      if (response.dishes && Array.isArray(response.dishes) && response.dishes.length > 0) {
-        console.log(`✅ Menu found for: ${restaurant.name}`);
+
+      if (
+        response.dishes &&
+        Array.isArray(response.dishes) &&
+        response.dishes.length > 0
+      ) {
         setMenuDishes(response.dishes);
         setShowQuestions(false); // Don't auto-show questions, wait for Review button
       } else {
-        console.log(`❌ No menu found for: ${restaurant.name}`);
         setMenuDishes([]);
         setShowQuestions(false);
       }
     } catch (error) {
-      console.error(`Error loading menu for ${restaurant.name}:`, error);
       setMenuDishes([]);
       setShowQuestions(false);
     } finally {
@@ -138,7 +143,7 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
     }
   };
 
-  const handleAddMenuPDF = async () => {
+  const handleAddMenuPDF = () => {
     if (!selectedRestaurant) {
       Alert.alert('Error', 'No restaurant selected');
       return;
@@ -154,12 +159,12 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
       return;
     }
 
-    const urls = menuUrls.map(u => (u || '').trim()).filter(Boolean);
+    const urls = menuUrls.map((u) => (u || '').trim()).filter(Boolean);
     if (urls.length === 0) {
       Alert.alert('Error', 'Please add at least one menu URL.');
       return;
     }
-    const invalid = urls.find(u => !/^https?:\/\//i.test(u));
+    const invalid = urls.find((u) => !/^https?:\/\//i.test(u));
     if (invalid) {
       Alert.alert('Error', `Invalid URL: ${invalid}`);
       return;
@@ -168,42 +173,52 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
     try {
       setShowMenuUrlModal(false);
       setIsParsing(true);
-      console.log('🔗 Ingesting menu URLs for:', selectedRestaurant.name, urls);
 
-      // Use fire-and-forget ingest with polling (same as RestaurantDetailScreen)
       const ingestResult = await api.ingestMenus(
         selectedRestaurant.place_id,
         selectedRestaurant.name,
         urls
       );
-      console.log('✅ Ingest accepted:', ingestResult);
       const ingestId = ingestResult.ingest_id;
 
       // Poll for completion
       let done = false;
       let attempts = 0;
       const maxAttempts = 60; // ~3 min max
+      // eslint-disable-next-line no-await-in-loop
       while (!done && attempts < maxAttempts) {
+        // eslint-disable-next-line no-await-in-loop
         await new Promise((r) => setTimeout(r, 3000));
         attempts++;
         try {
-          const status = await api.getIngestStatus(selectedRestaurant.place_id, ingestId);
-          console.log(`📊 Ingest status (${attempts}):`, status.status, status.url_status);
+          const status = await api.getIngestStatus(
+            selectedRestaurant.place_id,
+            ingestId
+          );
           if (status.status === 'done' || status.status === 'failed') {
             done = true;
-            const successCount = Object.values(status.url_status).filter((s) => s === 'done').length;
-            const failCount = Object.values(status.url_status).filter((s) => s === 'failed').length;
+            const successCount = Object.values(status.url_status).filter(
+              (s) => s === 'done'
+            ).length;
+            const failCount = Object.values(status.url_status).filter(
+              (s) => s === 'failed'
+            ).length;
             Alert.alert(
               'Done!',
-              `Parsed ${successCount} menu${successCount === 1 ? '' : 's'}${failCount ? `, failed ${failCount}` : ''}.`
+              `Parsed ${successCount} menu${successCount === 1 ? '' : 's'}${
+                failCount ? `, failed ${failCount}` : ''
+              }.`
             );
           }
         } catch (pollErr) {
-          console.error('Polling error:', pollErr);
+          // ignore polling error
         }
       }
       if (!done) {
-        Alert.alert('Timeout', 'Menu parsing is taking longer than expected. Please check back later.');
+        Alert.alert(
+          'Timeout',
+          'Menu parsing is taking longer than expected. Please check back later.'
+        );
       }
       await handleRestaurantSelection(selectedRestaurant);
     } finally {
@@ -230,27 +245,27 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
     setShowTextModal(false);
 
     try {
-      console.log('🚀 Ingesting menu text for:', selectedRestaurant.name);
-      
-      // Use fire-and-forget ingest with polling (same as RestaurantDetailScreen)
       const ingestResult = await api.ingestMenuText(
         selectedRestaurant.place_id,
         selectedRestaurant.name,
         menuText.trim()
       );
-      console.log('✅ Text ingest accepted:', ingestResult);
       const ingestId = ingestResult.ingest_id;
 
       // Poll for completion
       let done = false;
       let attempts = 0;
       const maxAttempts = 60; // ~3 min max
+      // eslint-disable-next-line no-await-in-loop
       while (!done && attempts < maxAttempts) {
+        // eslint-disable-next-line no-await-in-loop
         await new Promise((r) => setTimeout(r, 3000));
         attempts++;
         try {
-          const status = await api.getIngestStatus(selectedRestaurant.place_id, ingestId);
-          console.log(`📊 Text ingest status (${attempts}):`, status.status);
+          const status = await api.getIngestStatus(
+            selectedRestaurant.place_id,
+            ingestId
+          );
           if (status.status === 'done' || status.status === 'failed') {
             done = true;
             if (status.status === 'done') {
@@ -263,38 +278,41 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
               setMenuText('');
             } else {
               const errorMsg = status.results?.text?.error || 'Unknown error';
-              Alert.alert('Error', `Failed to parse menu: ${errorMsg}`, [{ text: 'OK' }]);
+              Alert.alert(
+                'Error',
+                `Failed to parse menu: ${errorMsg}`,
+                [{ text: 'OK' }]
+              );
             }
           }
         } catch (pollErr) {
-          console.error('Polling error:', pollErr);
+          // ignore polling error
         }
       }
       if (!done) {
-        Alert.alert('Timeout', 'Menu parsing is taking longer than expected. Please check back later.');
+        Alert.alert(
+          'Timeout',
+          'Menu parsing is taking longer than expected. Please check back later.'
+        );
       }
-      
+
       // Refresh the menu after parsing
       await handleRestaurantSelection(selectedRestaurant);
-      
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof Error && error.name === 'AbortError') {
-        console.log('ℹ️ Menu text ingest aborted');
         return;
       }
-      console.error('Error ingesting menu text:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      Alert.alert(
-        'Error', 
-        `Failed to parse menu: ${errorMessage}`,
-        [{ text: 'OK' }]
-      );
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert('Error', `Failed to parse menu: ${errorMessage}`, [
+        { text: 'OK' },
+      ]);
     } finally {
       setIsParsing(false);
     }
   };
 
-  const handleAddPhoto = async () => {
+  const handleAddPhoto = () => {
     if (!selectedRestaurant) {
       Alert.alert('Error', 'No restaurant selected');
       return;
@@ -305,14 +323,17 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
       'Choose how you want to add your menu photo:',
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Take Photo', 
+        {
+          text: 'Take Photo',
           onPress: async () => {
             try {
               const { status } = await ImagePicker.requestCameraPermissionsAsync();
-              
+
               if (status !== 'granted') {
-                Alert.alert('Permission Required', 'Sorry, we need camera permissions to take menu photos.');
+                Alert.alert(
+                  'Permission Required',
+                  'Sorry, we need camera permissions to take menu photos.'
+                );
                 return;
               }
 
@@ -321,24 +342,27 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
                 quality: 0.8,
               });
 
-              if (!result.canceled && result.assets[0]) {
+              if (!result.canceled && result.assets && result.assets[0]) {
                 const imageUri = result.assets[0].uri;
                 await parseMenuFromScreenshot(imageUri);
               }
-            } catch (error) {
-              console.error('Camera error:', error);
+            } catch {
               Alert.alert('Error', 'Failed to open camera. Please try again.');
             }
-          }
+          },
         },
-        { 
-          text: 'Upload from Gallery', 
+        {
+          text: 'Upload from Gallery',
           onPress: async () => {
             try {
-              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-              
+              const { status } =
+                await ImagePicker.requestMediaLibraryPermissionsAsync();
+
               if (status !== 'granted') {
-                Alert.alert('Permission Required', 'Sorry, we need gallery permissions to upload menu photos.');
+                Alert.alert(
+                  'Permission Required',
+                  'Sorry, we need gallery permissions to upload menu photos.'
+                );
                 return;
               }
 
@@ -348,16 +372,15 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
                 quality: 0.8,
               });
 
-              if (!result.canceled && result.assets[0]) {
+              if (!result.canceled && result.assets && result.assets[0]) {
                 const imageUri = result.assets[0].uri;
                 await parseMenuFromScreenshot(imageUri);
               }
-            } catch (error) {
-              console.error('Gallery error:', error);
+            } catch {
               Alert.alert('Error', 'Failed to open gallery. Please try again.');
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -367,55 +390,53 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
 
     setIsParsing(true);
     try {
-      console.log('📸 Parsing menu screenshot for:', selectedRestaurant.name);
-      console.log('📸 Image URI:', imageUri);
-      
       const result = await api.parseMenuFromScreenshot(
         imageUri,
         selectedRestaurant.name,
         selectedRestaurant.place_id
       );
-      
-      console.log('✅ Menu parsing result:', JSON.stringify(result, null, 2));
-      
+
       if (result && result.dishes && result.dishes.length > 0) {
         Alert.alert(
-          'Success!', 
+          'Success!',
           `Menu parsed successfully! Found ${result.dishes.length} dishes.`,
           [{ text: 'OK' }]
         );
-        
-        // Refresh the menu after parsing
+
         await handleRestaurantSelection(selectedRestaurant);
       } else {
         Alert.alert(
-          'No Dishes Found', 
+          'No Dishes Found',
           'The image was processed but no menu items were found. Please try a clearer image or paste the menu text instead.',
           [{ text: 'OK' }]
         );
       }
-      
-    } catch (error) {
-      console.error('❌ Error parsing menu screenshot:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      Alert.alert(
-        'Error', 
-        `Failed to parse menu: ${errorMessage}`,
-        [{ text: 'OK' }]
-      );
+    } catch (error: any) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert('Error', `Failed to parse menu: ${errorMessage}`, [
+        { text: 'OK' },
+      ]);
     } finally {
       setIsParsing(false);
     }
   };
 
   const cravingOptions = [
-    'light', 'fresh', 'carb-heavy', 'protein-heavy', 'spicy', 'creamy', 'crispy', 'comforting'
+    'light',
+    'fresh',
+    'carb-heavy',
+    'protein-heavy',
+    'spicy',
+    'creamy',
+    'crispy',
+    'comforting',
   ];
 
   const toggleCraving = (craving: string) => {
-    setSelectedCravings(prev => 
-      prev.includes(craving) 
-        ? prev.filter(c => c !== craving)
+    setSelectedCravings((prev) =>
+      prev.includes(craving)
+        ? prev.filter((c) => c !== craving)
         : [...prev, craving]
     );
   };
@@ -426,33 +447,23 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
       return;
     }
 
-    console.log('Continue clicked with preferences:', {
-      hungerLevel,
-      preferenceLevel,
-      selectedCravings,
-      restaurant: selectedRestaurant
-    });
-
-    // Show dish recommendations within this component
     setShowDishRecommendations(true);
   };
 
   // Feedback flow handlers
   const handleDishRecommendationContinue = (dishes: any[]) => {
-    console.log('Dishes selected for scoring:', dishes);
     setSelectedDishesForScoring(dishes);
     setShowDishRecommendations(false);
     setShowMultiDishScoring(true);
   };
 
-  const handleMultiDishScoringComplete = (dishes: any[], addToFavorites: boolean[]) => {
-    console.log('Multi-dish scoring completed:', { dishes, addToFavorites });
-    
-    // Complete the flow - no need for additional feedback screen
+  const handleMultiDishScoringComplete = (
+    dishes: any[],
+    addToFavorites: boolean[]
+  ) => {
     setShowMultiDishScoring(false);
     setSelectedDishesForScoring([]);
-    
-    // Show success message
+
     Alert.alert(
       'Feedback Submitted!',
       'Thank you for your feedback. Your preferences have been saved.',
@@ -461,10 +472,8 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
   };
 
   const handleFeedbackComplete = (rating: number, feedback: string) => {
-    console.log('Feedback completed:', { rating, feedback });
     setShowPostMealFeedback(false);
     setSelectedDishForFeedback(null);
-    // Stay in the same component - user can continue using the app
   };
 
   const handleBackToRecommendations = () => {
@@ -489,12 +498,11 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
 
   const handleBackToChooseDishLanding = () => {
     setShowDishRecommendations(false);
-    // Keep the restaurant selected and questions answered, just go back to the main landing view
   };
 
   const renderRestaurantCard = (restaurant: any) => {
     const isSelected = selectedRestaurant?.place_id === restaurant.place_id;
-    
+
     if (isSelected) {
       return (
         <SearchRestaurantSelected
@@ -504,7 +512,7 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
         />
       );
     }
-    
+
     return (
       <SearchRestaurantCard
         key={restaurant.place_id}
@@ -514,7 +522,6 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
     );
   };
 
-  // Show dish recommendations screen
   if (showDishRecommendations && selectedRestaurant) {
     return (
       <DishRecommendations
@@ -522,7 +529,8 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
         userPreferences={{
           hungerLevel,
           preferenceLevel,
-          selectedCravings
+          selectedCravings,
+          mealStructure,
         }}
         onContinue={handleDishRecommendationContinue}
         onBack={handleBackToChooseDishLanding}
@@ -530,8 +538,11 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
     );
   }
 
-  // Show multi-dish scoring screen
-  if (showMultiDishScoring && selectedRestaurant && selectedDishesForScoring.length > 0) {
+  if (
+    showMultiDishScoring &&
+    selectedRestaurant &&
+    selectedDishesForScoring.length > 0
+  ) {
     return (
       <MultiDishScoring
         restaurant={selectedRestaurant}
@@ -542,41 +553,39 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
     );
   }
 
-  // Show post meal feedback screen
-      if (showPostMealFeedback && selectedDishForFeedback) {
-        return (
-          <PostMealFeedback
-            dish={selectedDishForFeedback}
-            onComplete={handleFeedbackComplete}
-            onBack={handleBackToRecommendations}
-          />
-        );
-      }
+  if (showPostMealFeedback && selectedDishForFeedback) {
+    return (
+      <PostMealFeedback
+        dish={selectedDishForFeedback}
+        onComplete={handleFeedbackComplete}
+        onBack={handleBackToRecommendations}
+      />
+    );
+  }
 
-      // Show parsing loading state
-      if (isParsing) {
-        return (
-          <View style={styles.container}>
-            <UnifiedHeader title="Choose Dish" showUnderline={false} />
-            <View style={[styles.parsingContainer, { paddingTop: insets.top }]}>
-              <ActivityIndicator size="large" color={theme.colors.primary} />
-              <Text style={styles.parsingText}>Parsing your menu...</Text>
-              <Text style={styles.parsingSubtext}>This may take a few moments</Text>
-            </View>
-          </View>
-        );
-      }
+  if (isParsing) {
+    return (
+      <View style={styles.container}>
+        <UnifiedHeader title="Choose Dish" showUnderline={false} />
+        <View style={[styles.parsingContainer, { paddingTop: insets.top }]}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.parsingText}>Parsing your menu...</Text>
+          <Text style={styles.parsingSubtext}>This may take a few moments</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <UnifiedHeader 
-        title="Choose Dish" 
-        showUnderline={false}
-      />
+      <UnifiedHeader title="Choose Dish" showUnderline={false} />
 
-      <ScrollView 
-        style={styles.scrollView} 
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + 20 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <>
@@ -587,7 +596,7 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
               <View style={styles.stepUnderline} />
             </View>
           )}
-          
+
           {/* Search Bar */}
           <View style={styles.searchSection}>
             <SearchBar
@@ -596,17 +605,21 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
               placeholder="Search restaurants..."
             />
           </View>
-          
+
           {/* Selected Restaurant Info - Show when restaurant is selected */}
           {selectedRestaurant && (
             <View style={styles.selectedRestaurantInfo}>
-              <Text style={styles.selectedRestaurantName}>{selectedRestaurant.name}</Text>
+              <Text style={styles.selectedRestaurantName}>
+                {selectedRestaurant.name}
+              </Text>
               <Text style={styles.selectedRestaurantAddress}>
-                {selectedRestaurant.vicinity.split(',').slice(0, 3).join(', ')}
+                {selectedRestaurant.vicinity
+                  ? selectedRestaurant.vicinity.split(',').slice(0, 3).join(', ')
+                  : ''}
               </Text>
             </View>
           )}
-          
+
           {/* Step 2: Show when restaurant is selected but menu not confirmed yet */}
           {selectedRestaurant && !showQuestions && (
             <View style={styles.stepSection}>
@@ -614,21 +627,24 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
               <View style={styles.stepUnderline} />
             </View>
           )}
-          
+
           {/* Menu confirmed - show when menu is found and confirmed */}
           {selectedRestaurant && menuDishes.length > 0 && showQuestions && (
             <>
               <View style={styles.separatorLine} />
               <View style={styles.menuConfirmedSection}>
                 <Text style={styles.menuConfirmedText}>Menu confirmed</Text>
-                <TouchableOpacity style={styles.reviewButton} onPress={() => setShowReviewModal(true)}>
+                <TouchableOpacity
+                  style={styles.reviewButton}
+                  onPress={() => setShowReviewModal(true)}
+                >
                   <Text style={styles.reviewButtonText}>Review</Text>
                 </TouchableOpacity>
               </View>
               <View style={styles.separatorLine} />
             </>
           )}
-          
+
           {/* Search Results - only show when searching and no restaurant selected */}
           {searchText && !selectedRestaurant && (
             <>
@@ -637,7 +653,7 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
                   {searchResults.map(renderRestaurantCard)}
                 </View>
               )}
-              
+
               {/* Loading State */}
               {isSearching && (
                 <View style={styles.loadingState}>
@@ -645,18 +661,21 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
                   <Text style={styles.loadingText}>Searching restaurants...</Text>
                 </View>
               )}
-              
+
               {/* No Results */}
-              {!isSearching && searchResults.length === 0 && searchText && !selectedRestaurant && (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyStateText}>
-                    No restaurants found for "{searchText}". Try a different search term.
-                  </Text>
-                </View>
-              )}
+              {!isSearching &&
+                searchResults.length === 0 &&
+                searchText &&
+                !selectedRestaurant && (
+                  <View style={styles.emptyState}>
+                    <Text style={styles.emptyStateText}>
+                      No restaurants found for "{searchText}". Try a different search term.
+                    </Text>
+                  </View>
+                )}
             </>
           )}
-          
+
           {/* Menu loading and content - show when restaurant is selected */}
           {selectedRestaurant && (
             <>
@@ -670,105 +689,183 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
                   {!showQuestions && (
                     <View style={styles.menuFoundSection}>
                       <Text style={styles.menuFoundText}>Menu found!</Text>
-                      <TouchableOpacity style={styles.reviewButton} onPress={() => setShowReviewModal(true)}>
+                      <TouchableOpacity
+                        style={styles.reviewButton}
+                        onPress={() => setShowReviewModal(true)}
+                      >
                         <Text style={styles.reviewButtonText}>Review</Text>
                       </TouchableOpacity>
                     </View>
                   )}
-                  
+
                   {showQuestions && (
                     <>
                       <View style={styles.stepSection}>
-                        <Text style={styles.stepText}>Step 3: Indicate your preferences</Text>
+                        <Text style={styles.stepText}>
+                          Step 3: Indicate your preferences
+                        </Text>
                         <View style={styles.stepUnderline} />
                       </View>
                       <View style={styles.questionsSection}>
-                      {/* Hunger Level */}
-                      <View style={styles.questionContainer}>
-                        <Text style={styles.questionTitle}>How hungry are you?</Text>
-                      <View style={styles.simpleSlider}>
-                        <View style={styles.simpleSliderTrack} />
-                        <View style={styles.sliderStops}>
-                          {[1, 2, 3, 4, 5].map((level) => (
-                            <TouchableOpacity
-                              key={level}
-                              style={styles.invisibleStop}
-                              onPress={() => setHungerLevel(level)}
-                            />
-                          ))}
-                        </View>
-                        <View 
-                          style={[
-                            styles.sliderThumb,
-                            { left: `${((hungerLevel - 1) / 4) * 100}%` }
-                          ]}
-                        />
-                      </View>
-                      <View style={styles.sliderLabels}>
-                        <Text style={styles.sliderLabel}>Barely hungry</Text>
-                        <Text style={styles.sliderLabel}>Ravenous</Text>
-                      </View>
-                    </View>
-                    
-                    {/* Preference Level */}
-                    <View style={styles.questionContainer}>
-                      <Text style={styles.questionTitle}>Go for what's popular, or match your preferences?</Text>
-                      <View style={styles.simpleSlider}>
-                        <View style={styles.simpleSliderTrack} />
-                        <View style={styles.sliderStops}>
-                          {[1, 2, 3, 4, 5].map((level) => (
-                            <TouchableOpacity
-                              key={level}
-                              style={styles.invisibleStop}
-                              onPress={() => setPreferenceLevel(level)}
-                            />
-                          ))}
-                        </View>
-                        <View 
-                          style={[
-                            styles.sliderThumb,
-                            { left: `${((preferenceLevel - 1) / 4) * 100}%` }
-                          ]}
-                        />
-                      </View>
-                      <View style={styles.sliderLabels}>
-                        <Text style={styles.sliderLabel}>All me</Text>
-                        <Text style={styles.sliderLabel}>Fan favorites</Text>
-                      </View>
-                    </View>
-                    
-                    {/* Craving Selection */}
-                    <View style={styles.questionContainer}>
-                      <Text style={styles.questionTitle}>What are you craving?</Text>
-                      <Text style={styles.questionSubtitle}>Select all that apply</Text>
-                      <View style={styles.cravingChipsContainer}>
-                        {cravingOptions.map((craving) => {
-                          const isSelected = selectedCravings.includes(craving);
-                          return (
-                            <TouchableOpacity
-                              key={craving}
+                        {/* Hunger Level */}
+                        <View style={styles.questionContainer}>
+                          <Text style={styles.questionTitle}>How hungry are you?</Text>
+                          <View style={styles.simpleSlider}>
+                            <View style={styles.simpleSliderTrack} />
+                            <View style={styles.sliderStops}>
+                              {[1, 2, 3, 4, 5].map((level) => (
+                                <TouchableOpacity
+                                  key={level}
+                                  style={styles.invisibleStop}
+                                  onPress={() => setHungerLevel(level)}
+                                />
+                              ))}
+                            </View>
+                            <View
                               style={[
-                                styles.cravingChip,
-                                isSelected && styles.cravingChipSelected
+                                styles.sliderThumb,
+                                { left: `${((hungerLevel - 1) / 4) * 100}%` },
                               ]}
-                              onPress={() => toggleCraving(craving)}
+                            />
+                          </View>
+                          <View style={styles.sliderLabels}>
+                            <Text style={styles.sliderLabel}>Barely hungry</Text>
+                            <Text style={styles.sliderLabel}>Ravenous</Text>
+                          </View>
+                        </View>
+
+                        {/* Preference Level */}
+                        <View style={styles.questionContainer}>
+                          <Text style={styles.questionTitle}>
+                            Go for what's popular, or match your preferences?
+                          </Text>
+                          <View style={styles.simpleSlider}>
+                            <View style={styles.simpleSliderTrack} />
+                            <View style={styles.sliderStops}>
+                              {[1, 2, 3, 4, 5].map((level) => (
+                                <TouchableOpacity
+                                  key={level}
+                                  style={styles.invisibleStop}
+                                  onPress={() => setPreferenceLevel(level)}
+                                />
+                              ))}
+                            </View>
+                            <View
+                              style={[
+                                styles.sliderThumb,
+                                { left: `${((preferenceLevel - 1) / 4) * 100}%` },
+                              ]}
+                            />
+                          </View>
+                          <View style={styles.sliderLabels}>
+                            <Text style={styles.sliderLabel}>All me</Text>
+                            <Text style={styles.sliderLabel}>Fan favorites</Text>
+                          </View>
+                        </View>
+
+                        {/* Craving Selection */}
+                        <View style={styles.questionContainer}>
+                          <Text style={styles.questionTitle}>What are you craving?</Text>
+                          <Text style={styles.questionSubtitle}>
+                            Select all that apply
+                          </Text>
+                          <View style={styles.cravingChipsContainer}>
+                            {cravingOptions.map((craving) => {
+                              const isSelected = selectedCravings.includes(craving);
+                              return (
+                                <TouchableOpacity
+                                  // eslint-disable-next-line react/jsx-key
+                                  key={craving}
+                                  style={[
+                                    styles.cravingChip,
+                                    isSelected && styles.cravingChipSelected,
+                                  ]}
+                                  onPress={() => toggleCraving(craving)}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.cravingChipText,
+                                      isSelected && styles.cravingChipTextSelected,
+                                    ]}
+                                  >
+                                    {craving}
+                                  </Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        </View>
+
+                        {/* Meal Structure Selection */}
+                        <View style={styles.questionContainer}>
+                          <Text style={styles.questionTitle}>
+                            What do you want to order?
+                          </Text>
+                          <View style={styles.mealStructureContainer}>
+                            <TouchableOpacity
+                              style={[
+                                styles.mealStructureOption,
+                                mealStructure === 'main' &&
+                                  styles.mealStructureOptionSelected,
+                              ]}
+                              onPress={() => setMealStructure('main')}
                             >
-                              <Text style={[
-                                styles.cravingChipText,
-                                isSelected && styles.cravingChipTextSelected
-                              ]}>
-                                {craving}
+                              <Text
+                                style={[
+                                  styles.mealStructureText,
+                                  mealStructure === 'main' &&
+                                    styles.mealStructureTextSelected,
+                                ]}
+                              >
+                                Just a main
                               </Text>
                             </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </View>
-                    
-                    {/* Continue Button */}
-                    <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-                      <Text style={styles.continueButtonText}>Continue</Text>
-                    </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[
+                                styles.mealStructureOption,
+                                mealStructure === 'main+starter' &&
+                                  styles.mealStructureOptionSelected,
+                              ]}
+                              onPress={() => setMealStructure('main+starter')}
+                            >
+                              <Text
+                                style={[
+                                  styles.mealStructureText,
+                                  mealStructure === 'main+starter' &&
+                                    styles.mealStructureTextSelected,
+                                ]}
+                              >
+                                Main + starter
+                              </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[
+                                styles.mealStructureOption,
+                                mealStructure === 'share' &&
+                                  styles.mealStructureOptionSelected,
+                              ]}
+                              onPress={() => setMealStructure('share')}
+                            >
+                              <Text
+                                style={[
+                                  styles.mealStructureText,
+                                  mealStructure === 'share' &&
+                                    styles.mealStructureTextSelected,
+                                ]}
+                              >
+                                Something to share
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+
+                        {/* Continue Button */}
+                        <TouchableOpacity
+                          style={styles.continueButton}
+                          onPress={handleContinue}
+                        >
+                          <Text style={styles.continueButtonText}>Continue</Text>
+                        </TouchableOpacity>
                       </View>
                     </>
                   )}
@@ -800,17 +897,22 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Paste Menu Text</Text>
             <TouchableOpacity onPress={handleSubmitMenuText} disabled={!menuText.trim()}>
-              <Text style={[styles.modalSubmitButton, !menuText.trim() && styles.modalSubmitButtonDisabled]}>
+              <Text
+                style={[
+                  styles.modalSubmitButton,
+                  !menuText.trim() && styles.modalSubmitButtonDisabled,
+                ]}
+              >
                 Submit
               </Text>
             </TouchableOpacity>
           </View>
-          
+
           <View style={styles.modalContent}>
             <Text style={styles.modalInstructions}>
               Paste the menu text below. Include dish names, descriptions, and prices if available.
             </Text>
-            
+
             <TextInput
               style={styles.textInput}
               value={menuText}
@@ -838,24 +940,24 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
             <Text style={styles.modalTitle}>Menu Summary</Text>
             <View style={{ width: 60 }} />
           </View>
-          
+
           <ScrollView style={styles.modalContent}>
             <Text style={styles.modalInstructions}>
               Review the menu items found for {selectedRestaurant?.name}
             </Text>
-            
+
             {(() => {
               // Group dishes by category
               const grouped: { [key: string]: ParsedDish[] } = {};
-              menuDishes.forEach(dish => {
+              menuDishes.forEach((dish) => {
                 const category = dish.category || 'other';
                 if (!grouped[category]) {
                   grouped[category] = [];
                 }
                 grouped[category].push(dish);
               });
-              
-              return Object.keys(grouped).map(category => (
+
+              return Object.keys(grouped).map((category) => (
                 <View key={category} style={styles.reviewCategorySection}>
                   <Text style={styles.reviewCategoryTitle}>
                     {category.charAt(0).toUpperCase() + category.slice(1)}
@@ -877,9 +979,9 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
               ));
             })()}
           </ScrollView>
-          
+
           <View style={styles.reviewModalActions}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.reviewActionButton}
               onPress={() => {
                 setShowReviewModal(false);
@@ -888,14 +990,21 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
             >
               <Text style={styles.reviewActionButtonText}>Add more items</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.reviewActionButton, styles.reviewConfirmButton]}
               onPress={() => {
                 setShowReviewModal(false);
                 setShowQuestions(true);
               }}
             >
-              <Text style={[styles.reviewActionButtonText, styles.reviewConfirmButtonText]}>Confirm</Text>
+              <Text
+                style={[
+                  styles.reviewActionButtonText,
+                  styles.reviewConfirmButtonText,
+                ]}
+              >
+                Confirm
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -929,7 +1038,9 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
                   style={[styles.menuUrlInput, { flex: 1 }]}
                   value={value}
                   onChangeText={(text) => {
-                    setMenuUrls(prev => prev.map((p, i) => (i === idx ? text : p)));
+                    setMenuUrls((prev) =>
+                      prev.map((p, i) => (i === idx ? text : p))
+                    );
                   }}
                   placeholder="https://example.com/menu or menu.pdf"
                   autoCapitalize="none"
@@ -938,7 +1049,9 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
                 {menuUrls.length > 1 && (
                   <TouchableOpacity
                     style={styles.removeUrlButton}
-                    onPress={() => setMenuUrls(prev => prev.filter((_, i) => i !== idx))}
+                    onPress={() =>
+                      setMenuUrls((prev) => prev.filter((_, i) => i !== idx))
+                    }
                   >
                     <Text style={styles.removeUrlButtonText}>Remove</Text>
                   </TouchableOpacity>
@@ -948,7 +1061,7 @@ export function ChooseDishLanding({ onSelectRestaurant, onNavigateToRecommendati
 
             <TouchableOpacity
               style={styles.addUrlButton}
-              onPress={() => setMenuUrls(prev => [...prev, ''])}
+              onPress={() => setMenuUrls((prev) => [...prev, ''])}
             >
               <Text style={styles.addUrlButtonText}>+ Add another URL</Text>
             </TouchableOpacity>
@@ -1238,7 +1351,34 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontFamily: theme.typography.fontFamilies.medium,
   },
-  
+  mealStructureContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
+  },
+  mealStructureOption: {
+    backgroundColor: 'transparent',
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  mealStructureOptionSelected: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  mealStructureText: {
+    fontSize: 14,
+    color: theme.colors.primary,
+    fontFamily: theme.typography.fontFamilies.regular,
+  },
+  mealStructureTextSelected: {
+    color: '#FFFFFF',
+    fontFamily: theme.typography.fontFamilies.medium,
+  },
+
   // Modal styles
   modalContainer: {
     flex: 1,

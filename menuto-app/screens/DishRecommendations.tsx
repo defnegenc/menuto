@@ -5,7 +5,6 @@ import { theme } from '../theme';
 import { UnifiedHeader } from '../components/UnifiedHeader';
 import { LoadingScreen } from '../components/LoadingScreen';
 import { MenuItemCard } from '../components/MenuItemCard';
-import { SelectionDishCard } from '../components/SelectionDishCard';
 import { SearchBar } from '../components/SearchBar';
 import { api } from '../services/api';
 import { useStore } from '../store/useStore';
@@ -26,6 +25,7 @@ interface DishRecommendationsProps {
     hungerLevel: number;
     preferenceLevel: number;
     selectedCravings: string[];
+    mealStructure?: string; // 'starter', 'main', 'main+starter', 'share'
   };
   onContinue: (dishes: Recommendation[]) => void;
   onBack: () => void;
@@ -46,10 +46,12 @@ interface Recommendation {
     customer_praise: number;
     taste_compatibility: number;
     craving_match: number;
+    hunger?: number;
     friend_boost: number;
   };
   recommendation_reason: string;
   friend_recommendation?: string;
+  explanations?: string[]; // Raw explanations array from backend
 }
 
 export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
@@ -88,6 +90,87 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
     }
     // If all dishes have been had, return the first one
     return recommendations[0];
+  };
+
+  const filterRecommendationsByMealStructure = (recs: Recommendation[], mealStructure: string): Recommendation[] => {
+    if (!recs || recs.length === 0) return recs;
+    
+    const courseMap: { [key: string]: Recommendation[] } = {};
+    
+    // Group recommendations by course
+    recs.forEach(rec => {
+      const course = (rec.category || 'main').toLowerCase();
+      if (!courseMap[course]) {
+        courseMap[course] = [];
+      }
+      courseMap[course].push(rec);
+    });
+    
+    // Sort each course by recommendation score
+    Object.keys(courseMap).forEach(course => {
+      courseMap[course].sort((a, b) => (b.recommendation_score || 0) - (a.recommendation_score || 0));
+    });
+    
+    const result: Recommendation[] = [];
+    
+    // Select recommendations based on meal structure
+    switch (mealStructure) {
+      case 'main':
+        // Just one main course
+        if (courseMap['main'] && courseMap['main'].length > 0) {
+          result.push(courseMap['main'][0]);
+        } else if (courseMap['main course'] && courseMap['main course'].length > 0) {
+          result.push(courseMap['main course'][0]);
+        }
+        break;
+        
+      case 'main+starter':
+        // One starter and one main
+        if (courseMap['starter'] && courseMap['starter'].length > 0) {
+          result.push(courseMap['starter'][0]);
+        } else if (courseMap['appetizer'] && courseMap['appetizer'].length > 0) {
+          result.push(courseMap['appetizer'][0]);
+        }
+        if (courseMap['main'] && courseMap['main'].length > 0) {
+          result.push(courseMap['main'][0]);
+        } else if (courseMap['main course'] && courseMap['main course'].length > 0) {
+          result.push(courseMap['main course'][0]);
+        }
+        break;
+        
+      case 'share':
+        // One shareable dish
+        const shareableRecs = recs.filter(rec => {
+          const desc = (rec.description || '').toLowerCase();
+          const name = (rec.name || '').toLowerCase();
+          return desc.includes('share') || desc.includes('platter') || desc.includes('for two') || 
+                 name.includes('share') || name.includes('platter');
+        });
+        if (shareableRecs.length > 0) {
+          shareableRecs.sort((a, b) => (b.recommendation_score || 0) - (a.recommendation_score || 0));
+          result.push(shareableRecs[0]);
+        } else {
+          // Fallback to main if no shareable dishes
+          if (courseMap['main'] && courseMap['main'].length > 0) {
+            result.push(courseMap['main'][0]);
+          }
+        }
+        break;
+        
+      default:
+        // Default to just main
+        if (courseMap['main'] && courseMap['main'].length > 0) {
+          result.push(courseMap['main'][0]);
+        }
+    }
+    
+    // If no results found, return top recommendation overall
+    if (result.length === 0 && recs.length > 0) {
+      const sorted = [...recs].sort((a, b) => (b.recommendation_score || 0) - (a.recommendation_score || 0));
+      result.push(sorted[0]);
+    }
+    
+    return result;
   };
 
   useEffect(() => {
@@ -151,6 +234,16 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
         const reasonFromExplanations =
           explanations.length > 0 ? explanations.slice(0, 3).join(' | ') : '';
 
+        // Map components to score_breakdown
+        const components = r?.score_breakdown ?? r?.components ?? {};
+        const scoreBreakdown = {
+          customer_praise: components.sentiment ?? components.customer_praise ?? 0,
+          taste_compatibility: components.personal_taste ?? components.taste_compatibility ?? 0,
+          craving_match: components.craving ?? components.craving_match ?? 0,
+          hunger: components.hunger ?? 0,
+          friend_boost: components.friend ?? components.friend_boost ?? 0,
+        };
+
         return {
           id: r?.id ?? `${restaurant.place_id}-${idx}`,
           name: r?.name ?? 'Unknown dish',
@@ -162,29 +255,30 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
           avg_rating: r?.avg_rating,
           source: r?.source ?? 'smart',
           recommendation_score: r?.score ?? r?.recommendation_score ?? 0,
-          score_breakdown: r?.score_breakdown ?? {
-            customer_praise: 0,
-            taste_compatibility: 0,
-            craving_match: 0,
-            friend_boost: 0,
-          },
+          score_breakdown: scoreBreakdown,
           recommendation_reason:
             r?.recommendation_reason ??
             r?.reason ??
             reasonFromExplanations ??
             'Matches your preferences | Popular pick | Good fit for tonight',
           friend_recommendation: r?.friend_recommendation,
+          explanations: explanations, // Store raw explanations array for formatRecommendationReason
         };
       });
       console.log('📦 Normalized recommendations:', newRecommendations);
       console.log('📦 Normalized recommendations length:', newRecommendations.length);
       
+      // Store all recommendations for "Other recommendations" section
       setRecommendations(newRecommendations);
-      setFilteredRecommendations(newRecommendations);
+      
+      // Filter to show top recommendation(s) per course based on meal structure
+      const mealStructurePref = userPreferences.mealStructure || 'main';
+      const filteredByMealStructure = filterRecommendationsByMealStructure(newRecommendations, mealStructurePref);
+      setFilteredRecommendations(filteredByMealStructure);
       
       // Auto-select the top recommendation (skip dishes user has already had)
-      if (newRecommendations.length > 0) {
-        const topRecommendation = getTopRecommendation(newRecommendations);
+      if (filteredByMealStructure.length > 0) {
+        const topRecommendation = getTopRecommendation(filteredByMealStructure);
         if (topRecommendation) {
           setSelectedDish(topRecommendation);
           console.log('🎯 Selected top recommendation:', topRecommendation.name, 'User had before:', hasUserHadDish(topRecommendation.name));
@@ -248,9 +342,20 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
     }
   };
 
-  const formatRecommendationReason = (reason?: string) => {
+  const formatRecommendationReason = (recommendation: Recommendation) => {
+    // Use explanations array from backend if available (most descriptive)
+    if (recommendation.explanations && Array.isArray(recommendation.explanations) && recommendation.explanations.length > 0) {
+      return recommendation.explanations.slice(0, 3);
+    }
+    
+    // Fallback: try to parse from recommendation_reason string
+    const reason = recommendation.recommendation_reason || '';
+    if (!reason) {
+      return ["Matches your preferences", "Popular choice", "Good fit for tonight"];
+    }
+    
     // Split by "|" separator (backend now sends 3 bullets separated by |)
-    const reasons = (reason ?? '')
+    const reasons = reason
       .split('|')
       .map(r => r.trim())
       .filter(r => r.length > 0)
@@ -262,6 +367,12 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
         // Remove "Recommended because it's" prefix if present
         if (cleaned.startsWith("Recommended because it's ")) {
           cleaned = cleaned.substring(25);
+        }
+        if (cleaned.startsWith("because it's ")) {
+          cleaned = "because " + cleaned.substring(13);
+        }
+        if (cleaned.startsWith("it's ")) {
+          cleaned = cleaned.substring(5);
         }
         
         // Capitalize first letter
@@ -321,85 +432,119 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
           <>
             {selectedDish && (
               <View style={styles.recommendationSection}>
-                <Text style={styles.recommendationTitle}>
-                  Recommendation: {capitalizeText(selectedDish.name)}
-                </Text>
-                
-                {/* Featured Recommendation Card */}
-                <View style={styles.featuredCard}>
-                  <MenuItemCard
-                    dish={{
-                      id: String(selectedDish.id),
-                      name: selectedDish.name,
-                      description: selectedDish.description || '',
-                      category: selectedDish.category || 'main',
-                      ingredients: selectedDish.ingredients || [],
-                      dietary_tags: selectedDish.dietary_tags || [],
-                      is_user_added: false,
-                      score: selectedDish.recommendation_score || 0,
-                      explanation: '',
-                      restaurant_id: restaurant.place_id
-                    }}
-                    isSelected={selectedDishes.some(d => d.id === selectedDish?.id)}
-                    onPress={handleSelectDish}
-                    showScore={!hasUserHadDish(selectedDish.name)}
-                    isFeatured={true}
-                    onScorePress={() => {
-                      setSelectedRationale(selectedDish.recommendation_reason || 'No rationale available');
-                      setShowRationaleModal(true);
-                    }}
-                  />
-                </View>
+                {/* Show all filtered recommendations grouped by course */}
+                {filteredRecommendations.map((dish, index) => {
+                  const isSelected = selectedDishes.some(d => d.id === dish.id);
+                  return (
+                    <View key={dish.id} style={styles.recommendationCard}>
+                      {filteredRecommendations.length > 1 && (
+                        <Text style={styles.courseLabel}>
+                          {dish.category === 'starter' ? 'Starter' : 
+                           dish.category === 'share' ? 'Share' : 
+                           dish.category === 'main' ? 'Main' : 
+                           capitalizeText(dish.category || 'Main')}
+                        </Text>
+                      )}
+                      <MenuItemCard
+                        dish={{
+                          id: String(dish.id),
+                          name: dish.name,
+                          description: dish.description || '',
+                          category: dish.category || 'main',
+                          ingredients: dish.ingredients || [],
+                          dietary_tags: dish.dietary_tags || [],
+                          is_user_added: false,
+                          score: dish.recommendation_score || 0,
+                          explanation: '',
+                          restaurant_id: restaurant.place_id
+                        }}
+                        isSelected={isSelected}
+                        onPress={() => handleDishSelect(dish)}
+                        showScore={!hasUserHadDish(dish.name)}
+                        isFeatured={index === 0}
+                        onScorePress={() => {
+                          // Format score breakdown for tooltip
+                          const breakdown = dish.score_breakdown || {};
+                          const breakdownText = `Score Breakdown:\n\n` +
+                            `Personal Taste: ${(breakdown.taste_compatibility || breakdown.customer_praise || 0).toFixed(2)}\n` +
+                            `Popularity: ${(breakdown.customer_praise || 0).toFixed(2)}\n` +
+                            `Craving Match: ${(breakdown.craving_match || 0).toFixed(2)}\n` +
+                            `Hunger Match: ${(breakdown.hunger || 0).toFixed(2)}\n` +
+                            `Friend Boost: ${(breakdown.friend_boost || 0).toFixed(2)}\n\n` +
+                            `Total Score: ${(dish.recommendation_score || 0).toFixed(2)}`;
+                          setSelectedRationale(breakdownText);
+                          setShowRationaleModal(true);
+                        }}
+                      />
+                      
+                      {/* Why was this recommended */}
+                      <View style={styles.reasoningSection}>
+                        <Text style={styles.reasoningTitle}>Why was this recommended?</Text>
+                        {formatRecommendationReason(dish).map((reason, idx) => (
+                          <Text key={idx} style={styles.reasoningText}>
+                            • {reason}
+                          </Text>
+                        ))}
+                      </View>
+                    </View>
+                  );
+                })}
 
-                {/* Why was this recommended */}
-                <View style={styles.reasoningSection}>
-                  <Text style={styles.reasoningTitle}>Why was this recommended?</Text>
-                  {formatRecommendationReason(selectedDish.recommendation_reason).map((reason, index) => (
-                    <Text key={index} style={styles.reasoningText}>
-                      {index + 1}. {reason}
-                    </Text>
-                  ))}
-                </View>
-
-                {/* Get new recommendation button */}
-                <TouchableOpacity 
-                  style={styles.newRecommendationButton}
-                  onPress={handleGetNewRecommendation}
-                >
-                  <Text style={styles.newRecommendationText}>Get new recommendation</Text>
-                </TouchableOpacity>
+                {/* Get new recommendation button - only show if there are more recommendations */}
+                {recommendations.length > filteredRecommendations.length && (
+                  <TouchableOpacity 
+                    style={styles.newRecommendationButton}
+                    onPress={handleGetNewRecommendation}
+                  >
+                    <Text style={styles.newRecommendationText}>Get new recommendation</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
 
-            {/* Other recommendations list */}
-            <View style={styles.allRecommendationsSection}>
-              <Text style={styles.sectionTitle}>
-                {searchText ? `Search Results (${filteredRecommendations.length})` : selectedDish ? 'Other recommendations' : 'Recommendations'}
-              </Text>
-              {filteredRecommendations.length > 0 ? (
-                filteredRecommendations
-                  .filter((dish) => dish.id !== selectedDish?.id) // Remove the main recommendation from this list
+            {/* Other recommendations list - only show if there are more recommendations than the filtered ones */}
+            {recommendations.length > filteredRecommendations.length && (
+              <View style={styles.allRecommendationsSection}>
+                <Text style={styles.sectionTitle}>
+                  {searchText ? `Search Results (${recommendations.length})` : 'Other recommendations'}
+                </Text>
+                {recommendations
+                  .filter((dish) => !filteredRecommendations.some(fd => fd.id === dish.id)) // Remove filtered recommendations from this list
                   .map((dish) => (
-                    <SelectionDishCard
+                    <MenuItemCard
                       key={dish.id}
                       dish={{
+                        id: String(dish.id),
                         name: dish.name,
-                        description: dish.description,
-                        score: dish.recommendation_score || 0
+                        description: dish.description || '',
+                        category: dish.category || 'main',
+                        ingredients: dish.ingredients || [],
+                        dietary_tags: dish.dietary_tags || [],
+                        is_user_added: false,
+                        score: dish.recommendation_score || 0,
+                        explanation: '',
+                        restaurant_id: restaurant.place_id
                       }}
                       isSelected={selectedDishes.some(d => d.id === dish.id)}
                       onPress={() => handleDishSelect(dish)}
                       showScore={!hasUserHadDish(dish.name)}
+                      onScorePress={() => {
+                        // Format score breakdown for tooltip
+                        const breakdown = dish.score_breakdown || {};
+                        const breakdownText = [
+                          `Personal Taste: ${(breakdown.customer_praise || breakdown.taste_compatibility || 0).toFixed(2)}`,
+                          `Popularity: ${(breakdown.customer_praise || 0).toFixed(2)}`,
+                          `Craving Match: ${(breakdown.craving_match || 0).toFixed(2)}`,
+                          `Hunger Match: ${(breakdown.hunger || 0).toFixed(2)}`,
+                          `Friend Boost: ${(breakdown.friend_boost || 0).toFixed(2)}`
+                        ].join('\n');
+                        setSelectedRationale(breakdownText);
+                        setShowRationaleModal(true);
+                      }}
                     />
-                  ))
-              ) : searchText ? (
-                <View style={styles.noResultsSection}>
-                  <Text style={styles.noResultsText}>
-                    No dishes found matching "{searchText}"
-                  </Text>
-                </View>
-              ) : null}
-            </View>
+                  ))}
+              </View>
+            )}
           </>
         )}
       </ScrollView>
@@ -438,7 +583,7 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
             <TouchableOpacity onPress={() => setShowRationaleModal(false)}>
               <Text style={styles.modalCancelButton}>Close</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Recommendation Rationale</Text>
+            <Text style={styles.modalTitle}>Score Breakdown</Text>
             <View style={{ width: 60 }} />
           </View>
           <View style={styles.modalContent}>
@@ -473,6 +618,16 @@ const styles = StyleSheet.create({
   },
   featuredCard: {
     marginBottom: theme.spacing.lg,
+  },
+  recommendationCard: {
+    marginBottom: theme.spacing.xl,
+  },
+  courseLabel: {
+    fontSize: 15,
+    fontWeight: theme.typography.weights.normal,
+    color: '#000000',
+    marginBottom: theme.spacing.sm,
+    fontFamily: theme.typography.fontFamilies.regular,
   },
   reasoningSection: {
     marginBottom: theme.spacing.lg,
