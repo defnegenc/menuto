@@ -252,12 +252,14 @@ export function AuthScreen({ onAuthComplete }: Props) {
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
-      // For Expo on iOS, this generates: menuto://auth/callback (using app.json scheme)
+      // Use Expo's auth proxy in dev (Expo Go), native scheme in production
       const redirectUrl = AuthSession.makeRedirectUri({
         scheme: 'menuto',
         path: 'auth/callback',
+        preferLocalhost: false,
       });
       console.log('OAuth redirect URL:', redirectUrl);
+      // If this logs exp://... or localhost, you need a dev build for native scheme
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -276,11 +278,16 @@ export function AuthScreen({ onAuthComplete }: Props) {
         const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
 
         if (result.type === 'success' && result.url) {
-          // Extract tokens from the redirect URL
-          const url = new URL(result.url);
-          const params = new URLSearchParams(url.hash.substring(1)); // hash fragment
+          // Extract tokens — Supabase puts them in the hash fragment
+          const returnUrl = result.url;
+          // Try hash fragment first, then query params
+          const hashPart = returnUrl.includes('#') ? returnUrl.split('#')[1] : '';
+          const queryPart = returnUrl.includes('?') ? returnUrl.split('?')[1]?.split('#')[0] : '';
+          const params = new URLSearchParams(hashPart || queryPart || '');
           const accessToken = params.get('access_token');
           const refreshToken = params.get('refresh_token');
+
+          console.log('OAuth callback received, has tokens:', !!accessToken, !!refreshToken);
 
           if (accessToken && refreshToken) {
             const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
@@ -336,8 +343,13 @@ export function AuthScreen({ onAuthComplete }: Props) {
             }
           }
         }
+
+        if (result.type === 'cancel' || result.type === 'dismiss') {
+          console.log('Google sign-in cancelled by user');
+        }
       }
     } catch (error: any) {
+      console.error('Google sign-in error:', error);
       Alert.alert('Error', error?.message || 'Google sign-in failed');
     } finally {
       setIsLoading(false);

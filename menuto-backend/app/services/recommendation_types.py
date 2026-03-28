@@ -80,4 +80,5 @@ class ScoredItem:
     score: float
     explanations: List[str] = field(default_factory=list)
     reasoning: str = ""  # Detailed reasoning for debugging
+    is_discovery: bool = False  # True if this is a serendipity/exploration pick
 

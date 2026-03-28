@@ -251,6 +251,7 @@ async def generate_smart_recommendations(
                 "explanations": scored.explanations,
                 "recommendation_reason": " | ".join(scored.explanations) if scored.explanations else "Great choice based on your preferences",
                 "reasoning": scored.reasoning,
+                "is_discovery": scored.is_discovery,
             }
             for scored in scored_recommendations
         ]

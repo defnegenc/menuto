@@ -11,7 +11,9 @@ Why we keep it:
 """
 
 from typing import Any, Dict, List, Optional
+import json
 import logging
+import os
 
 from app.services.recommendation_engine import RecommendationEngine
 from app.services.recommendation_types import (
@@ -85,7 +87,17 @@ class SmartRecommendationAlgorithm:
             )
 
         scored = self.score_and_rank(candidates, taste_profile, context)
-        diversified = self.diversify(scored, limit)
+
+        # LLM reranker: send top candidates to Gemini for meal-aware reranking
+        # Falls back to template-based explanations if LLM fails
+        reranked = self._llm_rerank(scored[:15], taste_profile, context, limit)
+        if reranked:
+            # LLM provided reranked results — apply serendipity slot
+            diversified = self.diversify(reranked, limit, taste_profile)
+            return diversified[:limit]
+
+        # Fallback: traditional diversify + template explanations
+        diversified = self.diversify(scored, limit, taste_profile)
         enriched = self.add_explanations(diversified, taste_profile, context)
         return enriched[:limit]
 
@@ -211,7 +223,39 @@ class SmartRecommendationAlgorithm:
         ranked.sort(key=lambda rec: rec.score, reverse=True)
         return ranked
 
-    def diversify(self, scored_items: List[ScoredItem], limit: int) -> List[ScoredItem]:
+    def diversify(
+        self,
+        scored_items: List[ScoredItem],
+        limit: int,
+        taste_profile: Optional[UserTasteProfile] = None,
+    ) -> List[ScoredItem]:
+        """Diversify results with a serendipity slot.
+
+        Reserves 1 slot (the last) for a "discovery pick" — a dish from a
+        cuisine or dish-type the user has never tried, as long as it meets a
+        minimum quality threshold.  This is epsilon-greedy exploration (ε=1/limit)
+        constrained to items that still score well.
+        (Ref: SERAL, Feb 2025 — serendipity improves engagement.)
+        """
+        # --- Identify user's familiar cuisines/dish-types ---
+        familiar_cuisines: set[str] = set()
+        familiar_types: set[str] = set()
+        if taste_profile:
+            familiar_cuisines = {c.lower() for c in taste_profile.cuisine_preferences}
+            familiar_types = {d.lower() for d in taste_profile.dish_types}
+
+        def _is_novel(item: ItemFeatures) -> bool:
+            """True if the item's cuisine and dish-type are outside the user's history."""
+            cuisine = (item.cuisine or "").lower()
+            course = (item.course or "").lower()
+            desc_lower = item.description.lower()
+            # Novel if cuisine doesn't overlap AND no dish-type keyword matches
+            cuisine_novel = not cuisine or cuisine not in familiar_cuisines
+            type_novel = not any(dt in desc_lower or dt in item.name.lower() for dt in familiar_types)
+            return cuisine_novel and type_novel
+
+        # --- Standard diversification (course+protein buckets) for limit-1 slots ---
+        main_limit = max(limit - 1, 1)
         bucket_counts: Dict[tuple[str, str], int] = {}
         diversified: List[ScoredItem] = []
 
@@ -221,18 +265,59 @@ class SmartRecommendationAlgorithm:
                 continue
             diversified.append(scored)
             bucket_counts[key] = bucket_counts.get(key, 0) + 1
-            if len(diversified) >= limit:
+            if len(diversified) >= main_limit:
                 break
 
-        if len(diversified) < limit:
+        # Backfill main slots if needed
+        if len(diversified) < main_limit:
             for scored in scored_items:
                 if scored in diversified:
+                    continue
+                diversified.append(scored)
+                if len(diversified) >= main_limit:
+                    break
+
+        # --- Serendipity slot: best novel item above quality floor ---
+        if limit >= 3 and taste_profile and familiar_cuisines:
+            min_score = 0.35  # quality floor — must still be a decent dish
+            already_ids = {s.item.item_id for s in diversified}
+            best_novel: ScoredItem | None = None
+
+            for scored in scored_items:
+                if scored.item.item_id in already_ids:
+                    continue
+                if scored.score < min_score:
+                    continue
+                if _is_novel(scored.item):
+                    best_novel = scored
+                    break  # scored_items is sorted, so first match is best
+
+            if best_novel:
+                discovery = ScoredItem(
+                    item=best_novel.item,
+                    components=best_novel.components,
+                    score=best_novel.score,
+                    explanations=best_novel.explanations,
+                    reasoning=best_novel.reasoning,
+                    is_discovery=True,
+                )
+                diversified.append(discovery)
+                logger.info(
+                    "Serendipity pick: '%s' (score=%.3f, cuisine=%s)",
+                    discovery.item.name, discovery.score, discovery.item.cuisine,
+                )
+
+        # If no discovery pick found (or limit < 3), fill remaining slots normally
+        if len(diversified) < limit:
+            already_ids = {s.item.item_id for s in diversified}
+            for scored in scored_items:
+                if scored.item.item_id in already_ids:
                     continue
                 diversified.append(scored)
                 if len(diversified) >= limit:
                     break
 
-        return diversified
+        return diversified[:limit]
 
     def add_explanations(
         self,
@@ -347,13 +432,15 @@ class SmartRecommendationAlgorithm:
                 bullets.append("You've ordered this before and came back for more")
             elif behavioral_score >= 0.7:
                 bullets.append("You've tried this before")
-            elif behavioral_score >= 0.65:
-                bullets.append("You've been eyeing this one")
 
             # 8. Friend boost
             if components.get("friend", 0) >= 0.5:
                 bullets.append("Friend-approved pick")
             
+            # 9. Discovery pick
+            if scored.is_discovery:
+                bullets.insert(0, "Something new to try — outside your usual picks")
+
             # Default fallback (only if we have nothing)
             if not bullets:
                 bullets.append("Great choice based on your preferences")
@@ -368,6 +455,116 @@ class SmartRecommendationAlgorithm:
                 )
             )
         return explained
+
+    # ------------------------------------------------------------------
+    # LLM reranker (RecAI pattern: traditional scoring → LLM rerank)
+    # ------------------------------------------------------------------
+
+    def _llm_rerank(
+        self,
+        candidates: List[ScoredItem],
+        taste_profile: UserTasteProfile,
+        context: RecommendationContext,
+        limit: int,
+    ) -> List[ScoredItem] | None:
+        """Use Gemini to rerank the top candidates considering meal composition.
+
+        Returns reranked ScoredItems with LLM-generated explanations, or None
+        if the LLM call fails (caller falls back to template explanations).
+
+        Ref: Microsoft RecAI (ACM Web Conference 2024) — "LLM-as-brain,
+        traditional-models-as-tools" pattern.
+        """
+        try:
+            from google import genai
+
+            api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
+            if not api_key or not candidates:
+                return None
+
+            client = genai.Client(api_key=api_key)
+
+            # Build candidate summaries for the prompt
+            dish_lines = []
+            for i, s in enumerate(candidates[:15]):
+                dish_lines.append(
+                    f"{i+1}. {s.item.name} — {s.item.description[:80]} "
+                    f"(category: {s.item.course or 'unknown'}, score: {s.score:.2f})"
+                )
+
+            meal_period = context.restaurant_specific_signals.get("meal_period", "")
+            cravings = ", ".join(context.craving_tags) if context.craving_tags else "none specified"
+            hunger = context.hunger_level.value
+
+            prompt = f"""You are a personal dining advisor. Given these scored menu candidates and the diner's profile, pick the best {limit} dishes that form a well-balanced meal.
+
+DINER PROFILE:
+- Favorite cuisines: {', '.join(taste_profile.cuisine_preferences) or 'varied'}
+- Flavor preference: {taste_profile.flavor_profile or 'varied'}
+- Current craving: {cravings}
+- Hunger level: {hunger}
+- Meal: {meal_period or 'not specified'}
+
+CANDIDATES (pre-scored by algorithm):
+{chr(10).join(dish_lines)}
+
+Pick the best {limit} dishes considering:
+1. Meal balance — variety of textures, weights, and flavors (not all heavy or all light)
+2. Course variety — mix starters/mains/sides when possible, don't pick 3 of the same category
+3. Honor the craving — at least one dish should match if a craving was specified
+4. Respect the scores — prefer higher-scored dishes but override when meal balance demands it
+
+Return JSON array of exactly {limit} objects:
+[
+  {{"rank": 1, "candidate_number": 3, "explanation": "One compelling sentence about why this dish is perfect for this diner right now"}},
+  ...
+]
+
+Rules:
+- candidate_number matches the numbered list above (1-indexed)
+- explanation should be personal and specific, not generic
+- Return ONLY the JSON array"""
+
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt,
+                config=genai.types.GenerateContentConfig(
+                    temperature=0.3,  # slightly creative for explanations
+                    response_mime_type="application/json",
+                ),
+            )
+
+            picks = json.loads(response.text)
+            if not isinstance(picks, list) or len(picks) == 0:
+                return None
+
+            # Map LLM picks back to ScoredItems
+            reranked: List[ScoredItem] = []
+            for pick in picks[:limit]:
+                idx = pick.get("candidate_number", 0) - 1  # 1-indexed → 0-indexed
+                if 0 <= idx < len(candidates):
+                    original = candidates[idx]
+                    explanation = pick.get("explanation", "")
+                    reranked.append(
+                        ScoredItem(
+                            item=original.item,
+                            components=original.components,
+                            score=original.score,
+                            explanations=[explanation] if explanation else original.explanations,
+                            reasoning=original.reasoning,
+                            is_discovery=original.is_discovery,
+                        )
+                    )
+
+            if len(reranked) >= max(limit - 1, 1):
+                logger.info("LLM reranker selected %d dishes", len(reranked))
+                return reranked
+
+            return None  # not enough valid picks, fall back
+
+        except Exception as e:
+            logger.warning("LLM reranker failed, using template explanations: %s", e)
+            return None
 
     # ------------------------------------------------------------------
     # Component helpers
@@ -491,10 +688,15 @@ class SmartRecommendationAlgorithm:
         return 0.5
 
     def _behavioral_match(self, item: ItemFeatures, context: RecommendationContext) -> float:
-        """Score based on the user's behavioral signals (views, orders, favorites)."""
+        """Score based on the user's behavioral signals (views, orders, favorites).
+
+        Key insight (Hu et al., Yahoo Research): viewing without ordering is an
+        implicit *negative* signal — the user considered and rejected the item.
+        Confidence in the negative grows with repeated views.
+        """
         signals = context.user_behavioral_signals
         if not signals:
-            return 0.5  # neutral
+            return 0.5  # neutral — no data
 
         item_name_lower = item.name.lower()
         for dish_name, data in signals.items():
@@ -503,18 +705,21 @@ class SmartRecommendationAlgorithm:
                 orders = data.get("orders", 0)
                 favorited = data.get("favorited", False)
 
+                # Explicit positive signals (ordered or saved)
                 if favorited:
-                    return 0.95  # user explicitly saved this
+                    return 0.95
                 if orders >= 2:
-                    return 0.85  # ordered multiple times
+                    return 0.85  # repeat order — strong positive
                 if orders == 1:
-                    return 0.7   # ordered once (positive signal)
-                if views >= 3:
-                    return 0.65  # viewed multiple times but never ordered (curious)
-                if views >= 1:
-                    return 0.55  # viewed once
+                    return 0.70  # tried once — positive
 
-        return 0.5  # no match
+                # Implicit negative: viewed but never ordered = considered and rejected
+                if views >= 3 and orders == 0:
+                    return 0.30  # strong implicit negative
+                if views >= 1 and orders == 0:
+                    return 0.40  # mild implicit negative
+
+        return 0.5  # no match — neutral
 
     def _restaurant_bonus(self, item: ItemFeatures, taste_profile: UserTasteProfile) -> float:
         rest_pattern = taste_profile.flavor_profile.lower()
