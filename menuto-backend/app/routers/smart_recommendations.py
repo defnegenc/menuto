@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 from app.services.menu_data_service import MenuDataService
 from app.services.recommendation_engine import RecommendationEngine
 from app.services.recommendation_types import HungerLevel, RecommendationContext
+from app.services.review_ingestion import get_dish_sentiment_scores
 from app.services.smart_recommendation_algorithm import SmartRecommendationAlgorithm
 
 logger = logging.getLogger(__name__)
@@ -78,6 +79,25 @@ async def generate_smart_recommendations(
                 "total_count": 0,
                 "message": f"No menu items available for {restaurant_name}. Try adding some menu items manually.",
             }
+
+        # Enrich menu items with review-based sentiment scores
+        try:
+            dish_sentiments = get_dish_sentiment_scores(restaurant_place_id)
+            if dish_sentiments:
+                logger.info(
+                    "Enriching %d menu items with %d dish sentiment scores from reviews",
+                    len(menu_items), len(dish_sentiments),
+                )
+                for item in menu_items:
+                    # Fuzzy match: check if any reviewed dish name appears in the item name
+                    item_name_lower = item.name.lower()
+                    for dish_name, score in dish_sentiments.items():
+                        if dish_name.lower() in item_name_lower or item_name_lower in dish_name.lower():
+                            # Override the default 0.65 sentiment with real review data
+                            item.sentiment_score = score
+                            break
+        except Exception as e:
+            logger.warning("Review enrichment failed, using defaults: %s", e)
 
         scored_recommendations = algorithm.generate_recommendations_from_payload(
             menu_items=menu_items,

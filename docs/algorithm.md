@@ -65,12 +65,35 @@ Defined in `recommendation_types.py`:
 
 If candidate generation returns empty (e.g., all items filtered by dietary constraints), falls back to `RecommendationEngine.generate_recommendations()` which uses a simpler similarity-based approach.
 
+## Review-Based Sentiment Pipeline
+
+Added 2026-03-27. Reviews from Google Places API are now used to enrich the `sentiment` scoring component.
+
+### Flow
+```
+Recommendation request → get_dish_sentiment_scores(place_id)
+  → Check Supabase review_cache (14-day TTL)
+  → Cache miss? Fetch 5 reviews from Google Places API (free tier: 1,000 calls/month)
+  → Extract dish mentions + sentiment via Gemini (single batch LLM call)
+  → Cache in Supabase review_cache table
+  → Return {dish_name: score} mapping
+  → Fuzzy-match dish names to menu items
+  → Override default 0.65 sentiment_score with real review data
+```
+
+### Key Details
+- **Cache table:** `review_cache` (place_id TEXT PK, reviews JSONB, fetched_at TIMESTAMPTZ)
+- **Migration:** `menuto-backend/migrations/review_cache_table.sql`
+- **Sentiment score:** Blend of `0.6 * (rating/5) + 0.4 * ((llm_sentiment + 1) / 2)`
+- **Dish matching:** Fuzzy — checks if reviewed dish name appears in menu item name or vice versa
+- **API endpoints:** `GET /reviews/{place_id}/reviews`, `GET /reviews/{place_id}/dish-sentiments`
+
 ## Known Limitations
 
 - Dietary filtering is keyword-based, not ingredient-aware (e.g., "Caesar salad" with anchovy won't be caught for vegetarian)
 - Spice level is often `None` for menu items, falling back to a neutral 0.5
-- Sentiment scores default to 0.65 when no review data exists
-- No learning from user feedback yet (ratings stored but not fed back into scoring)
+- Google Places API returns max 5 reviews per restaurant — sentiment data may be sparse
+- Dish name matching between reviews and menu items is fuzzy and may miss non-obvious matches
 
 ## Top 3 Algorithm Improvements
 

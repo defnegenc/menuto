@@ -1,97 +1,63 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from app.database import get_db
-from app.models import Restaurant, Review, ReviewerProfile
-from app.services.review_ingestion import ingest_restaurant_reviews
+import logging
+from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 
+from app.services.review_ingestion import (
+    get_reviews_for_restaurant,
+    get_dish_sentiment_scores,
+)
+
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
-@router.post("/{restaurant_id}/ingest")
-async def ingest_reviews(
-    restaurant_id: int,
-    google_place_id: Optional[str] = None,
-    yelp_business_id: Optional[str] = None,
-    db: Session = Depends(get_db)
+
+@router.get("/{place_id}/reviews")
+async def get_reviews(
+    place_id: str,
+    force_refresh: bool = Query(False, description="Bypass cache and re-fetch from Google"),
 ):
-    """Ingest reviews for a restaurant from Google/Yelp"""
-    
-    # Check restaurant exists
-    restaurant = db.query(Restaurant).filter(Restaurant.id == restaurant_id).first()
-    if not restaurant:
-        raise HTTPException(status_code=404, detail="Restaurant not found")
-    
-    # Update restaurant with platform IDs
-    if google_place_id:
-        restaurant.google_place_id = google_place_id
-    if yelp_business_id:
-        restaurant.yelp_business_id = yelp_business_id
-    
+    """
+    Get reviews for a restaurant by Google Place ID.
+    Uses cached reviews when available (14-day TTL).
+    Pass ?force_refresh=true to bypass cache.
+    """
     try:
-        # Ingest reviews
-        reviews_data = ingest_restaurant_reviews(google_place_id, yelp_business_id)
-        
-        created_reviews = []
-        for review_data in reviews_data:
-            # Check if review already exists
-            existing_review = db.query(Review).filter(
-                Review.restaurant_id == restaurant_id,
-                Review.reviewer_external_id == review_data["reviewer_external_id"],
-                Review.platform == review_data["platform"]
-            ).first()
-            
-            if not existing_review:
-                review = Review(
-                    restaurant_id=restaurant_id,
-                    reviewer_external_id=review_data["reviewer_external_id"],
-                    platform=review_data["platform"],
-                    rating=review_data["rating"],
-                    text=review_data["text"],
-                    sentiment_score=review_data["sentiment_score"],
-                    extracted_attributes=review_data["extracted_attributes"],
-                    preparation_feedback=review_data["preparation_feedback"],
-                    context_tags=review_data["context_tags"]
-                )
-                db.add(review)
-                created_reviews.append(review_data)
-        
-        db.commit()
-        
-        # Update restaurant average rating
-        avg_rating = db.query(Review).filter(Review.restaurant_id == restaurant_id).with_entities(
-            db.func.avg(Review.rating)
-        ).scalar()
-        restaurant.avg_rating = float(avg_rating) if avg_rating else 0.0
-        db.commit()
-        
+        if force_refresh:
+            # Import internals to force a cache miss
+            from app.services.review_ingestion import _fetch_google_reviews, _enrich_reviews_batch, _cache_reviews
+            raw = _fetch_google_reviews(place_id)
+            if raw:
+                enriched = _enrich_reviews_batch(raw, place_id)
+                _cache_reviews(place_id, enriched)
+                reviews = enriched
+            else:
+                reviews = []
+        else:
+            reviews = get_reviews_for_restaurant(place_id)
+
         return {
-            "message": f"Ingested {len(created_reviews)} new reviews",
-            "reviews_count": len(created_reviews)
+            "place_id": place_id,
+            "reviews": reviews,
+            "count": len(reviews),
         }
-        
     except Exception as e:
+        logger.error("Error fetching reviews for %s: %s", place_id, e)
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{restaurant_id}")
-async def get_restaurant_reviews(
-    restaurant_id: int,
-    limit: int = 50,
-    db: Session = Depends(get_db)
-):
-    """Get reviews for a restaurant"""
-    reviews = db.query(Review).filter(
-        Review.restaurant_id == restaurant_id
-    ).limit(limit).all()
-    
-    return [
-        {
-            "id": review.id,
-            "platform": review.platform,
-            "rating": review.rating,
-            "text": review.text,
-            "sentiment_score": review.sentiment_score,
-            "extracted_attributes": review.extracted_attributes,
-            "created_at": review.created_at
+
+@router.get("/{place_id}/dish-sentiments")
+async def get_dish_sentiments(place_id: str):
+    """
+    Get aggregated sentiment scores per dish mentioned in reviews.
+    Useful for understanding which dishes are most praised.
+    """
+    try:
+        sentiments = get_dish_sentiment_scores(place_id)
+        return {
+            "place_id": place_id,
+            "dish_sentiments": sentiments,
+            "dishes_found": len(sentiments),
         }
-        for review in reviews
-    ]
+    except Exception as e:
+        logger.error("Error getting dish sentiments for %s: %s", place_id, e)
+        raise HTTPException(status_code=500, detail=str(e))

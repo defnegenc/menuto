@@ -1,245 +1,276 @@
 """
 menuto-backend/app/services/review_ingestion.py
 
-What this is:
-- Helpers to fetch restaurant reviews (Google/Yelp) and optionally enrich them with OpenAI.
-
-Why we keep it:
-- Used by /reviews/* endpoints (routers/reviews.py) to ingest reviews for restaurants.
+Review ingestion pipeline:
+1. Check Supabase cache (reviews < 14 days old)
+2. If stale/missing, fetch from Google Places API (5 reviews per restaurant, free tier)
+3. Extract dish mentions + sentiment via Gemini
+4. Cache everything in Supabase for reuse
 """
 
-import requests
-import google.generativeai as genai
-from typing import List, Dict, Optional
-import os
-from dotenv import load_dotenv
-import time
 import json
+import logging
+import os
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 
-try:
-    load_dotenv()
-except Exception as e:
-    _ = e
+import google.generativeai as genai
+import httpx
+from supabase import Client, create_client
 
-class ReviewIngestion:
-    def __init__(self):
-        self.google_api_key = os.getenv("GOOGLE_PLACES_API_KEY")
-        self.yelp_api_key = os.getenv("YELP_API_KEY")
-        gemini_api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
-        if gemini_api_key:
-            genai.configure(api_key=gemini_api_key)
-            self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
+logger = logging.getLogger(__name__)
+
+GOOGLE_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY")
+CACHE_TTL_DAYS = 14
+
+# Supabase client
+_sb: Client | None = None
+if SUPABASE_URL and SUPABASE_KEY:
+    _sb = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Gemini client
+_gemini_model = None
+gemini_key = os.getenv("GOOGLE_GEMINI_API_KEY")
+if gemini_key:
+    genai.configure(api_key=gemini_key)
+    _gemini_model = genai.GenerativeModel("gemini-2.0-flash-exp")
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+def get_reviews_for_restaurant(place_id: str) -> List[Dict[str, Any]]:
+    """
+    Get reviews for a restaurant. Uses Supabase cache if fresh,
+    otherwise fetches from Google Places API and caches.
+
+    Returns list of review dicts with: platform, rating, text, author,
+    review_date, sentiment_score, dish_mentions.
+    """
+    cached = _get_cached_reviews(place_id)
+    if cached is not None:
+        logger.info("Cache hit for %s (%d reviews)", place_id, len(cached))
+        return cached
+
+    logger.info("Cache miss for %s, fetching from Google", place_id)
+    raw_reviews = _fetch_google_reviews(place_id)
+    if not raw_reviews:
+        return []
+
+    # Extract dish mentions + sentiment via LLM
+    enriched = _enrich_reviews_batch(raw_reviews, place_id)
+
+    # Cache in Supabase
+    _cache_reviews(place_id, enriched)
+
+    return enriched
+
+
+def get_dish_sentiment_scores(place_id: str) -> Dict[str, float]:
+    """
+    Get aggregated sentiment scores per dish name mentioned in reviews.
+    Returns {"Margherita Pizza": 0.85, "Caesar Salad": 0.62, ...}
+
+    Scores are 0.0-1.0 (normalized from review ratings + sentiment).
+    """
+    reviews = get_reviews_for_restaurant(place_id)
+    dish_scores: Dict[str, List[float]] = {}
+
+    for review in reviews:
+        mentions = review.get("dish_mentions", [])
+        base_score = review.get("rating", 3.0) / 5.0  # normalize to 0-1
+        sentiment = review.get("sentiment_score")
+        if sentiment is not None:
+            # Blend rating + sentiment (sentiment is -1 to 1, normalize to 0-1)
+            score = 0.6 * base_score + 0.4 * ((sentiment + 1) / 2)
         else:
-            self.model = None
-    
-    def get_google_reviews(self, place_id: str, max_reviews: int = 50) -> List[Dict]:
-        """Fetch reviews from Google Places API"""
-        print(f"🔍 Fetching Google reviews for place_id: {place_id}")
-        
-        url = "https://maps.googleapis.com/maps/api/place/details/json"
-        params = {
-            "place_id": place_id,
-            "fields": "reviews",
-            "key": self.google_api_key
-        }
-        
-        try:
-            response = requests.get(url, params=params)
-            data = response.json()
-            
-            if data.get("status") != "OK":
-                print(f"❌ Google API error: {data.get('status')}")
-                raise Exception(f"Google API error: {data.get('status')}")
-            
-            reviews = []
-            raw_reviews = data.get("result", {}).get("reviews", [])
-            print(f"📝 Found {len(raw_reviews)} Google reviews")
-            
-            for i, review in enumerate(raw_reviews):
-                review_data = {
-                    "platform": "google",
-                    "reviewer_external_id": review.get("author_name", "unknown"),
-                    "rating": float(review.get("rating", 0)),
-                    "text": review.get("text", ""),
-                    "review_date": review.get("time")  # Unix timestamp
-                }
-                reviews.append(review_data)
-                
-                # Log first few reviews for debugging
-                if i < 3:
-                    print(f"📖 Review {i+1}: {review_data['rating']}⭐ - \"{review_data['text'][:100]}...\"")
-            
-            print(f"✅ Processed {len(reviews)} Google reviews")
-            return reviews[:max_reviews]
-            
-        except Exception as e:
-            print(f"Error fetching Google reviews: {e}")
-            return []
-    
-    def get_yelp_reviews(self, business_id: str, max_reviews: int = 50) -> List[Dict]:
-        """Fetch reviews from Yelp API"""
-        print(f"🔍 Fetching Yelp reviews for business_id: {business_id}")
-        
-        if not self.yelp_api_key:
-            print("⚠️ No Yelp API key found - skipping Yelp reviews")
-            return []
-        
-        url = f"https://api.yelp.com/v3/businesses/{business_id}/reviews"
-        headers = {
-            "Authorization": f"Bearer {self.yelp_api_key}"
-        }
-        params = {
-            "limit": min(max_reviews, 50)  # Yelp max is 50
-        }
-        
-        try:
-            response = requests.get(url, headers=headers, params=params)
-            data = response.json()
-            
-            reviews = []
-            raw_reviews = data.get("reviews", [])
-            print(f"📝 Found {len(raw_reviews)} Yelp reviews")
-            
-            for i, review in enumerate(raw_reviews):
-                review_data = {
-                    "platform": "yelp", 
-                    "reviewer_external_id": review.get("user", {}).get("id", "unknown"),
-                    "rating": float(review.get("rating", 0)),
-                    "text": review.get("text", ""),
-                    "review_date": review.get("time_created")
-                }
-                reviews.append(review_data)
-                
-                # Log first few reviews for debugging
-                if i < 3:
-                    print(f"📖 Review {i+1}: {review_data['rating']}⭐ - \"{review_data['text'][:100]}...\"")
-            
-            print(f"✅ Processed {len(reviews)} Yelp reviews")
-            return reviews
-            
-        except Exception as e:
-            print(f"Error fetching Yelp reviews: {e}")
-            return []
-    
-    def enrich_review_with_llm(self, review_text: str, dish_name: str = "") -> Dict:
-        """Use LLM to extract structured data from review text"""
-        print(f"🤖 Enriching review with LLM{f' for dish: {dish_name}' if dish_name else ''}")
-        print(f"📝 Review text: \"{review_text[:150]}...\"")
-        
-        prompt = f"""
-        Analyze this restaurant review and extract structured information.
-        {f"The review is specifically about: {dish_name}" if dish_name else ""}
-        
-        Review text: "{review_text}"
-        
-        Extract and return JSON with:
-        {{
-          "sentiment_score": -1.0 to 1.0,
-          "extracted_attributes": ["creamy", "spicy", "fresh"],
-          "preparation_feedback": {{"texture": "good", "temperature": "hot", "presentation": "nice"}},
-          "context_tags": ["date_night", "quick_lunch", "family_dinner"],
-          "specific_praise": ["great flavors", "perfect portion"],
-          "specific_complaints": ["too salty", "overcooked"]
-        }}
-        
-        Guidelines:
-        - sentiment_score: -1 (very negative) to 1 (very positive)
-        - extracted_attributes: taste/texture descriptors mentioned
-        - preparation_feedback: how food was prepared/served
-        - context_tags: dining occasion/context if mentioned
-        - Extract specific praise and complaints
-        """
-        
-        try:
-            if not self.model:
-                # Fallback if Gemini not configured
-                return {
-                    "sentiment_score": 0.0,
-                    "extracted_attributes": [],
-                    "preparation_feedback": {},
-                    "context_tags": [],
-                    "specific_praise": [],
-                    "specific_complaints": []
-                }
-            
-            full_prompt = f"You are a review analysis expert. Return valid JSON only.\n\n{prompt}"
-            response = self.model.generate_content(
-                full_prompt,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0.1,
-                    response_mime_type="application/json",
-                ),
-            )
-            
-            enriched_data = json.loads(response.text)
-            print(f"✅ LLM enrichment result: {json.dumps(enriched_data, indent=2)}")
-            return enriched_data
-            
-        except Exception as e:
-            print(f"LLM enrichment failed: {e}")
-            return {
-                "sentiment_score": 0.0,
-                "extracted_attributes": [],
-                "preparation_feedback": {},
-                "context_tags": [],
-                "specific_praise": [],
-                "specific_complaints": []
-            }
-    
-    def batch_enrich_reviews(self, reviews: List[Dict], dish_name: str = "") -> List[Dict]:
-        """Enrich multiple reviews with LLM processing"""
-        enriched_reviews = []
-        
-        for review in reviews:
-            # Add LLM enrichment
-            enrichment = self.enrich_review_with_llm(review["text"], dish_name)
-            
-            enriched_review = {
-                **review,
-                "sentiment_score": enrichment["sentiment_score"],
-                "extracted_attributes": enrichment["extracted_attributes"],
-                "preparation_feedback": enrichment["preparation_feedback"],
-                "context_tags": enrichment["context_tags"]
-            }
-            
-            enriched_reviews.append(enriched_review)
-            
-            # Rate limiting for Gemini
-            time.sleep(0.1)
-        
-        return enriched_reviews
+            score = base_score
 
-def ingest_restaurant_reviews(google_place_id: str = None, yelp_business_id: str = None) -> List[Dict]:
-    """Main function to ingest and enrich reviews from multiple platforms"""
-    print(f"🚀 Starting review ingestion for Google: {google_place_id}, Yelp: {yelp_business_id}")
-    
-    ingestion = ReviewIngestion()
-    all_reviews = []
-    
-    # Get Google reviews
-    if google_place_id:
-        print(f"📱 Fetching Google reviews...")
-        google_reviews = ingestion.get_google_reviews(google_place_id)
-        all_reviews.extend(google_reviews)
-        print(f"📊 Total Google reviews: {len(google_reviews)}")
-    else:
-        print("⚠️ No Google place_id provided")
-    
-    # Get Yelp reviews  
-    if yelp_business_id:
-        print(f"🍽️ Fetching Yelp reviews...")
-        yelp_reviews = ingestion.get_yelp_reviews(yelp_business_id)
-        all_reviews.extend(yelp_reviews)
-        print(f"📊 Total Yelp reviews: {len(yelp_reviews)}")
-    else:
-        print("⚠️ No Yelp business_id provided")
-    
-    # Enrich with LLM
-    if all_reviews:
-        print(f"🤖 Starting LLM enrichment for {len(all_reviews)} reviews...")
-        enriched_reviews = ingestion.batch_enrich_reviews(all_reviews)
-        print(f"✅ Review ingestion complete! Processed {len(enriched_reviews)} reviews")
-        return enriched_reviews
-    
-    print("❌ No reviews found to process")
-    return []
+        for dish_name in mentions:
+            normalized = dish_name.strip().title()
+            if normalized not in dish_scores:
+                dish_scores[normalized] = []
+            dish_scores[normalized].append(score)
+
+    # Average scores per dish
+    return {
+        name: round(sum(scores) / len(scores), 3)
+        for name, scores in dish_scores.items()
+        if scores
+    }
+
+
+# ---------------------------------------------------------------------------
+# Google Places API
+# ---------------------------------------------------------------------------
+
+def _fetch_google_reviews(place_id: str) -> List[Dict[str, Any]]:
+    """Fetch up to 5 reviews from Google Places API (free Enterprise tier)."""
+    if not GOOGLE_API_KEY:
+        logger.warning("GOOGLE_PLACES_API_KEY not set, skipping review fetch")
+        return []
+
+    url = "https://maps.googleapis.com/maps/api/place/details/json"
+    params = {
+        "place_id": place_id,
+        "fields": "reviews,name,rating",
+        "key": GOOGLE_API_KEY,
+    }
+
+    try:
+        with httpx.Client(timeout=10) as client:
+            resp = client.get(url, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+
+        if data.get("status") != "OK":
+            logger.error("Google Places API error: %s", data.get("status"))
+            return []
+
+        result = data.get("result", {})
+        raw_reviews = result.get("reviews", [])
+        logger.info("Fetched %d Google reviews for %s", len(raw_reviews), place_id)
+
+        reviews = []
+        for review in raw_reviews:
+            reviews.append({
+                "platform": "google",
+                "author": review.get("author_name", "Anonymous"),
+                "rating": float(review.get("rating", 0)),
+                "text": review.get("text", ""),
+                "review_date": review.get("time"),  # Unix timestamp
+                "language": review.get("language", "en"),
+            })
+
+        return reviews
+
+    except Exception as e:
+        logger.error("Failed to fetch Google reviews for %s: %s", place_id, e)
+        return []
+
+
+# ---------------------------------------------------------------------------
+# LLM Enrichment (Gemini)
+# ---------------------------------------------------------------------------
+
+def _enrich_reviews_batch(reviews: List[Dict], place_id: str) -> List[Dict]:
+    """
+    Use Gemini to extract dish mentions and sentiment from all reviews at once.
+    Single LLM call for all reviews (cheaper than per-review calls).
+    """
+    if not _gemini_model or not reviews:
+        # No LLM available — return reviews with empty dish_mentions
+        for r in reviews:
+            r["dish_mentions"] = []
+            r["sentiment_score"] = None
+        return reviews
+
+    # Build a single prompt with all review texts
+    review_texts = []
+    for i, r in enumerate(reviews):
+        text = r.get("text", "").strip()
+        if text:
+            rating = r.get("rating", "?")
+            review_texts.append(f"Review {i+1} ({rating}/5): {text}")
+
+    if not review_texts:
+        for r in reviews:
+            r["dish_mentions"] = []
+            r["sentiment_score"] = None
+        return reviews
+
+    prompt = f"""Analyze these restaurant reviews. For each review, extract:
+1. Any specific dish/food items mentioned by name
+2. A sentiment score from -1.0 (very negative) to 1.0 (very positive)
+
+{chr(10).join(review_texts)}
+
+Return JSON array with one object per review, in order:
+[
+  {{"review_index": 1, "dish_mentions": ["Margherita Pizza", "Tiramisu"], "sentiment_score": 0.8}},
+  {{"review_index": 2, "dish_mentions": [], "sentiment_score": -0.3}}
+]
+
+Rules:
+- Only extract actual dish/food names, not generic terms like "food" or "appetizer"
+- Include drinks if specifically named (e.g., "Espresso Martini")
+- Use the dish name as written in the review, capitalized properly
+- If no dishes mentioned, return empty array
+- Return ONLY the JSON array, no other text"""
+
+    try:
+        response = _gemini_model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.1,
+                response_mime_type="application/json",
+            ),
+        )
+
+        enrichments = json.loads(response.text)
+        logger.info("LLM extracted dish mentions for %s: %d reviews processed", place_id, len(enrichments))
+
+        # Map enrichments back to reviews
+        enrichment_map = {e["review_index"]: e for e in enrichments}
+        for i, review in enumerate(reviews):
+            e = enrichment_map.get(i + 1, {})
+            review["dish_mentions"] = e.get("dish_mentions", [])
+            review["sentiment_score"] = e.get("sentiment_score")
+
+    except Exception as e:
+        logger.error("LLM enrichment failed for %s: %s", place_id, e)
+        for r in reviews:
+            r["dish_mentions"] = []
+            r["sentiment_score"] = None
+
+    return reviews
+
+
+# ---------------------------------------------------------------------------
+# Supabase Cache
+# ---------------------------------------------------------------------------
+
+def _get_cached_reviews(place_id: str) -> Optional[List[Dict]]:
+    """Check Supabase for cached reviews within TTL."""
+    if not _sb:
+        return None
+
+    try:
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=CACHE_TTL_DAYS)).isoformat()
+        result = (
+            _sb.table("review_cache")
+            .select("reviews, fetched_at")
+            .eq("place_id", place_id)
+            .gte("fetched_at", cutoff)
+            .maybe_single()
+            .execute()
+        )
+        if result.data:
+            return result.data["reviews"]
+        return None
+    except Exception as e:
+        logger.warning("Cache read failed for %s: %s", place_id, e)
+        return None
+
+
+def _cache_reviews(place_id: str, reviews: List[Dict]) -> None:
+    """Upsert reviews into Supabase cache."""
+    if not _sb:
+        return
+
+    try:
+        _sb.table("review_cache").upsert(
+            {
+                "place_id": place_id,
+                "reviews": reviews,
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+                "review_count": len(reviews),
+            },
+            on_conflict="place_id",
+        ).execute()
+        logger.info("Cached %d reviews for %s", len(reviews), place_id)
+    except Exception as e:
+        logger.warning("Cache write failed for %s: %s", place_id, e)
