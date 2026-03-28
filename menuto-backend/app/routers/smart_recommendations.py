@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import datetime
 from fastapi import APIRouter, HTTPException, Request
 
 from app.services.menu_data_service import MenuDataService
@@ -48,6 +49,31 @@ async def generate_smart_recommendations(
         hunger_raw = context_weights.get("hungerLevel")
         spice_raw = context_weights.get("spiceTolerance")
 
+        # Time-aware hunger adjustment: if user didn't specify hunger level,
+        # infer from time of day
+        if hunger_raw is None:
+            hour = datetime.now().hour
+            if 6 <= hour < 11:      # breakfast
+                hunger_raw = 2       # light
+            elif 11 <= hour < 14:   # lunch
+                hunger_raw = 3       # normal
+            elif 14 <= hour < 17:   # afternoon
+                hunger_raw = 2       # light (snack time)
+            elif 17 <= hour < 21:   # dinner
+                hunger_raw = 4       # hungry
+            else:                    # late night
+                hunger_raw = 2       # light
+
+        # Determine meal period for context signals
+        hour = datetime.now().hour
+        meal_period = (
+            "breakfast" if 6 <= hour < 11
+            else "lunch" if 11 <= hour < 14
+            else "afternoon" if 14 <= hour < 17
+            else "dinner" if 17 <= hour < 21
+            else "late_night"
+        )
+
         # Fetch user's past dish ratings to feed into the algorithm
         user_ratings_map: dict[str, float] = {}
         user_id = data.get("user_id")
@@ -68,7 +94,7 @@ async def generate_smart_recommendations(
                             user_ratings_map[dish_info["name"]] = r["rating"]
                     if user_ratings_map:
                         logger.info(
-                            "Loaded %d past dish ratings for user %s",
+                            "Loaded %d cross-restaurant dish ratings for user %s (all restaurants)",
                             len(user_ratings_map), user_id,
                         )
             except Exception as e:
@@ -78,10 +104,11 @@ async def generate_smart_recommendations(
             hunger_level=_map_hunger_level(hunger_raw),
             craving_tags=context_weights.get("selectedCravings", []) or [],
             spice_preference=(spice_raw or 3) / 5.0,
-            budget_min=None,
-            budget_max=None,
             friend_selected_item_ids=[fs.get("id") for fs in friend_selections if fs.get("id")],
-            restaurant_specific_signals={"name": restaurant_name},
+            restaurant_specific_signals={
+                "name": restaurant_name,
+                "meal_period": meal_period,
+            },
             user_dish_ratings=user_ratings_map,
         )
 

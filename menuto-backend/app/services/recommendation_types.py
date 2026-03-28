@@ -26,8 +26,6 @@ class RecommendationContext:
     hunger_level: HungerLevel = HungerLevel.NORMAL
     craving_tags: List[str] = field(default_factory=list)
     spice_preference: float = 0.5
-    budget_min: Optional[float] = None
-    budget_max: Optional[float] = None
     friend_selected_item_ids: List[str] = field(default_factory=list)
     restaurant_specific_signals: Dict[str, Any] = field(default_factory=dict)
     user_dish_ratings: Dict[str, float] = field(default_factory=dict)  # {dish_name: rating 1-5}

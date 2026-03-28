@@ -1,38 +1,38 @@
 export const theme = {
   colors: {
-    // Primary brand colors
-    primary: '#D8131F',        // Red - main brand color
-    secondary: '#FFD9DB',      // Light green - accent color
-    tertiary: '#CCDCB6',      // Light green - tertiary color (same as secondary)
-    darkRed: '#881219',       // Dark red for borders
-    
+    // Primary brand colors — Red + Black
+    primary: '#E9323D',        // Menuto red
+    secondary: '#FDECED',      // Light red tint (for selected chips, badges)
+    tertiary: '#1C1917',       // Near-black (for dark CTAs, emphasis)
+    darkRed: '#C42A33',        // Darker red for borders/pressed states
+
     // Neutral colors
-    background: '#FFFEF4',     // Cream background
-    surface: '#FFFFFF',       // White cards/surfaces
-    
+    background: '#FFFFFF',     // White background
+    surface: '#FAFAF9',        // Stone-50 cards/surfaces
+
     // Text colors
     text: {
-      primary: '#D8131F',      // Dark text (using primary color)
-      secondary: '#7F8C8D', 
-      darkGrey: '#4A4A4A',   // Gray text
+      primary: '#1C1917',      // Near-black text
+      secondary: '#5A4D48',    // Warm medium gray
+      darkGrey: '#2C2421',     // Dark warm gray
       light: '#FFFFFF',        // White text
-      muted: '#BDC3C7',        // Very light gray text
+      muted: '#8C7E77',        // Warm light gray
     },
-    
+
     // State colors
-    success: '#2ECC71',        // Green
-    warning: '#F39C12',        // Orange
-    error: '#E74C3C',          // Red
-    info: '#3498DB',           // Blue
-    
+    success: '#22C55E',        // Green
+    warning: '#F59E0B',        // Amber
+    error: '#E9323D',          // Red (same as primary)
+    info: '#3B82F6',           // Blue
+
     // Borders and dividers
-    border: '#E1E8ED',
-    divider: '#E1E8ED',
-    
+    border: '#E7E5E4',
+    divider: '#F5F5F4',
+
     // Special colors
-    gold: '#FFD700',           // For ratings/stars
-    overlay: 'rgba(37, 68, 43, 0.8)', // Semi-transparent primary
-    chipDefault: '#CCDCB6',    // Light green for unselected chips
+    gold: '#F59E0B',           // For ratings/stars
+    overlay: 'rgba(28, 25, 23, 0.8)', // Semi-transparent dark
+    chipDefault: '#FAFAF9',    // Stone-50 for unselected chips
   },
   
   // Typography
@@ -77,13 +77,13 @@ export const theme = {
         fontSize: 30,
         fontFamily: 'Artifact',
         fontWeight: '700' as const,
-        color: '#CCDCB6', // Secondary color
+        color: '#E9323D', // Secondary color
       },
       regular: {
         fontSize: 24,
         fontWeight: '700' as const,
         fontFamily: 'DMSans-Bold',
-        color: '#D8131F',
+        color: '#1C1917',
       },
     },
     h2: {
@@ -91,13 +91,13 @@ export const theme = {
         fontSize: 28,
         fontFamily: 'Artifact',
         fontWeight: '700' as const,
-        color: '#CCDCB6', // Secondary color
+        color: '#E9323D', // Secondary color
       },
       regular: {
         fontSize: 20,
         fontWeight: '600' as const,
         fontFamily: 'DMSans-SemiBold',
-        color: '#D8131F',
+        color: '#1C1917',
       },
     },
     h3: {
@@ -105,13 +105,13 @@ export const theme = {
         fontSize: 20,
         fontFamily: 'Artifact',
         fontWeight: '700' as const,
-        color: '#D8131F', // Primary color
+        color: '#1C1917', // Primary color
       },
       regular: {
         fontSize: 18,
         fontWeight: '500' as const,
         fontFamily: 'DMSans-Medium',
-        color: '#D8131F',
+        color: '#1C1917',
       },
     },
   },
@@ -166,42 +166,42 @@ export const theme = {
   components: {
     button: {
       primary: {
-        backgroundColor: '#D8131F',
+        backgroundColor: '#E9323D',
         color: '#FFFFFF',
       },
       secondary: {
-        backgroundColor: '#CCDCB6',
-        color: '#D8131F',
+        backgroundColor: '#1C1917',
+        color: '#FFFFFF',
       },
       tertiary: {
-        backgroundColor: '#CCDCB6',
-        color: '#D8131F',
+        backgroundColor: '#FDECED',
+        color: '#E9323D',
       },
       outline: {
         backgroundColor: 'transparent',
-        borderColor: '#D8131F',
-        color: '#D8131F',
+        borderColor: '#E9323D',
+        color: '#E9323D',
       },
       ghost: {
         backgroundColor: 'transparent',
-        color: '#D8131F',
+        color: '#E9323D',
       },
     },
     chip: {
       default: {
-        backgroundColor: '#FFFFFF',
-        borderColor: '#E1E8ED',
-        color: '#D8131F',
+        backgroundColor: '#FAFAF9',
+        borderColor: '#E7E5E4',
+        color: '#1C1917',
       },
       selected: {
-        backgroundColor: '#D8131F',
-        borderColor: '#D8131F',
+        backgroundColor: '#E9323D',
+        borderColor: '#E9323D',
         color: '#FFFFFF',
       },
       accent: {
-        backgroundColor: '#CCDCB6',
-        borderColor: '#CCDCB6',
-        color: '#D8131F',
+        backgroundColor: '#FDECED',
+        borderColor: '#FDECED',
+        color: '#E9323D',
       },
     },
   },

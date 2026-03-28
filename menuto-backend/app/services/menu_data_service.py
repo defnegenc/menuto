@@ -187,6 +187,7 @@ class MenuDataService:
                             "menu_id": menu_id,
                             "ingredients": dish.get("ingredients") or [],
                             "dietary_tags": dish.get("dietary_tags") or [],
+                            "dietary_flags": dish.get("dietary_flags") or {},
                         },
                     )
                 )

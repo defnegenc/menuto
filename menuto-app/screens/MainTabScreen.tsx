@@ -44,7 +44,7 @@ export function MainTabScreen({ onSelectRestaurant, onAddRestaurant, onSignOut, 
         screenOptions={{
           headerShown: false,
           tabBarStyle: {
-            backgroundColor: '#FFFEF4',
+            backgroundColor: '#FFFFFF',
             borderTopColor: '#E1E8ED',
             borderTopWidth: 1,
           },

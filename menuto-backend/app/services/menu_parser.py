@@ -564,6 +564,14 @@ Return ONLY a JSON object with this structure:
       "category": "Antipasti",
       "ingredients": ["ingredient1", "ingredient2"],
       "dietary_tags": ["vegetarian"],
+      "dietary_flags": {{
+        "is_vegetarian": true,
+        "is_vegan": false,
+        "is_gluten_free": false,
+        "contains_nuts": false,
+        "contains_dairy": true,
+        "contains_alcohol": false
+      }},
       "preparation_style": ["grilled"]
     }}
   ],
@@ -579,6 +587,10 @@ Rules:
 - Only include dietary_tags if explicitly mentioned (vegetarian, vegan, gluten-free, spicy)
 - Only include ingredients explicitly listed
 - Determine cuisine_type from dish names and restaurant name
+- For dietary_flags, analyze ALL ingredients (including hidden ones like anchovy in Caesar dressing, fish sauce in Pad Thai, parmesan in pesto) to determine true dietary compatibility. Don't just check if "vegetarian" is written — think about what the dish actually contains.
+- is_vegetarian: no meat, poultry, fish, or seafood (eggs and dairy OK)
+- is_vegan: no animal products at all (no meat, dairy, eggs, honey)
+- is_gluten_free: no wheat, barley, rye, or gluten-containing ingredients
 - Return ONLY valid JSON, no markdown, no commentary
 """
     

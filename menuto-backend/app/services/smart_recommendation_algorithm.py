@@ -107,6 +107,19 @@ class SmartRecommendationAlgorithm:
         constraints = {c.lower() for c in user_dietary_constraints}
 
         def passes(item: ItemFeatures) -> bool:
+            # Prefer LLM-generated dietary flags if available
+            flags = item.raw_metadata.get("dietary_flags", {})
+            if flags:
+                if "vegetarian" in constraints and not flags.get("is_vegetarian", True):
+                    return False
+                if "vegan" in constraints and not flags.get("is_vegan", True):
+                    return False
+                if "gluten-free" in constraints and not flags.get("is_gluten_free", True):
+                    return False
+                if "nut-free" in constraints and flags.get("contains_nuts", False):
+                    return False
+                return True
+            # Fallback to keyword matching (for menus parsed before dietary_flags existed)
             text = f"{item.name} {item.description}".lower()
             if "vegetarian" in constraints:
                 if any(m in text for m in ["chicken", "beef", "pork", "lamb", "fish", "seafood"]):

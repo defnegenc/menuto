@@ -1,0 +1,113 @@
+<html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menuto - My Spots</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"DM Sans"', 'sans-serif'] },
+                    colors: { cream: '#FFFEF4', terra: '#CE3E25' },
+                    boxShadow: {
+                        'soft': '0 4px 16px rgba(0, 0, 0, 0.04)',
+                        'warm': '0 12px 40px -12px rgba(206, 62, 37, 0.15)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        body { width: 393px; height: 852px; margin: 0 auto; overflow: hidden; position: relative; border-radius: 40px; box-shadow: 0 0 80px rgba(0,0,0,0.08); }
+    </style>
+</head>
+<body class="font-sans text-stone-900 bg-white">
+
+    <div class="w-full h-full flex flex-col relative overflow-y-auto pb-28">
+        <div class="px-6 pt-16 pb-2">
+            <h1 class="text-[36px] font-bold leading-none tracking-tight text-stone-900">Your spots</h1>
+        </div>
+
+        <!-- Search -->
+        <div class="px-6 pt-4 pb-2">
+            <div class="bg-stone-50 border border-stone-100 rounded-[16px] px-4 py-3.5 flex items-center gap-3">
+                <i data-lucide="search" class="w-4 h-4 text-stone-400"></i>
+                <span class="text-[14px] text-stone-400">Search your restaurants...</span>
+            </div>
+        </div>
+
+        <!-- Restaurant cards -->
+        <div class="flex flex-col gap-3 px-6 pt-4">
+            <!-- Txikito -->
+            <div class="bg-stone-50/80 border border-stone-100 rounded-[24px] p-5">
+                <div class="flex justify-between items-start mb-1">
+                    <div>
+                        <h4 class="font-bold text-[18px] text-stone-900">Txikito</h4>
+                        <p class="text-[13px] text-stone-400 italic">480 2nd Ave, Chelsea · Basque</p>
+                    </div>
+                    <span class="bg-orange-50 text-terra text-[10px] uppercase font-bold px-2 py-0.5 rounded-sm">92%</span>
+                </div>
+                <div class="flex gap-2 mt-3 flex-wrap">
+                    <span class="bg-orange-50 text-terra text-[12px] font-medium px-3 py-1 rounded-full">Kroketas del día</span>
+                    <span class="bg-orange-50 text-terra text-[12px] font-medium px-3 py-1 rounded-full">Aceitunas</span>
+                    <span class="bg-orange-50 text-terra text-[12px] font-medium px-3 py-1 rounded-full">Txuleta</span>
+                </div>
+            </div>
+
+            <!-- Yarsa -->
+            <div class="bg-stone-50/80 border border-stone-100 rounded-[24px] p-5">
+                <div class="flex justify-between items-start mb-1">
+                    <div>
+                        <h4 class="font-bold text-[18px] text-stone-900">Yarsa</h4>
+                        <p class="text-[13px] text-stone-400 italic">35 W 20th St · Nepalese &amp; Indian</p>
+                    </div>
+                    <span class="bg-orange-50 text-terra text-[10px] uppercase font-bold px-2 py-0.5 rounded-sm">88%</span>
+                </div>
+                <div class="flex gap-2 mt-3 flex-wrap">
+                    <span class="bg-orange-50 text-terra text-[12px] font-medium px-3 py-1 rounded-full">Veg Steam Momo</span>
+                    <span class="bg-orange-50 text-terra text-[12px] font-medium px-3 py-1 rounded-full">Coconut Curry</span>
+                </div>
+            </div>
+
+            <!-- Opto (no favorites yet) -->
+            <div class="bg-stone-50/80 border border-stone-100 rounded-[24px] p-5">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <h4 class="font-bold text-[18px] text-stone-900">Opto</h4>
+                        <p class="text-[13px] text-stone-400 italic">35 W 20th St · Mediterranean</p>
+                    </div>
+                </div>
+                <button class="bg-terra text-white text-[12px] font-bold px-4 py-2 rounded-lg shadow-warm flex items-center gap-1.5">
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add favorite dishes
+                </button>
+            </div>
+
+            <!-- Add new spot -->
+            <button class="flex items-center justify-center gap-2 py-4 border-2 border-dashed border-stone-200 rounded-[24px] text-stone-400 font-medium text-[14px]">
+                <i data-lucide="plus" class="w-4 h-4"></i> Add a new spot
+            </button>
+        </div>
+
+        <!-- Tab bar -->
+        <div class="fixed bottom-0 left-0 w-[393px] bg-white/90 backdrop-blur-lg border-t border-stone-100 pb-8 pt-3 px-8 flex justify-between items-center z-50">
+            <button class="flex flex-col items-center gap-1 text-stone-400">
+                <i data-lucide="search" class="w-5 h-5 stroke-[2px]"></i>
+                <span class="text-[10px] font-bold uppercase">Find</span>
+            </button>
+            <button class="flex flex-col items-center gap-1 text-terra">
+                <i data-lucide="bookmark" class="w-5 h-5 stroke-[2.5px] fill-terra"></i>
+                <span class="text-[10px] font-bold uppercase">Spots</span>
+            </button>
+            <button class="flex flex-col items-center gap-1 text-stone-400">
+                <i data-lucide="user" class="w-5 h-5 stroke-[2px]"></i>
+                <span class="text-[10px] font-bold uppercase">Profile</span>
+            </button>
+        </div>
+    </div>
+
+    <script>lucide.createIcons();</script>
+    <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+</body></html>

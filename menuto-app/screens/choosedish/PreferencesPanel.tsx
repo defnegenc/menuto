@@ -4,11 +4,8 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Dimensions,
 } from 'react-native';
 import { theme } from '../../theme';
-
-const screenWidth = Dimensions.get('window').width;
 
 interface PreferencesPanelProps {
   hungerLevel: number;
@@ -216,24 +213,26 @@ export function PreferencesPanel({
   );
 }
 
+const TERRA = '#E9323D';
+const MEDIUM_COLOR = '#5A4D48';
+const LIGHT_TEXT = '#8C7E77';
+
 const styles = StyleSheet.create({
   stepSection: {
     paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.lg,
+    paddingTop: theme.spacing.xl,
     paddingBottom: theme.spacing.md,
   },
   stepText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
+    fontSize: 13,
+    color: MEDIUM_COLOR,
     marginBottom: theme.spacing.sm,
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontFamily: 'DMSans-Regular',
   },
   stepUnderline: {
-    height: 2,
-    width: screenWidth * 0.9,
-    backgroundColor: theme.colors.primary,
-    borderRadius: 2,
-    alignSelf: 'center',
+    height: 1,
+    backgroundColor: '#E7E5E4',
+    alignSelf: 'stretch',
   },
   questionsSection: {
     paddingHorizontal: theme.spacing.lg,
@@ -244,16 +243,16 @@ const styles = StyleSheet.create({
   },
   questionTitle: {
     fontSize: 20,
-    fontWeight: theme.typography.weights.medium,
-    color: '#000000',
+    fontFamily: 'DMSans-Bold',
+    color: '#1C1917',
+    letterSpacing: -1.5,
     marginBottom: theme.spacing.sm,
-    fontFamily: theme.typography.fontFamilies.medium,
   },
   questionSubtitle: {
-    fontSize: 15,
-    color: '#000000',
+    fontSize: 14,
+    color: MEDIUM_COLOR,
     marginBottom: theme.spacing.md,
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontFamily: 'DMSans-Regular',
   },
   simpleSlider: {
     width: '100%',
@@ -265,8 +264,8 @@ const styles = StyleSheet.create({
   simpleSliderTrack: {
     width: '100%',
     height: 4,
-    backgroundColor: theme.colors.primary,
-    borderRadius: 2,
+    backgroundColor: '#F5F5F4',
+    borderRadius: 999,
   },
   sliderStops: {
     position: 'absolute',
@@ -289,7 +288,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: TERRA,
     ...theme.shadows.md,
   },
   sliderLabels: {
@@ -297,9 +296,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   sliderLabel: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.text.secondary,
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontSize: 12,
+    color: LIGHT_TEXT,
+    fontFamily: 'DMSans-Regular',
   },
   cravingChipsContainer: {
     flexDirection: 'row',
@@ -307,25 +306,30 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   cravingChip: {
-    backgroundColor: 'transparent',
+    backgroundColor: '#FAFAF9',
     borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderWidth: 1,
-    borderColor: theme.colors.primary,
+    borderColor: '#F5F5F4',
   },
   cravingChipSelected: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+    backgroundColor: TERRA,
+    borderColor: TERRA,
+    shadowColor: TERRA,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
   cravingChipText: {
     fontSize: 13,
-    color: '#000000',
-    fontFamily: theme.typography.fontFamilies.regular,
+    color: '#78716C',
+    fontFamily: 'DMSans-Regular',
   },
   cravingChipTextSelected: {
     color: '#FFFFFF',
-    fontFamily: theme.typography.fontFamilies.medium,
+    fontFamily: 'DMSans-Bold',
   },
   mealStructureContainer: {
     flexDirection: 'row',
@@ -334,37 +338,36 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
   },
   mealStructureOption: {
-    backgroundColor: 'transparent',
+    backgroundColor: '#FAFAF9',
     borderRadius: 999,
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: theme.colors.primary,
+    borderColor: '#E7E5E4',
   },
   mealStructureOptionSelected: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+    backgroundColor: TERRA,
+    borderColor: TERRA,
   },
   mealStructureText: {
     fontSize: 14,
-    color: theme.colors.primary,
-    fontFamily: theme.typography.fontFamilies.regular,
+    color: '#78716C',
+    fontFamily: 'DMSans-Regular',
   },
   mealStructureTextSelected: {
     color: '#FFFFFF',
-    fontFamily: theme.typography.fontFamilies.medium,
+    fontFamily: 'DMSans-Bold',
   },
   continueButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.lg,
+    backgroundColor: '#1C1917',
+    borderRadius: 999,
+    paddingVertical: 18,
     alignItems: 'center',
     marginTop: theme.spacing.xl,
   },
   continueButtonText: {
     color: '#FFFFFF',
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.semibold,
-    fontFamily: theme.typography.fontFamilies.semibold,
+    fontSize: 16,
+    fontFamily: 'DMSans-Bold',
   },
 });

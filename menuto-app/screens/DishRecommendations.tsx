@@ -396,9 +396,9 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
           showBackButton={true}
           onBack={onBack}
         />
-        <LoadingScreen 
-          message="Loading recommendations"
-          subMessage="Cooking up something good..."
+        <LoadingScreen
+          restaurantName={restaurant.name}
+          cravings={userPreferences.selectedCravings}
         />
       </View>
     );

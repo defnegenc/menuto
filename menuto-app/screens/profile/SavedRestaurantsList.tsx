@@ -191,15 +191,16 @@ export function SavedRestaurantsList({
   );
 }
 
+const TERRA = '#E9323D';
+
 const styles = StyleSheet.create({
   section: {
     paddingHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.xl,
   },
   sectionTitle: {
-    fontSize: 25,
-    fontWeight: theme.typography.weights.normal,
-    color: '#000000',
+    fontSize: 24,
+    color: '#1C1917',
     marginBottom: theme.spacing.sm,
     fontFamily: theme.typography.fontFamilies.regular,
   },
@@ -210,20 +211,19 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   editButtonText: {
-    color: '#000000',
+    color: TERRA,
     fontSize: 12,
-    fontWeight: theme.typography.weights.medium,
-    fontFamily: theme.typography.fontFamilies.medium,
+    fontFamily: theme.typography.fontFamilies.bold,
   },
   selectedLabel: {
     fontSize: theme.typography.sizes.sm,
-    color: theme.colors.text.secondary,
+    color: '#A8A29E',
     marginBottom: theme.spacing.sm,
     fontFamily: theme.typography.fontFamilies.regular,
   },
   emptyText: {
     fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
+    color: '#A8A29E',
     fontStyle: 'italic',
     fontFamily: theme.typography.fontFamilies.regular,
   },
@@ -234,40 +234,40 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 8,
-    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    paddingVertical: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: '#E7E5E4',
   },
   cancelButtonText: {
-    fontSize: 16,
-    color: theme.colors.text.primary,
-    fontWeight: '600',
-    fontFamily: theme.typography.fontFamilies.semibold,
+    fontSize: 14,
+    color: '#1C1917',
+    fontFamily: theme.typography.fontFamilies.medium,
   },
   saveButton: {
     flex: 1,
-    backgroundColor: theme.colors.primary,
-    borderRadius: 8,
-    paddingVertical: 12,
+    backgroundColor: TERRA,
+    borderRadius: 999,
+    paddingVertical: 14,
     alignItems: 'center',
   },
   saveButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#FFFFFF',
-    fontWeight: '600',
-    fontFamily: theme.typography.fontFamilies.semibold,
+    fontFamily: theme.typography.fontFamilies.bold,
   },
   top3RestaurantsContainer: {
     gap: theme.spacing.sm,
   },
   selectedTop3Container: {
     marginBottom: theme.spacing.md,
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.secondary + '20',
-    borderRadius: 10,
+    padding: 20,
+    backgroundColor: '#FAFAF9',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#F5F5F4',
   },
   selectedTop3Item: {
     flexDirection: 'row',
@@ -275,11 +275,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: theme.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: '#F5F5F4',
   },
   selectedTop3Text: {
     fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.primary,
+    color: '#1C1917',
     fontFamily: theme.typography.fontFamilies.medium,
   },
   removeTop3Button: {
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
   },
   removeTop3Text: {
     fontSize: 20,
-    color: theme.colors.primary,
+    color: TERRA,
     fontWeight: 'bold',
   },
   top3ChipsContainer: {
@@ -297,24 +297,22 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   top3Chip: {
-    backgroundColor: 'transparent',
+    backgroundColor: '#FDECED',
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: theme.colors.primary,
+    borderWidth: 0,
   },
   top3ChipDisabled: {
     opacity: 0.5,
   },
   top3ChipText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: theme.colors.primary,
+    fontSize: 12,
+    color: TERRA,
     fontFamily: theme.typography.fontFamilies.medium,
   },
   top3ChipTextDisabled: {
-    color: theme.colors.text.secondary,
+    color: '#A8A29E',
   },
   emptyState: {
     alignItems: 'center',
@@ -322,13 +320,13 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 16,
-    color: theme.colors.text.secondary,
+    color: '#A8A29E',
     marginBottom: 4,
     fontFamily: theme.typography.fontFamilies.regular,
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: theme.colors.text.muted,
+    color: '#A8A29E',
     fontFamily: theme.typography.fontFamilies.regular,
   },
   chipsContainer: {
@@ -338,21 +336,19 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   triedDishChip: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.round,
-    borderWidth: 1,
-    borderColor: theme.colors.primary,
+    backgroundColor: '#FDECED',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 0,
     minHeight: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
   triedDishChipText: {
-    fontSize: 10.5,
-    color: theme.colors.primary,
-    fontWeight: '400',
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontSize: 12,
+    color: TERRA,
+    fontFamily: theme.typography.fontFamilies.medium,
   },
   signOutContainer: {
     paddingHorizontal: theme.spacing.lg,
@@ -360,15 +356,16 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   signOutButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
+    backgroundColor: 'transparent',
+    borderRadius: 999,
+    paddingVertical: 14,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E7E5E4',
   },
   signOutButtonText: {
-    color: '#FFFFFF',
+    color: '#1C1917',
     fontSize: 16,
-    fontWeight: '600',
-    fontFamily: theme.typography.fontFamilies.semibold,
+    fontFamily: theme.typography.fontFamilies.medium,
   },
 });

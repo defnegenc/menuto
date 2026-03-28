@@ -14,12 +14,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { api } from '../../services/api';
 import { useStore } from '../../store/useStore';
-import { theme } from '../../theme';
-import { UnifiedHeader } from '../../components/UnifiedHeader';
 import { SearchBar } from '../../components/SearchBar';
 import { SearchRestaurantCard } from '../../components/SearchRestaurantCard';
 import { SearchRestaurantSelected } from '../../components/SearchRestaurantSelected';
 import { POPULAR_CITIES, City } from '../../constants';
+
+// Bold Diner design tokens
+const TERRA = '#E9323D';
+const TERRA_LIGHT = '#FDECED';
+const CREAM = '#FFFFFF';
+const DARK = '#2C2421';
+const MEDIUM = '#5A4D48';
+const LIGHT_TEXT_COLOR = '#8C7E77';
 
 interface Restaurant {
   place_id: string;
@@ -378,16 +384,22 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
 
   // Wait for interactions to complete before rendering
   if (!isInteractionComplete) {
-    return <View style={{ flex: 1, backgroundColor: theme.colors.background }} />;
+    return <View style={{ flex: 1, backgroundColor: CREAM }} />;
   }
 
   // Show loading screen while initializing
   if (isInitializing) {
     return (
       <View style={styles.container}>
-        <UnifiedHeader title="Add Restaurants" />
+        <View style={styles.headerSection}>
+          <Text style={styles.sectionLabel}>ONBOARDING</Text>
+          <Text style={styles.headline}>
+            Add your{'\n'}
+            <Text style={styles.headlineAccent}>restaurants</Text>
+          </Text>
+        </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <ActivityIndicator size="large" color={TERRA} />
           <Text style={styles.loadingText}>Setting up location services...</Text>
         </View>
       </View>
@@ -396,8 +408,15 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
 
   return (
     <View style={styles.container}>
-      <UnifiedHeader title="Add Restaurants" />
-      
+      <View style={styles.headerSection}>
+        <Text style={styles.sectionLabel}>ONBOARDING</Text>
+        <Text style={styles.headline}>
+          Add your{'\n'}
+          <Text style={styles.headlineAccent}>restaurants</Text>
+        </Text>
+        <Text style={styles.subtitle}>Search for places you love dining at</Text>
+      </View>
+
       {/* Search Bar */}
       <View style={styles.searchSection}>
         <SearchBar
@@ -431,7 +450,7 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
               </>
             ) : locationStatus === 'loading' ? (
               <>
-                <ActivityIndicator size="small" color="#FF6B35" />
+                <ActivityIndicator size="small" color="#E9323D" />
                 <Text style={styles.locationText}>Getting location...</Text>
               </>
             ) : user?.home_base ? (
@@ -469,7 +488,7 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
             value={citySearchQuery}
             onChangeText={setCitySearchQuery}
             placeholder="Search cities..."
-            placeholderTextColor={theme.colors.text.secondary}
+            placeholderTextColor="#8C7E77"
           />
           
           <ScrollView style={styles.cityList} showsVerticalScrollIndicator={false}>
@@ -580,7 +599,7 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
         {/* Loading State */}
         {searchQuery && isSearching && (
           <View style={styles.loadingState}>
-            <ActivityIndicator size="small" color={theme.colors.primary} />
+            <ActivityIndicator size="small" color="#E9323D" />
             <Text style={styles.loadingText}>Searching restaurants...</Text>
           </View>
         )}
@@ -635,69 +654,105 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: CREAM,
+  },
+  headerSection: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 8,
+    backgroundColor: CREAM,
+  },
+  sectionLabel: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 13,
+    letterSpacing: 3,
+    color: TERRA,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  headline: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 44,
+    letterSpacing: -1.5,
+    lineHeight: 48,
+    color: DARK,
+  },
+  headlineAccent: {
+    color: TERRA,
+  },
+  subtitle: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 18,
+    color: MEDIUM,
+    marginTop: 8,
   },
   searchSection: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.lg,
-    paddingBottom: theme.spacing.xs,
-    backgroundColor: theme.colors.background,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    paddingBottom: 4,
+    backgroundColor: CREAM,
   },
   statusRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: theme.spacing.sm,
+    marginTop: 10,
   },
   footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: theme.colors.background,
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.lg,
+    backgroundColor: CREAM,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 24,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    borderTopColor: '#F5F5F4',
   },
   footerContinueButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.lg,
+    backgroundColor: TERRA,
+    borderRadius: 999,
+    paddingVertical: 18,
     alignItems: 'center',
+    shadowColor: TERRA,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   footerContinueButtonText: {
-    color: theme.colors.text.light,
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.semibold,
-    fontFamily: theme.typography.fontFamilies.semibold,
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontFamily: 'DMSans-Bold',
   },
   footerContinueButtonDisabled: {
-    backgroundColor: theme.colors.text.muted,
+    backgroundColor: '#E7E5E4',
+    shadowOpacity: 0,
   },
   footerContinueButtonTextDisabled: {
-    color: theme.colors.text.secondary,
+    color: LIGHT_TEXT_COLOR,
   },
   sectionTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.text.primary,
-    marginHorizontal: theme.spacing.lg,
-    marginVertical: theme.spacing.md,
-    fontFamily: theme.typography.fontFamilies.semibold,
+    fontFamily: 'DMSans-Bold',
+    fontSize: 13,
+    letterSpacing: 3,
+    color: TERRA,
+    textTransform: 'uppercase',
+    marginHorizontal: 24,
+    marginVertical: 14,
   },
   loadingState: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: theme.spacing.lg,
-    gap: theme.spacing.sm,
+    paddingVertical: 20,
+    gap: 10,
   },
   loadingText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontSize: 14,
+    color: MEDIUM,
+    fontFamily: 'DMSans-Regular',
   },
   scrollView: {
     flex: 1,
@@ -706,117 +761,122 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   restaurantList: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.sm,
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    gap: 12,
   },
   selectedCount: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
-    fontWeight: theme.typography.weights.medium,
+    fontSize: 14,
+    color: MEDIUM,
+    fontFamily: 'DMSans-Bold',
   },
   locationStatus: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.xs,
+    gap: 6,
   },
   locationIcon: {
-    fontSize: theme.typography.sizes.sm,
+    fontSize: 13,
   },
   locationText: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.text.secondary,
+    fontSize: 13,
+    color: LIGHT_TEXT_COLOR,
+    fontFamily: 'DMSans-Regular',
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.huge,
+    paddingHorizontal: 40,
     paddingVertical: 60,
   },
   emptyStateIcon: {
     fontSize: 64,
-    marginBottom: theme.spacing.xl,
+    marginBottom: 20,
   },
   emptyStateTitle: {
-    fontSize: theme.typography.sizes.xxl,
-    fontWeight: 600,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.md,
-    fontFamily: theme.typography.fontFamilies.semibold,
+    fontSize: 22,
+    color: DARK,
+    marginBottom: 12,
+    fontFamily: 'DMSans-Bold',
   },
   emptyStateText: {
-    fontSize: theme.typography.sizes.lg,
-    color: theme.colors.text.secondary,
+    fontSize: 16,
+    color: MEDIUM,
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: theme.spacing.xxxl,
-    fontFamily: theme.typography.fontFamilies.regular,
+    marginBottom: 32,
+    fontFamily: 'DMSans-Regular',
   },
   clearButtonContainer: {
-    padding: theme.spacing.xs,
-    marginLeft: theme.spacing.xs,
+    padding: 6,
+    marginLeft: 4,
   },
   clearButton: {
-    color: theme.colors.text.secondary,
+    color: LIGHT_TEXT_COLOR,
     fontSize: 12,
+    fontFamily: 'DMSans-Bold',
   },
   cityPickerContainer: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    borderTopColor: '#F5F5F4',
     maxHeight: 300,
   },
   cityPickerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: '#F5F5F4',
   },
   cityPickerTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.text.primary,
+    fontSize: 18,
+    fontFamily: 'DMSans-Bold',
+    color: DARK,
   },
   closeButton: {
-    fontSize: theme.typography.sizes.lg,
-    color: theme.colors.text.secondary,
-    padding: theme.spacing.xs,
+    fontSize: 18,
+    color: LIGHT_TEXT_COLOR,
+    padding: 6,
   },
   citySearchInput: {
-    backgroundColor: theme.colors.background,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    fontSize: theme.typography.sizes.md,
-    marginHorizontal: theme.spacing.lg,
-    marginVertical: theme.spacing.md,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    fontSize: 15,
+    marginHorizontal: 24,
+    marginVertical: 12,
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    color: theme.colors.text.primary,
+    borderColor: '#E7E5E4',
+    color: DARK,
+    fontFamily: 'DMSans-Regular',
   },
   cityList: {
     maxHeight: 200,
-    paddingHorizontal: theme.spacing.lg,
+    paddingHorizontal: 24,
   },
   cityItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-    marginBottom: theme.spacing.xs,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    marginBottom: 6,
   },
   cityItemSelected: {
-    backgroundColor: theme.colors.primary + '15',
+    backgroundColor: TERRA_LIGHT,
+    borderWidth: 2,
+    borderColor: TERRA,
   },
   localCityItem: {
-    backgroundColor: theme.colors.primary + '08',
+    backgroundColor: TERRA_LIGHT,
     borderLeftWidth: 3,
-    borderLeftColor: theme.colors.primary,
+    borderLeftColor: TERRA,
   },
   cityInfo: {
     flex: 1,
@@ -827,49 +887,51 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cityName: {
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.weights.medium,
-    color: theme.colors.text.primary,
+    fontSize: 15,
+    fontFamily: 'DMSans-Bold',
+    color: DARK,
     flex: 1,
   },
   localBadge: {
     fontSize: 12,
-    marginLeft: theme.spacing.xs,
+    marginLeft: 6,
   },
   cityCountry: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.text.secondary,
+    fontSize: 13,
+    color: LIGHT_TEXT_COLOR,
+    fontFamily: 'DMSans-Regular',
     marginTop: 2,
   },
   selectedIcon: {
-    fontSize: theme.typography.sizes.lg,
-    color: theme.colors.primary,
-    fontWeight: 'bold',
+    fontSize: 16,
+    color: TERRA,
+    fontFamily: 'DMSans-Bold',
   },
   citySectionHeader: {
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    marginTop: 8,
   },
   citySectionTitle: {
-    fontSize: theme.typography.sizes.sm,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.text.secondary,
+    fontSize: 13,
+    fontFamily: 'DMSans-Bold',
+    color: TERRA,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 3,
   },
   emptyCityState: {
-    padding: theme.spacing.xl,
+    padding: 24,
     alignItems: 'center',
   },
   emptyCityText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
+    fontSize: 14,
+    color: LIGHT_TEXT_COLOR,
+    fontFamily: 'DMSans-Regular',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.xl,
+    paddingHorizontal: 24,
   },
 });

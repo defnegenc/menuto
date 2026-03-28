@@ -21,7 +21,7 @@ export const NoMenuState: React.FC<Props> = ({
     <View style={[styles.container, compact && styles.containerCompact]}>
       {onCancel && (
         <TouchableOpacity onPress={onCancel} style={{ marginBottom: theme.spacing.lg }}>
-          <Text style={{ color: theme.colors.text.secondary, fontFamily: theme.typography.fontFamilies.regular }}>
+          <Text style={{ color: '#5A4D48', fontFamily: 'DMSans-Regular', fontSize: 14 }}>
             Cancel
           </Text>
         </TouchableOpacity>
@@ -52,6 +52,8 @@ export const NoMenuState: React.FC<Props> = ({
   );
 };
 
+const MEDIUM_COLOR = '#5A4D48';
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -66,38 +68,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   title: {
-    fontSize: 20,
-    fontWeight: theme.typography.weights.medium,
-    color: '#000000',
+    fontSize: 24,
+    fontFamily: 'DMSans-Bold',
+    color: '#1C1917',
+    letterSpacing: -1.5,
     marginBottom: theme.spacing.md,
-    fontFamily: theme.typography.fontFamilies.medium,
     textAlign: 'left',
   },
   subtitle: {
-    fontSize: 13,
-    color: '#000000',
+    fontSize: 14,
+    color: MEDIUM_COLOR,
     textAlign: 'left',
     lineHeight: 20,
     marginBottom: theme.spacing.xxxl,
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontFamily: 'DMSans-Regular',
   },
   buttonsContainer: {
     width: '100%',
     gap: theme.spacing.md,
   },
   button: {
-    backgroundColor: 'transparent',
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.xl,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
     borderWidth: 1,
-    borderColor: theme.colors.darkRed,
+    borderColor: '#F5F5F4',
     alignItems: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
   },
   buttonText: {
     fontSize: 14,
-    fontWeight: theme.typography.weights.medium,
-    color: '#000000',
-    fontFamily: theme.typography.fontFamilies.medium,
+    fontFamily: 'DMSans-Bold',
+    color: '#1C1917',
     textAlign: 'left',
   },
 });

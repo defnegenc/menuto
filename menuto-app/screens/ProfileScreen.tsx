@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View,
+  Text,
   StyleSheet,
   ScrollView,
   Alert,
@@ -10,7 +11,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { useStore } from '../store/useStore';
 import { theme } from '../theme';
 import { FavoriteRestaurant } from '../types';
-import { UnifiedHeader } from '../components/UnifiedHeader';
 import { api } from '../services/api';
 import {
   POPULAR_CUISINES,
@@ -374,9 +374,10 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
 
   return (
     <View style={styles.container}>
-      <UnifiedHeader
-        title="My profile"
-      />
+      <View style={[styles.screenHeader, { paddingTop: insets.top }]}>
+        <Text style={styles.screenTitle}>My profile</Text>
+        <View style={styles.screenHeaderDivider} />
+      </View>
 
       <ScrollView
         style={styles.scrollView}
@@ -465,7 +466,22 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#FFFFFF',
+  },
+  screenHeader: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+  },
+  screenTitle: {
+    fontSize: 36,
+    letterSpacing: -2,
+    color: '#1C1917',
+    fontFamily: theme.typography.fontFamilies.bold,
+    marginBottom: theme.spacing.sm,
+  },
+  screenHeaderDivider: {
+    height: 1,
+    backgroundColor: '#F5F5F4',
   },
   scrollView: {
     flex: 1,

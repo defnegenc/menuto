@@ -8,13 +8,10 @@ import {
   TextInput,
   ActivityIndicator,
   Modal,
-  Dimensions,
 } from 'react-native';
 import { theme } from '../../theme';
 import { ParsedDish } from '../../types';
 import { NoMenuState } from '../../components/NoMenuState';
-
-const screenWidth = Dimensions.get('window').width;
 
 interface DishScoringCardProps {
   selectedRestaurant: any;
@@ -97,7 +94,7 @@ export function DishScoringCard({
       {/* Menu loading and content */}
       {isLoadingMenu ? (
         <View style={styles.loadingState}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <ActivityIndicator size="large" color="#E9323D" />
           <Text style={styles.loadingText}>Checking menu...</Text>
         </View>
       ) : menuDishes.length > 0 ? (
@@ -305,28 +302,30 @@ export function DishScoringCard({
   );
 }
 
+const TERRA = '#E9323D';
+const MEDIUM_COLOR = '#5A4D48';
+const LIGHT_TEXT = '#8C7E77';
+
 const styles = StyleSheet.create({
   stepSection: {
     paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.lg,
+    paddingTop: theme.spacing.xl,
     paddingBottom: theme.spacing.md,
   },
   stepText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
+    fontSize: 13,
+    color: MEDIUM_COLOR,
     marginBottom: theme.spacing.sm,
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontFamily: 'DMSans-Regular',
   },
   stepUnderline: {
-    height: 2,
-    width: screenWidth * 0.9,
-    backgroundColor: theme.colors.primary,
-    borderRadius: 2,
-    alignSelf: 'center',
+    height: 1,
+    backgroundColor: '#E7E5E4',
+    alignSelf: 'stretch',
   },
   separatorLine: {
     height: 1,
-    backgroundColor: theme.colors.border,
+    backgroundColor: '#E7E5E4',
     marginVertical: theme.spacing.md,
   },
   menuFoundSection: {
@@ -339,9 +338,9 @@ const styles = StyleSheet.create({
   },
   menuFoundText: {
     fontSize: 20,
-    fontWeight: theme.typography.weights.medium,
-    color: '#000000',
-    fontFamily: theme.typography.fontFamilies.medium,
+    fontFamily: 'DMSans-Bold',
+    color: '#1C1917',
+    letterSpacing: -1.5,
     flex: 1,
   },
   menuConfirmedSection: {
@@ -353,22 +352,21 @@ const styles = StyleSheet.create({
   },
   menuConfirmedText: {
     fontSize: 20,
-    fontWeight: theme.typography.weights.medium,
-    color: '#000000',
-    fontFamily: theme.typography.fontFamilies.medium,
+    fontFamily: 'DMSans-Bold',
+    color: '#1C1917',
+    letterSpacing: -1.5,
     flex: 1,
   },
   reviewButton: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#1C1917',
     paddingHorizontal: theme.spacing.xl,
     paddingVertical: theme.spacing.md,
-    borderRadius: 4,
+    borderRadius: 999,
   },
   reviewButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: theme.typography.weights.medium,
-    fontFamily: theme.typography.fontFamilies.medium,
+    fontFamily: 'DMSans-Bold',
   },
   loadingState: {
     flexDirection: 'row',
@@ -378,9 +376,9 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   loadingText: {
-    fontSize: 12,
-    color: 'rgba(0, 0, 0, 0.5)',
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontSize: 13,
+    color: '#A8A29E',
+    fontFamily: 'DMSans-Regular',
   },
   noMenuSection: {
     paddingHorizontal: theme.spacing.lg,
@@ -388,7 +386,7 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#FFFFFF',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -397,27 +395,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: '#F5F5F4',
   },
   modalCancelButton: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontSize: 14,
+    color: MEDIUM_COLOR,
+    fontFamily: 'DMSans-Regular',
   },
   modalTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.semibold,
-    color: '#000000',
-    fontFamily: theme.typography.fontFamilies.semibold,
+    fontSize: 16,
+    fontFamily: 'DMSans-Bold',
+    color: '#1C1917',
   },
   modalSubmitButton: {
-    fontSize: theme.typography.sizes.md,
-    color: '#000000',
-    fontWeight: theme.typography.weights.semibold,
-    fontFamily: theme.typography.fontFamilies.semibold,
+    fontSize: 14,
+    color: TERRA,
+    fontFamily: 'DMSans-Bold',
   },
   modalSubmitButtonDisabled: {
-    color: theme.colors.text.secondary,
+    color: LIGHT_TEXT,
   },
   modalContent: {
     flex: 1,
@@ -425,22 +421,22 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.lg,
   },
   modalInstructions: {
-    fontSize: theme.typography.sizes.md,
-    color: '#000000',
+    fontSize: 14,
+    color: MEDIUM_COLOR,
     marginBottom: theme.spacing.lg,
     lineHeight: 20,
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontFamily: 'DMSans-Regular',
   },
   textInput: {
     flex: 1,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.primary,
-    fontFamily: theme.typography.fontFamilies.regular,
+    backgroundColor: '#FAFAF9',
+    borderRadius: 16,
+    padding: 14,
+    fontSize: 14,
+    color: '#1C1917',
+    fontFamily: 'DMSans-Regular',
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: '#F5F5F4',
     textAlignVertical: 'top',
   },
   menuUrlRow: {
@@ -451,74 +447,80 @@ const styles = StyleSheet.create({
   },
   menuUrlInput: {
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 10,
-    padding: theme.spacing.md,
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.primary,
-    backgroundColor: theme.colors.surface,
-    fontFamily: theme.typography.fontFamilies.regular,
+    borderColor: '#F5F5F4',
+    borderRadius: 16,
+    padding: 14,
+    fontSize: 14,
+    color: '#1C1917',
+    backgroundColor: '#FAFAF9',
+    fontFamily: 'DMSans-Regular',
   },
   addUrlButton: {
     marginTop: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
-    borderRadius: 10,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: '#F5F5F4',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.surface,
+    backgroundColor: '#FAFAF9',
   },
   addUrlButtonText: {
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.primary,
-    fontFamily: theme.typography.fontFamilies.semibold,
+    fontSize: 14,
+    fontFamily: 'DMSans-Bold',
+    color: TERRA,
   },
   removeUrlButton: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
-    borderRadius: 8,
-    backgroundColor: theme.colors.secondary,
+    borderRadius: 999,
+    backgroundColor: '#FAFAF9',
+    borderWidth: 1,
+    borderColor: '#F5F5F4',
   },
   removeUrlButtonText: {
-    color: theme.colors.text.light,
+    color: MEDIUM_COLOR,
     fontSize: 12,
-    fontWeight: '600',
-    fontFamily: theme.typography.fontFamilies.semibold,
+    fontFamily: 'DMSans-Bold',
   },
   reviewCategorySection: {
     marginBottom: theme.spacing.lg,
+    backgroundColor: '#FAFAF9',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#F5F5F4',
+    padding: theme.spacing.lg,
   },
   reviewCategoryTitle: {
-    fontSize: 15,
-    fontWeight: theme.typography.weights.normal,
-    color: '#000000',
+    fontSize: 13,
+    fontFamily: 'DMSans-Bold',
+    color: '#1C1917',
     marginBottom: theme.spacing.sm,
-    fontFamily: theme.typography.fontFamilies.regular,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   reviewDishItem: {
     marginBottom: theme.spacing.sm,
     paddingBottom: theme.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: '#F5F5F4',
   },
   reviewDishName: {
-    fontSize: 13,
-    color: '#000000',
+    fontSize: 14,
+    color: '#1C1917',
     marginBottom: 4,
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontFamily: 'DMSans-Medium',
   },
   reviewDishDescription: {
     fontSize: 12,
-    color: 'rgba(0, 0, 0, 0.5)',
-    fontFamily: theme.typography.fontFamilies.regularItalic,
+    color: '#A8A29E',
+    fontFamily: 'DMSans-Italic',
   },
   reviewMoreText: {
     fontSize: 12,
-    color: theme.colors.text.secondary,
+    color: LIGHT_TEXT,
     fontStyle: 'italic',
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontFamily: 'DMSans-Regular',
     marginTop: theme.spacing.xs,
   },
   reviewModalActions: {
@@ -528,27 +530,26 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.md,
     paddingBottom: theme.spacing.xxxl,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    borderTopColor: '#E7E5E4',
     gap: theme.spacing.md,
   },
   reviewActionButton: {
     flex: 1,
-    paddingVertical: theme.spacing.md,
+    paddingVertical: 18,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: theme.colors.primary,
-    borderRadius: 8,
-    backgroundColor: 'transparent',
+    borderColor: '#E7E5E4',
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
   },
   reviewConfirmButton: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+    backgroundColor: '#1C1917',
+    borderColor: '#1C1917',
   },
   reviewActionButtonText: {
-    fontSize: 12,
-    fontWeight: theme.typography.weights.medium,
-    color: '#000000',
-    fontFamily: theme.typography.fontFamilies.medium,
+    fontSize: 14,
+    fontFamily: 'DMSans-Bold',
+    color: '#1C1917',
   },
   reviewConfirmButtonText: {
     color: '#FFFFFF',

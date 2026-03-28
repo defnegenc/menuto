@@ -19,6 +19,7 @@ import { DishRecommendations } from './screens/DishRecommendations';
 import { PostMealFeedback } from './screens/PostMealFeedback';
 // Onboarding screens
 import { TastePreferencesScreen, RestaurantSelectionScreen } from './screens/onboarding';
+import { IntroScreen } from './screens/IntroScreen';
 
 // Main app screens
 import { RestaurantSearchScreen } from './screens/RestaurantSearchScreen';
@@ -66,7 +67,7 @@ if (globalErrorUtils) {
 
 debugLog('API URL:', process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8080');
 
-type AppScreen = 'signIn' | 'onboarding' | 'onboardingRestaurants' | 'mainTabs' | 'restaurantSearch' | 'restaurantDetail' | 'recommendations' | 'dishRecommendations' | 'dishDetail' | 'postMealFeedback';
+type AppScreen = 'intro' | 'signIn' | 'onboarding' | 'onboardingRestaurants' | 'mainTabs' | 'restaurantSearch' | 'restaurantDetail' | 'recommendations' | 'dishRecommendations' | 'dishDetail' | 'postMealFeedback';
 
 
 function AppContent() {
@@ -131,8 +132,8 @@ function AppContent() {
     if (!appIsReady || !authLoaded) return;
 
     if (!session?.user) {
-      debugLog('App.tsx: No session - user needs to sign in');
-      setCurrentScreen('signIn');
+      debugLog('App.tsx: No session - showing intro screen');
+      setCurrentScreen('intro');
       return;
     }
 
@@ -270,7 +271,7 @@ function AppContent() {
       console.error('Sign out error:', error);
     } finally {
       setUser(null, 'SIGNED_OUT');
-      setCurrentScreen('signIn');
+      setCurrentScreen('intro');
     }
   };
 
@@ -284,7 +285,7 @@ function AppContent() {
     setUserPreferences(null);
     setSelectedDishForFeedback(null);
     setUser(null, '');
-    setCurrentScreen('signIn');
+    setCurrentScreen('intro');
 
     debugLog('App: Screen set to signIn and user cleared');
   }, [currentScreen, setUser]);
@@ -366,6 +367,14 @@ function AppContent() {
 
   const renderCurrentScreen = () => {
     switch (currentScreen) {
+      case 'intro':
+        return (
+          <IntroScreen
+            onGetStarted={() => setCurrentScreen('signIn')}
+            onLogin={() => setCurrentScreen('signIn')}
+          />
+        );
+
       case 'signIn':
         return <AuthScreen onAuthComplete={handleAuthComplete} />;
 
@@ -433,7 +442,12 @@ function AppContent() {
         ) : null;
 
       default:
-        return <AuthScreen onAuthComplete={handleAuthComplete} />;
+        return (
+          <IntroScreen
+            onGetStarted={() => setCurrentScreen('signIn')}
+            onLogin={() => setCurrentScreen('signIn')}
+          />
+        );
     }
   };
 

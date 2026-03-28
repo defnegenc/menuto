@@ -6,291 +6,366 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  TextInput,
+  Animated,
+  Easing,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../store/useStore';
 import { UserPreferences } from '../../types';
-import { theme } from '../../theme';
-import { SearchBar } from '../../components/SearchBar';
 import {
   POPULAR_CUISINES,
-  ALL_CUISINES,
   DIETARY_RESTRICTIONS,
-  HOME_BASE_CITIES,
   SPICE_LABELS,
-  SPICE_LEVELS,
 } from '../../constants';
+
+const TERRA = '#E9323D';
+const TERRA_LIGHT = '#FDECED';
+const CREAM = '#FFFFFF';
+const DARK = '#2C2421';
+const MEDIUM = '#5A4D48';
+const LIGHT_TEXT = '#8C7E77';
+
+const NEIGHBORHOODS: Record<string, string[]> = {
+  'New York': [
+    'West Village', 'SoHo', 'Lower East Side', 'Tribeca',
+    'Williamsburg', 'Chelsea', 'Upper West Side', 'East Village',
+    'Bushwick', 'Park Slope', 'Greenpoint', 'Nolita',
+  ],
+  'San Francisco': [
+    'Mission', 'Hayes Valley', 'North Beach', 'Marina',
+    'Castro', 'SoMa', 'Nob Hill', 'Chinatown',
+  ],
+  'Los Angeles': [
+    'Silver Lake', 'Los Feliz', 'West Hollywood', 'Venice',
+    'Santa Monica', 'Highland Park', 'Echo Park', 'DTLA',
+  ],
+  'London': [
+    'Soho', 'Shoreditch', 'Covent Garden', 'Brixton',
+    'Camden', 'Notting Hill', 'Hackney', 'Peckham',
+  ],
+  'Istanbul': [
+    'Beyoğlu', 'Kadıköy', 'Beşiktaş', 'Balat',
+    'Cihangir', 'Moda', 'Nişantaşı', 'Karaköy',
+  ],
+};
+
+const CITIES = Object.keys(NEIGHBORHOODS);
 
 interface Props {
   onComplete: () => void;
   onBack?: () => void;
 }
 
+type Step = 'dietary' | 'cuisines' | 'neighborhood';
+
 export function TastePreferencesScreen({ onComplete, onBack }: Props) {
   const { user, setUser } = useStore();
   const userId = useStore((state) => state.userId);
   const insets = useSafeAreaInsets();
-  
-  console.log('🔍 TastePreferencesScreen: onBack prop received:', !!onBack);
-  
-  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
-  const [cuisineSearch, setCuisineSearch] = useState<string>('');
-  const [showAllCuisines, setShowAllCuisines] = useState<boolean>(false);
-  const [spiceTolerance, setSpiceTolerance] = useState<number>(3);
-  const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>([]);
-  
-  // Home base selection
-  const [selectedHomeBase, setSelectedHomeBase] = useState<string>('');
 
-  // Pre-fill existing preferences if user has them
+  const [currentStep, setCurrentStep] = useState<Step>('dietary');
+  const [fadeAnim] = useState(new Animated.Value(1));
+
+  // Step 1: Dietary + spice
+  const [dietaryRestrictions, setDietaryRestrictions] = useState<string[]>([]);
+  const [spiceTolerance, setSpiceTolerance] = useState(3);
+
+  // Step 2: Cuisines
+  const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
+
+  // Step 3: Neighborhood
+  const [selectedCity, setSelectedCity] = useState('New York');
+  const [selectedNeighborhoods, setSelectedNeighborhoods] = useState<string[]>([]);
+
+  // Pre-fill from existing user
   useEffect(() => {
     if (user) {
-      if (Array.isArray(user.preferred_cuisines)) {
-        setSelectedCuisines(user.preferred_cuisines.map(c => c[0].toUpperCase() + c.slice(1)));
+      if (Array.isArray(user.preferred_cuisines) && user.preferred_cuisines.length > 0) {
+        setSelectedCuisines(user.preferred_cuisines.map((c: string) => c[0].toUpperCase() + c.slice(1)));
       }
       if (typeof user.spice_tolerance === 'number') setSpiceTolerance(user.spice_tolerance);
       if (Array.isArray(user.dietary_restrictions)) {
-        setDietaryRestrictions(user.dietary_restrictions.map(r => r[0].toUpperCase() + r.slice(1)));
+        setDietaryRestrictions(user.dietary_restrictions.map((r: string) => r[0].toUpperCase() + r.slice(1)));
       }
-      if (user.home_base) {
-        setSelectedHomeBase(user.home_base);
-      }
+      if (user.home_base) setSelectedCity(user.home_base);
     }
   }, [user]);
 
-  const toggleCuisine = (cuisine: string) => {
-    setSelectedCuisines(prev => 
-      prev.includes(cuisine)
-        ? prev.filter(c => c !== cuisine)
-        : [...prev, cuisine]
-    );
+  const animateTransition = (next: Step) => {
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 150,
+      useNativeDriver: true,
+    }).start(() => {
+      setCurrentStep(next);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 250,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start();
+    });
   };
 
-  const toggleDietaryRestriction = (restriction: string) => {
-    setDietaryRestrictions(prev =>
-      prev.includes(restriction)
-        ? prev.filter(r => r !== restriction)
-        : [...prev, restriction]
-    );
+  const stepIndex = currentStep === 'dietary' ? 0 : currentStep === 'cuisines' ? 1 : 2;
+
+  const handleNext = () => {
+    if (currentStep === 'dietary') {
+      animateTransition('cuisines');
+    } else if (currentStep === 'cuisines') {
+      if (selectedCuisines.length === 0) {
+        Alert.alert('Pick at least one', 'Select at least one cuisine you enjoy.');
+        return;
+      }
+      animateTransition('neighborhood');
+    }
   };
 
-
-  const getFilteredCuisines = () => {
-    const cuisinesToShow = cuisineSearch.trim() 
-      ? ALL_CUISINES.filter(cuisine =>
-          cuisine.toLowerCase().includes(cuisineSearch.toLowerCase())
-        )
-      : showAllCuisines 
-        ? ALL_CUISINES 
-        : POPULAR_CUISINES;
-    
-    return cuisinesToShow;
+  const handleStepBack = () => {
+    if (currentStep === 'cuisines') {
+      animateTransition('dietary');
+    } else if (currentStep === 'neighborhood') {
+      animateTransition('cuisines');
+    } else if (onBack) {
+      onBack();
+    }
   };
 
-  const toggleHomeBase = (cityName: string) => {
-    setSelectedHomeBase(selectedHomeBase === cityName ? '' : cityName);
-  };
-
-  const handleComplete = async () => {
+  const handleFinish = async () => {
     if (selectedCuisines.length === 0) {
-      Alert.alert('Please select at least one cuisine preference');
+      Alert.alert('Pick at least one cuisine');
       return;
     }
 
     const preferences: UserPreferences = {
       preferred_cuisines: selectedCuisines.map(c => c.toLowerCase()),
       spice_tolerance: spiceTolerance,
-      price_preference: 2, // Default price preference
+      price_preference: 2,
       dietary_restrictions: dietaryRestrictions.map(r => r.toLowerCase()),
-      home_base: selectedHomeBase || undefined,
+      home_base: selectedCity || undefined,
     };
 
-    console.log('🎯 Taste preferences to save:', preferences);
-
-    // Use the actual user ID from the store
     if (userId) {
-      console.log('💾 Saving taste preferences for user:', userId);
       setUser(preferences, userId);
-    } else {
-      console.log('❌ No userId available for taste preferences');
     }
-    
     onComplete();
   };
 
-  const renderChip = (
-    text: string, 
-    isSelected: boolean, 
-    onPress: () => void
+  const toggleItem = (item: string, list: string[], setter: (v: string[]) => void) => {
+    setter(list.includes(item) ? list.filter(i => i !== item) : [...list, item]);
+  };
+
+  const renderPill = (
+    text: string,
+    isSelected: boolean,
+    onPress: () => void,
+    size: 'normal' | 'large' = 'normal',
   ) => (
     <TouchableOpacity
       key={text}
       style={[
-        styles.chip,
-        isSelected && styles.chipSelected
+        styles.pill,
+        size === 'large' && styles.pillLarge,
+        isSelected ? styles.pillSelected : styles.pillUnselected,
       ]}
       onPress={onPress}
+      activeOpacity={0.7}
     >
-      <Text style={[
-        styles.chipText,
-        isSelected && styles.chipTextSelected
-      ]}>
+      <Text
+        style={[
+          styles.pillText,
+          size === 'large' && styles.pillTextLarge,
+          isSelected ? styles.pillTextSelected : styles.pillTextUnselected,
+        ]}
+      >
         {text}
       </Text>
     </TouchableOpacity>
   );
 
-  const getSpiceEmoji = (level: number) => {
-    return '🌶️'.repeat(level);
-  };
+  // ─── Step 1: Dietary + Spice ──────────────────────────────────────────────
+  const renderDietary = () => (
+    <View style={styles.stepContent}>
+      <View style={styles.stepLabel}>
+        <Text style={styles.stepLabelText}>Your Palate Profile</Text>
+      </View>
+      <Text style={styles.headline}>
+        Any dietary{'\n'}<Text style={styles.headlineAccent}>needs?</Text>
+      </Text>
+      <Text style={styles.subline}>
+        We'll filter recommendations to match what you can eat. Skip if no restrictions.
+      </Text>
 
-  const getSpiceLabel = (level: number) => {
-    return SPICE_LABELS[level] || 'Gentle warmth';
-  };
+      <View style={styles.pillGrid}>
+        {DIETARY_RESTRICTIONS.map(restriction =>
+          renderPill(
+            restriction,
+            dietaryRestrictions.includes(restriction),
+            () => toggleItem(restriction, dietaryRestrictions, setDietaryRestrictions),
+            'large',
+          )
+        )}
+      </View>
 
+      {/* Spice tolerance */}
+      <View style={styles.sectionBlock}>
+        <Text style={styles.sectionTitle}>Spice tolerance</Text>
+        <View style={styles.spiceContainer}>
+          <View style={styles.spiceTrack}>
+            <View style={[styles.spiceFill, { width: `${((spiceTolerance - 1) / 4) * 100}%` }]} />
+          </View>
+          <View style={styles.spiceDotsRow}>
+            {[1, 2, 3, 4, 5].map(level => (
+              <TouchableOpacity
+                key={level}
+                style={[styles.spiceDot, spiceTolerance >= level && styles.spiceDotActive]}
+                onPress={() => setSpiceTolerance(level)}
+              />
+            ))}
+          </View>
+          <Text style={styles.spiceEmoji}>{'🌶️'.repeat(spiceTolerance)}</Text>
+          <Text style={styles.spiceLabel}>{SPICE_LABELS[spiceTolerance]}</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  // ─── Step 2: Cuisines ─────────────────────────────────────────────────────
+  const renderCuisines = () => (
+    <View style={styles.stepContent}>
+      <View style={styles.stepLabel}>
+        <Text style={styles.stepLabelText}>Cuisine Preferences</Text>
+      </View>
+      <Text style={styles.headline}>
+        What cuisines{'\n'}do you <Text style={styles.headlineAccent}>love?</Text>
+      </Text>
+      <Text style={styles.subline}>Select all that make you happy.</Text>
+
+      <View style={styles.pillGrid}>
+        {POPULAR_CUISINES.map(cuisine =>
+          renderPill(
+            cuisine,
+            selectedCuisines.includes(cuisine),
+            () => toggleItem(cuisine, selectedCuisines, setSelectedCuisines),
+            'large',
+          )
+        )}
+      </View>
+    </View>
+  );
+
+  // ─── Step 3: Neighborhood ─────────────────────────────────────────────────
+  const renderNeighborhood = () => (
+    <View style={styles.stepContent}>
+      <View style={styles.stepLabel}>
+        <Text style={styles.stepLabelText}>Location Access</Text>
+      </View>
+      <Text style={styles.headline}>
+        Pick your{'\n'}<Text style={styles.headlineAccent}>neighborhood.</Text>
+      </Text>
+      <Text style={styles.subline}>
+        We'll start by showing you the best spots within walking distance.
+      </Text>
+
+      {/* Mini map placeholder */}
+      <View style={styles.mapPlaceholder}>
+        <View style={styles.mapPingOuter} />
+        <View style={styles.mapPing} />
+        <View style={styles.mapBadge}>
+          <Text style={styles.mapBadgeText}>
+            {selectedCity === 'New York' ? 'NYC · Manhattan' : selectedCity}
+          </Text>
+        </View>
+      </View>
+
+      {/* City selector */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cityScroll}>
+        <View style={styles.cityRow}>
+          {CITIES.map(city => (
+            <TouchableOpacity
+              key={city}
+              style={[styles.cityChip, selectedCity === city && styles.cityChipActive]}
+              onPress={() => {
+                setSelectedCity(city);
+                setSelectedNeighborhoods([]);
+              }}
+            >
+              <Text style={[styles.cityChipText, selectedCity === city && styles.cityChipTextActive]}>
+                {city}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+
+      {/* Neighborhood pills */}
+      <View style={styles.pillGrid}>
+        {(NEIGHBORHOODS[selectedCity] || []).map(hood =>
+          renderPill(
+            hood,
+            selectedNeighborhoods.includes(hood),
+            () => toggleItem(hood, selectedNeighborhoods, setSelectedNeighborhoods),
+          )
+        )}
+      </View>
+    </View>
+  );
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.customHeader}>
-        {onBack && (
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => {
-              console.log('🔙 TastePreferencesScreen: Back button pressed');
-              onBack();
-            }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="arrow-back" size={24} color={theme.colors.text.primary} />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Progress bar */}
+        <View style={styles.progressRow}>
+          {[0, 1, 2].map(i => (
+            <View
+              key={i}
+              style={[styles.progressDot, i <= stepIndex ? styles.progressDotActive : styles.progressDotInactive]}
+            />
+          ))}
+        </View>
+
+        {/* Step content */}
+        <Animated.View style={{ opacity: fadeAnim }}>
+          {currentStep === 'dietary' && renderDietary()}
+          {currentStep === 'cuisines' && renderCuisines()}
+          {currentStep === 'neighborhood' && renderNeighborhood()}
+        </Animated.View>
+      </ScrollView>
+
+      {/* Bottom buttons */}
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 16) + 16 }]}>
+        {currentStep === 'neighborhood' ? (
+          <TouchableOpacity style={styles.primaryButton} onPress={handleFinish} activeOpacity={0.9}>
+            <Text style={styles.primaryButtonText}>Finish Setup</Text>
+            <Text style={styles.arrowText}>→</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.primaryButton} onPress={handleNext} activeOpacity={0.9}>
+            <Text style={styles.primaryButtonText}>Continue</Text>
+            <Text style={styles.arrowText}>→</Text>
           </TouchableOpacity>
         )}
-        <Text style={styles.customHeaderTitle}>Let's learn your taste</Text>
-        <Text style={styles.customHeaderSubtitle}>This helps us recommend dishes you'll love</Text>
+
+        {currentStep === 'dietary' ? (
+          onBack ? (
+            <TouchableOpacity style={styles.skipButton} onPress={onBack}>
+              <Text style={styles.skipText}>← Back</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.skipButton} onPress={handleNext}>
+              <Text style={styles.skipText}>Skip for now</Text>
+            </TouchableOpacity>
+          )
+        ) : (
+          <TouchableOpacity style={styles.skipButton} onPress={handleStepBack}>
+            <Text style={styles.skipText}>← Back</Text>
+          </TouchableOpacity>
+        )}
       </View>
-      <ScrollView style={[styles.scrollView, { paddingBottom: insets.bottom }]} showsVerticalScrollIndicator={false}>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Favorite Cuisines</Text>
-          <Text style={styles.sectionSubtitle}>Select all that you enjoy</Text>
-          
-          <SearchBar
-            value={cuisineSearch}
-            onChangeText={setCuisineSearch}
-            placeholder="Search cuisines (e.g., Turkish, Georgian, Persian...)"
-          />
-          
-          <View style={styles.chipsContainer}>
-            {getFilteredCuisines().map(cuisine => 
-              renderChip(
-                cuisine, 
-                selectedCuisines.includes(cuisine),
-                () => toggleCuisine(cuisine)
-              )
-            )}
-          </View>
-          
-          {!cuisineSearch.trim() && !showAllCuisines && (
-            <TouchableOpacity 
-              style={styles.expandButton}
-              onPress={() => setShowAllCuisines(true)}
-            >
-              <Text style={styles.expandButtonText}>
-                + Show More Cuisines ({ALL_CUISINES.length - POPULAR_CUISINES.length} more)
-              </Text>
-            </TouchableOpacity>
-          )}
-          
-          {showAllCuisines && !cuisineSearch.trim() && (
-            <TouchableOpacity 
-              style={styles.collapseButton}
-              onPress={() => setShowAllCuisines(false)}
-            >
-              <Text style={styles.collapseButtonText}>
-                − Show Less
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Spice Tolerance</Text>
-          
-          <View style={styles.spiceSliderContainer}>
-            {/* Current selection display */}
-            <View style={styles.currentSelectionDisplay}>
-              <Text style={styles.currentPeppers}>
-                {getSpiceEmoji(spiceTolerance)}
-              </Text>
-            </View>
-            
-            {/* Simple slider with round stops */}
-            <View style={styles.customSlider}>
-              <View style={styles.sliderTrack}>
-                <View 
-                  style={[
-                    styles.sliderFill, 
-                    { width: `${((spiceTolerance - 1) / 4) * 100}%` }
-                  ]} 
-                />
-                {/* Round stops */}
-                <View style={styles.sliderStops}>
-                  {[1, 2, 3, 4, 5].map((level) => (
-                    <TouchableOpacity
-                      key={level}
-                      style={[
-                        styles.sliderStop,
-                        spiceTolerance >= level && styles.sliderStopActive,
-                      ]}
-                      onPress={() => setSpiceTolerance(level)}
-                    />
-                  ))}
-                </View>
-              </View>
-            </View>
-            
-            {/* Funny description text */}
-            <Text style={styles.spiceDescription}>
-              {getSpiceLabel(spiceTolerance)}
-            </Text>
-          </View>
-        </View>
-
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Dietary Restrictions</Text>
-          <Text style={styles.sectionSubtitle}>Optional</Text>
-          <View style={styles.chipsContainer}>
-            {DIETARY_RESTRICTIONS.map(restriction =>
-              renderChip(
-                restriction,
-                dietaryRestrictions.includes(restriction),
-                () => toggleDietaryRestriction(restriction)
-              )
-            )}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Home Base City</Text>
-          <Text style={styles.sectionSubtitle}>Optional - helps with local restaurant recommendations</Text>
-          
-          <View style={styles.chipsContainer}>
-            {HOME_BASE_CITIES.map(city => 
-              renderChip(
-                `${city.emoji} ${city.name}`, 
-                selectedHomeBase === city.name,
-                () => toggleHomeBase(city.name)
-              )
-            )}
-          </View>
-        </View>
-
-        <TouchableOpacity style={styles.continueButton} onPress={handleComplete}>
-          <Text style={styles.continueButtonText}>Continue</Text>
-        </TouchableOpacity>
-      </ScrollView>
     </View>
   );
 }
@@ -298,184 +373,282 @@ export function TastePreferencesScreen({ onComplete, onBack }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  customHeader: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    position: 'relative',
-  },
-  backButton: {
-    position: 'absolute',
-    left: theme.spacing.lg,
-    top: theme.spacing.md,
-    zIndex: 1,
-    padding: theme.spacing.sm,
-  },
-  customHeaderTitle: {
-    fontSize: theme.typography.sizes.heading,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.secondary,
-    textAlign: 'center',
-    marginBottom: theme.spacing.xs,
-    fontFamily: 'Artifact', // Using the fancy font for mid-aligned look
-  },
-  customHeaderSubtitle: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-    fontFamily: 'DMSans-Regular',
+    backgroundColor: CREAM,
   },
   scrollView: {
     flex: 1,
-    paddingHorizontal: theme.spacing.lg,
   },
-  section: {
-    marginBottom: theme.spacing.xl,
+  scrollContent: {
+    paddingHorizontal: 32,
+    paddingTop: 24,
+    paddingBottom: 200,
   },
-  sectionTitle: {
-    fontSize: theme.typography.sizes.xxl,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.xs,
-    marginTop: theme.spacing.lg,
+  // Progress
+  progressRow: {
+    flexDirection: 'row',
+    gap: 8,
+    width: 120,
+    marginBottom: 40,
   },
-  sectionSubtitle: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.lg,
+  progressDot: {
+    flex: 1,
+    height: 5,
+    borderRadius: 3,
   },
-  chipsContainer: {
+  progressDotActive: {
+    backgroundColor: TERRA,
+  },
+  progressDotInactive: {
+    backgroundColor: `${TERRA}30`,
+  },
+  // Step content
+  stepContent: {
+    gap: 0,
+  },
+  stepLabel: {
+    marginBottom: 20,
+  },
+  stepLabelText: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 13,
+    color: TERRA,
+    letterSpacing: 3,
+    textTransform: 'uppercase',
+  },
+  headline: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 44,
+    lineHeight: 48,
+    letterSpacing: -1.5,
+    color: DARK,
+    marginBottom: 16,
+  },
+  headlineAccent: {
+    color: TERRA,
+  },
+  subline: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 18,
+    lineHeight: 26,
+    color: MEDIUM,
+    maxWidth: 310,
+    marginBottom: 32,
+  },
+  // Pills
+  pillGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.sm,
+    gap: 10,
   },
-  chip: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.round,
-    backgroundColor: theme.colors.surface,
+  pill: {
+    borderRadius: 999,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  pillLarge: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  pillSelected: {
+    backgroundColor: TERRA_LIGHT,
+    borderWidth: 2,
+    borderColor: TERRA,
+  },
+  pillUnselected: {
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: `${TERRA}40`,
+    backgroundColor: 'transparent',
   },
-  chipSelected: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+  pillText: {
+    fontFamily: 'DMSans-Medium',
+    fontSize: 15,
   },
-  chipText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.primary,
-    fontWeight: theme.typography.weights.medium,
+  pillTextLarge: {
+    fontSize: 16,
   },
-  chipTextSelected: {
-    color: theme.colors.text.light,
+  pillTextSelected: {
+    fontFamily: 'DMSans-Bold',
+    color: TERRA,
   },
-  expandButton: {
-    backgroundColor: theme.colors.tertiary + '15',
-    borderRadius: theme.borderRadius.md,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
+  pillTextUnselected: {
+    color: DARK,
+  },
+  // Section blocks
+  sectionBlock: {
+    marginTop: 36,
+  },
+  sectionTitle: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 20,
+    color: DARK,
+    marginBottom: 8,
+  },
+  // Spice
+  spiceContainer: {
     alignItems: 'center',
-    marginTop: theme.spacing.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.tertiary,
-    borderStyle: 'dashed',
+    marginTop: 8,
+    gap: 8,
   },
-  expandButtonText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.tertiary,
-    fontWeight: theme.typography.weights.medium,
-  },
-  collapseButton: {
-    backgroundColor: theme.colors.background,
-    borderRadius: theme.borderRadius.md,
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.lg,
-    alignItems: 'center',
-    marginTop: theme.spacing.lg,
-  },
-  collapseButtonText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
-    fontWeight: theme.typography.weights.medium,
-  },
-  spiceSliderContainer: {
-    alignItems: 'center',
-    marginTop: theme.spacing.xxl,
-  },
-  currentSelectionDisplay: {
-    alignItems: 'center',
-    marginBottom: theme.spacing.lg,
-  },
-  currentPeppers: {
-    fontSize: 28,
-    lineHeight: 32,
-  },
-  customSlider: {
+  spiceTrack: {
     width: '100%',
-    alignItems: 'center',
-    marginBottom: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.md,
+    height: 4,
+    backgroundColor: '#F5F5F4',
+    borderRadius: 2,
+    overflow: 'hidden',
   },
-  sliderTrack: {
-    width: '100%',
-    height: 6,
-    backgroundColor: theme.colors.border,
-    borderRadius: 3,
-    position: 'relative',
-    justifyContent: 'center',
+  spiceFill: {
+    height: 4,
+    backgroundColor: TERRA,
+    borderRadius: 2,
   },
-  sliderFill: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    height: '100%',
-    backgroundColor: theme.colors.secondary,
-    borderRadius: 3,
-  },
-  sliderStops: {
-    position: 'absolute',
-    top: -6,
-    left: 0,
-    right: 0,
+  spiceDotsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 6,
+    width: '100%',
+    paddingHorizontal: 4,
+    marginTop: -14,
   },
-  sliderStop: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 3,
-    borderColor: theme.colors.border,
-    ...theme.shadows.sm,
+  spiceDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#E7E5E4',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  sliderStopActive: {
-    backgroundColor: theme.colors.secondary,
-    borderColor: theme.colors.tertiary,
-    transform: [{ scale: 1.2 }],
+  spiceDotActive: {
+    backgroundColor: TERRA,
+    borderColor: TERRA,
   },
-  spiceDescription: {
-    fontSize: theme.typography.sizes.md,
-    fontWeight: theme.typography.weights.medium,
-    color: theme.colors.text.primary,
-    textAlign: 'center',
+  spiceEmoji: {
+    fontSize: 24,
+    marginTop: 4,
+  },
+  spiceLabel: {
+    fontFamily: 'DMSans-Medium',
+    fontSize: 14,
+    color: TERRA,
     fontStyle: 'italic',
   },
-  continueButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.lg,
+  // Map placeholder
+  mapPlaceholder: {
+    width: '100%',
+    height: 180,
+    backgroundColor: `${TERRA}08`,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: `${TERRA}15`,
+    marginBottom: 24,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: theme.spacing.xxxl,
+    overflow: 'hidden',
   },
-  continueButtonText: {
-    color: theme.colors.text.light,
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: theme.typography.weights.semibold,
+  mapPingOuter: {
+    position: 'absolute',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: `${TERRA}15`,
+  },
+  mapPing: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: TERRA,
+  },
+  mapBadge: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: `${TERRA}20`,
+  },
+  mapBadgeText: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 12,
+    color: TERRA,
+  },
+  // City selector
+  cityScroll: {
+    marginBottom: 16,
+    marginHorizontal: -32,
+    paddingHorizontal: 32,
+  },
+  cityRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  cityChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E7E5E4',
+  },
+  cityChipActive: {
+    backgroundColor: TERRA,
+    borderColor: TERRA,
+  },
+  cityChipText: {
+    fontFamily: 'DMSans-Medium',
+    fontSize: 13,
+    color: MEDIUM,
+  },
+  cityChipTextActive: {
+    fontFamily: 'DMSans-Bold',
+    color: '#FFF',
+  },
+  // Bottom bar
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 32,
+    paddingTop: 16,
+    backgroundColor: CREAM,
+    gap: 12,
+  },
+  primaryButton: {
+    backgroundColor: TERRA,
+    borderRadius: 999,
+    paddingVertical: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    shadowColor: TERRA,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  primaryButtonText: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 18,
+    color: '#FFF',
+  },
+  arrowText: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 18,
+    color: '#FFF',
+  },
+  skipButton: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  skipText: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 15,
+    color: LIGHT_TEXT,
   },
 });

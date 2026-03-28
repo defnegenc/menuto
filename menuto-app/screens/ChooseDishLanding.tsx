@@ -6,7 +6,6 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  Dimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -313,7 +312,7 @@ export function ChooseDishLanding({
       <View style={styles.container}>
         <UnifiedHeader title="Choose Dish" showUnderline={false} />
         <View style={[styles.parsingContainer, { paddingTop: insets.top }]}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <ActivityIndicator size="large" color="#E9323D" />
           <Text style={styles.parsingText}>Parsing your menu...</Text>
           <Text style={styles.parsingSubtext}>This may take a few moments</Text>
         </View>
@@ -372,7 +371,7 @@ export function ChooseDishLanding({
               )}
               {isSearching && (
                 <View style={styles.loadingState}>
-                  <ActivityIndicator size="small" color={theme.colors.primary} />
+                  <ActivityIndicator size="small" color="#E9323D" />
                   <Text style={styles.loadingText}>Searching restaurants...</Text>
                 </View>
               )}
@@ -440,18 +439,19 @@ export function ChooseDishLanding({
   );
 }
 
-const screenWidth = Dimensions.get('window').width;
+const TERRA = '#E9323D';
+const MEDIUM = '#5A4D48';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#FFFFFF',
   },
   searchSection: {
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.lg,
     paddingBottom: theme.spacing.xs,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
@@ -461,38 +461,37 @@ const styles = StyleSheet.create({
   },
   stepSection: {
     paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.lg,
+    paddingTop: theme.spacing.xl,
     paddingBottom: theme.spacing.md,
   },
   stepText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
+    fontSize: 13,
+    color: MEDIUM,
     marginBottom: theme.spacing.sm,
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontFamily: 'DMSans-Regular',
   },
   stepUnderline: {
-    height: 2,
-    width: screenWidth * 0.9,
-    backgroundColor: theme.colors.primary,
-    borderRadius: 2,
-    alignSelf: 'center',
+    height: 1,
+    backgroundColor: '#E7E5E4',
+    alignSelf: 'stretch',
   },
   selectedRestaurantInfo: {
     paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
+    paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.sm,
   },
   selectedRestaurantName: {
-    fontSize: 20,
-    fontWeight: theme.typography.weights.bold,
-    color: '#000000',
-    fontFamily: theme.typography.fontFamilies.bold,
+    fontSize: 42,
+    fontFamily: 'DMSans-Bold',
+    color: '#1C1917',
+    letterSpacing: -2.5,
     marginBottom: theme.spacing.xs,
   },
   selectedRestaurantAddress: {
-    fontSize: 12,
-    color: 'rgba(0, 0, 0, 0.5)',
-    fontFamily: theme.typography.fontFamilies.regularItalic,
+    fontSize: 13,
+    color: '#A8A29E',
+    fontFamily: 'DMSans-Regular',
+    fontStyle: 'italic',
   },
   resultsSection: {
     paddingHorizontal: theme.spacing.lg,
@@ -505,9 +504,9 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   loadingText: {
-    fontSize: 12,
-    color: 'rgba(0, 0, 0, 0.5)',
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontSize: 13,
+    color: '#A8A29E',
+    fontFamily: 'DMSans-Regular',
   },
   emptyState: {
     paddingHorizontal: theme.spacing.lg,
@@ -515,10 +514,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyStateText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
+    fontSize: 14,
+    color: MEDIUM,
     textAlign: 'center',
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontFamily: 'DMSans-Regular',
   },
   parsingContainer: {
     flex: 1,
@@ -527,16 +526,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.xl,
   },
   parsingText: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.text.primary,
+    fontSize: 18,
+    fontFamily: 'DMSans-Bold',
+    color: '#1C1917',
     marginTop: theme.spacing.lg,
     textAlign: 'center',
   },
   parsingSubtext: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
+    fontSize: 14,
+    color: MEDIUM,
     marginTop: theme.spacing.sm,
     textAlign: 'center',
+    fontFamily: 'DMSans-Regular',
   },
 });

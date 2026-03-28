@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../services/supabase';
 import { useStore } from '../store/useStore';
 import { api } from '../services/api';
-import { theme } from '../theme';
+
 import { formatLastAuthMethod, getLastAuth, setLastAuth } from '../utils/lastAuth';
 
 interface Props {
@@ -254,7 +254,8 @@ export function AuthScreen({ onAuthComplete }: Props) {
         >
           <View style={styles.content}>
             <View style={styles.header}>
-              <Text style={styles.title}>Verify Your Email</Text>
+              <Text style={styles.eyebrow}>VERIFICATION</Text>
+              <Text style={styles.title}>Check your{'\n'}inbox</Text>
               <Text style={styles.subtitle}>
                 Enter the verification code sent to {email}
               </Text>
@@ -262,12 +263,13 @@ export function AuthScreen({ onAuthComplete }: Props) {
 
             <View style={styles.form}>
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Verification Code</Text>
+                <Text style={styles.label}>VERIFICATION CODE</Text>
                 <TextInput
                   style={styles.input}
                   value={verificationCode}
                   onChangeText={setVerificationCode}
                   placeholder="Enter 6-digit code"
+                  placeholderTextColor="#8C7E77"
                   keyboardType="number-pad"
                   maxLength={6}
                   editable={!isLoading}
@@ -314,9 +316,12 @@ export function AuthScreen({ onAuthComplete }: Props) {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <Text style={styles.title}>Welcome to Menuto!</Text>
+            <Text style={styles.eyebrow}>WELCOME TO MENUTO</Text>
+            <Text style={styles.title}>
+              {isSignUp ? 'Create your\naccount' : 'Good to see\nyou again'}
+            </Text>
             <Text style={styles.subtitle}>
-              {isSignUp ? 'Create your account to get started' : 'Sign in to continue'}
+              {isSignUp ? 'Join us and discover your next favorite dish' : 'Sign in to pick up where you left off'}
             </Text>
             {!!lastAuthLabel && (
               <View style={styles.lastAuthBadge}>
@@ -328,15 +333,34 @@ export function AuthScreen({ onAuthComplete }: Props) {
             )}
           </View>
 
+          {/* Tab toggle */}
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[styles.tab, !isSignUp && styles.tabActive]}
+              onPress={() => setIsSignUp(false)}
+              disabled={isLoading}
+            >
+              <Text style={[styles.tabText, !isSignUp && styles.tabTextActive]}>Sign In</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tab, isSignUp && styles.tabActive]}
+              onPress={() => setIsSignUp(true)}
+              disabled={isLoading}
+            >
+              <Text style={[styles.tabText, isSignUp && styles.tabTextActive]}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.form}>
             {isSignUp && (
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Name</Text>
+                <Text style={styles.label}>NAME</Text>
                 <TextInput
                   style={styles.input}
                   value={name}
                   onChangeText={setName}
                   placeholder="Enter your name"
+                  placeholderTextColor="#8C7E77"
                   autoCapitalize="words"
                   editable={!isLoading}
                 />
@@ -345,12 +369,13 @@ export function AuthScreen({ onAuthComplete }: Props) {
 
             {isSignUp && (
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Username</Text>
+                <Text style={styles.label}>USERNAME</Text>
                 <TextInput
                   style={styles.input}
                   value={username}
                   onChangeText={setUsername}
                   placeholder="Choose a username"
+                  placeholderTextColor="#8C7E77"
                   autoCapitalize="none"
                   autoCorrect={false}
                   editable={!isLoading}
@@ -359,12 +384,13 @@ export function AuthScreen({ onAuthComplete }: Props) {
             )}
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Email</Text>
+              <Text style={styles.label}>EMAIL</Text>
               <TextInput
                 style={styles.input}
                 value={email}
                 onChangeText={setEmail}
                 placeholder="Enter your email"
+                placeholderTextColor="#8C7E77"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -375,12 +401,13 @@ export function AuthScreen({ onAuthComplete }: Props) {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Password</Text>
+              <Text style={styles.label}>PASSWORD</Text>
               <TextInput
                 style={styles.input}
                 value={password}
                 onChangeText={setPassword}
                 placeholder="Enter your password"
+                placeholderTextColor="#8C7E77"
                 secureTextEntry
                 editable={!isLoading}
                 autoComplete={isSignUp ? "new-password" : "current-password"}
@@ -391,12 +418,13 @@ export function AuthScreen({ onAuthComplete }: Props) {
 
             {isSignUp && (
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Confirm Password</Text>
+                <Text style={styles.label}>CONFIRM PASSWORD</Text>
                 <TextInput
                   style={styles.input}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   placeholder="Confirm your password"
+                  placeholderTextColor="#8C7E77"
                   secureTextEntry
                   editable={!isLoading}
                   autoComplete="new-password"
@@ -421,7 +449,10 @@ export function AuthScreen({ onAuthComplete }: Props) {
               disabled={isLoading}
             >
               <Text style={styles.switchButtonText}>
-                {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+                {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
+                <Text style={styles.switchButtonLink}>
+                  {isSignUp ? 'Sign In' : 'Sign Up'}
+                </Text>
               </Text>
             </TouchableOpacity>
           </View>
@@ -431,10 +462,18 @@ export function AuthScreen({ onAuthComplete }: Props) {
   );
 }
 
+// Bold Diner design tokens
+const TERRA = '#E9323D';
+const TERRA_LIGHT = '#FDECED';
+const CREAM = '#FFFFFF';
+const DARK = '#2C2421';
+const MEDIUM = '#5A4D48';
+const LIGHT_TEXT = '#8C7E77';
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: CREAM,
   },
   keyboardView: {
     flex: 1,
@@ -444,84 +483,132 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.xl,
+    paddingHorizontal: 28,
+    paddingVertical: 32,
     justifyContent: 'center',
     minHeight: '100%',
   },
   header: {
     alignItems: 'center',
-    marginBottom: theme.spacing.xxxl,
+    marginBottom: 32,
+  },
+  eyebrow: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 13,
+    letterSpacing: 3,
+    color: TERRA,
+    marginBottom: 12,
+    textTransform: 'uppercase',
   },
   lastAuthBadge: {
-    marginTop: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.round,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+    marginTop: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: TERRA_LIGHT,
   },
   lastAuthBadgeText: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.text.secondary,
+    fontSize: 13,
+    color: MEDIUM,
     textAlign: 'center',
     fontFamily: 'DMSans-Regular',
   },
   title: {
-    fontSize: theme.typography.sizes.xxl,
-    fontWeight: 'bold',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
+    fontFamily: 'DMSans-Bold',
+    fontSize: 38,
+    letterSpacing: -1.5,
+    color: DARK,
+    textAlign: 'center',
+    marginBottom: 10,
+    lineHeight: 44,
   },
   subtitle: {
-    fontSize: theme.typography.sizes.lg,
-    color: theme.colors.text.secondary,
+    fontFamily: 'DMSans-Regular',
+    fontSize: 17,
+    color: MEDIUM,
     textAlign: 'center',
+    lineHeight: 24,
+  },
+  // Tab toggle
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F0EEEA',
+    borderRadius: 999,
+    padding: 4,
+    marginBottom: 28,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 999,
+    alignItems: 'center',
+  },
+  tabActive: {
+    backgroundColor: TERRA,
+  },
+  tabText: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 15,
+    color: DARK,
+  },
+  tabTextActive: {
+    color: '#FFFFFF',
   },
   form: {
-    gap: theme.spacing.lg,
+    gap: 18,
   },
   inputGroup: {
-    gap: theme.spacing.xs,
+    gap: 6,
   },
   label: {
-    fontSize: theme.typography.sizes.md,
-    fontWeight: '500',
-    color: theme.colors.text.primary,
+    fontFamily: 'DMSans-Bold',
+    fontSize: 13,
+    letterSpacing: 3,
+    color: TERRA,
+    textTransform: 'uppercase',
   },
   input: {
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    fontSize: theme.typography.sizes.md,
-    backgroundColor: theme.colors.surface,
-    color: theme.colors.text.primary,
+    borderColor: '#E7E5E4',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    fontFamily: 'DMSans-Regular',
+    fontSize: 16,
+    backgroundColor: '#FFFFFF',
+    color: DARK,
   },
   authButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.lg,
+    backgroundColor: TERRA,
+    borderRadius: 999,
+    paddingVertical: 18,
     alignItems: 'center',
-    marginTop: theme.spacing.lg,
+    marginTop: 10,
+    shadowColor: TERRA,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
   authButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   authButtonText: {
-    color: theme.colors.text.light,
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: '600',
+    fontFamily: 'DMSans-Bold',
+    fontSize: 18,
+    color: '#FFFFFF',
   },
   switchButton: {
     alignItems: 'center',
-    marginTop: theme.spacing.md,
+    marginTop: 8,
+    paddingVertical: 8,
   },
   switchButtonText: {
-    color: theme.colors.primary,
-    fontSize: theme.typography.sizes.md,
-    textDecorationLine: 'underline',
+    fontFamily: 'DMSans-Bold',
+    fontSize: 15,
+    color: LIGHT_TEXT,
+  },
+  switchButtonLink: {
+    color: TERRA,
   },
 });

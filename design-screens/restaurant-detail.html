@@ -1,0 +1,174 @@
+<html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menuto - Restaurant Detail</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"DM Sans"', 'sans-serif'] },
+                    colors: { cream: '#FFFEF4', terra: '#CE3E25' },
+                    boxShadow: {
+                        'soft': '0 4px 16px rgba(0, 0, 0, 0.04)',
+                        'warm': '0 12px 40px -12px rgba(206, 62, 37, 0.15)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        body { width: 393px; height: 852px; margin: 0 auto; overflow: hidden; position: relative; border-radius: 40px; box-shadow: 0 0 80px rgba(0,0,0,0.08); }
+    </style>
+</head>
+<body class="font-sans text-stone-900 bg-cream">
+
+    <div class="w-full h-full flex flex-col relative overflow-y-auto pb-28">
+        <!-- Sticky nav -->
+        <div class="px-6 pt-14 pb-4 flex justify-between items-center bg-cream/80 backdrop-blur-md sticky top-0 z-30">
+            <button class="w-10 h-10 rounded-full bg-white shadow-soft flex items-center justify-center text-stone-600">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+            </button>
+            <div class="flex gap-2">
+                <button class="w-10 h-10 rounded-full bg-white shadow-soft flex items-center justify-center text-terra">
+                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                </button>
+                <button class="w-10 h-10 rounded-full bg-white shadow-soft flex items-center justify-center text-terra">
+                    <i data-lucide="bookmark" class="w-4 h-4 fill-terra"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Restaurant header -->
+        <div class="px-6 mt-2">
+            <div class="flex items-center gap-2 text-terra font-medium text-[13px] uppercase tracking-wider mb-2">
+                <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> Chelsea, NYC
+            </div>
+            <h1 class="text-[42px] font-bold leading-none tracking-tight text-stone-900 mb-2">Txikito</h1>
+            <p class="text-[16px] text-stone-400 italic mb-6">Basque · The pintxo bar you keep coming back to.</p>
+
+            <!-- Personal notes -->
+            <div class="bg-white rounded-[24px] p-5 shadow-soft border border-stone-100/50 mb-8">
+                <div class="flex items-center gap-2 mb-3">
+                    <i data-lucide="sticky-note" class="w-4 h-4 text-terra"></i>
+                    <span class="text-[12px] font-bold uppercase tracking-widest text-stone-400">Personal Notes</span>
+                </div>
+                <p class="text-[15px] text-stone-600 leading-relaxed">
+                    Sit at the bar for faster pintxos. The txakoli is poured tableside. Great before a show at the Joyce.
+                </p>
+            </div>
+        </div>
+
+        <!-- Go-To Orders -->
+        <div class="px-6 mb-8">
+            <div class="flex justify-between items-end mb-4">
+                <h3 class="font-bold text-[22px] text-stone-900">Go-To Orders</h3>
+                <span class="text-[13px] text-stone-400 font-medium">3 Saved</span>
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <div class="bg-white p-4 rounded-[20px] shadow-soft border border-stone-100 flex justify-between items-center">
+                    <div>
+                        <h4 class="font-bold text-[16px] text-stone-900">Kroketas del día</h4>
+                        <p class="text-[13px] text-stone-500">Crispy, creamy, and different every time.</p>
+                        <p class="text-[12px] text-stone-400 italic mt-0.5">The jamón ones are the move.</p>
+                    </div>
+                    <div class="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center text-terra shrink-0">
+                        <i data-lucide="heart" class="w-4 h-4 fill-terra"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-[20px] shadow-soft border border-stone-100 flex justify-between items-center">
+                    <div>
+                        <h4 class="font-bold text-[16px] text-stone-900">Aceitunas</h4>
+                        <p class="text-[13px] text-stone-500">Zorzaleña and manzanilla olives.</p>
+                        <p class="text-[12px] text-stone-400 italic mt-0.5">Perfect with txakoli while waiting.</p>
+                    </div>
+                    <div class="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center text-terra shrink-0">
+                        <i data-lucide="heart" class="w-4 h-4 fill-terra"></i>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-[20px] shadow-soft border border-stone-100 flex justify-between items-center">
+                    <div>
+                        <h4 class="font-bold text-[16px] text-stone-900">Txuleta</h4>
+                        <p class="text-[13px] text-stone-500">Dry-aged Basque Country ribeye.</p>
+                        <p class="text-[12px] text-stone-400 italic mt-0.5">Order rare. Share with 2+.</p>
+                    </div>
+                    <div class="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center text-terra shrink-0">
+                        <i data-lucide="heart" class="w-4 h-4 fill-terra"></i>
+                    </div>
+                </div>
+
+                <button class="flex items-center justify-center gap-2 py-3.5 border-2 border-dashed border-stone-200 rounded-[20px] text-stone-400 font-medium text-[14px]">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Add new favorite
+                </button>
+            </div>
+        </div>
+
+        <!-- Visit History -->
+        <div class="px-6 mb-10">
+            <h3 class="font-bold text-[22px] text-stone-900 mb-4">Visit History</h3>
+            <div class="space-y-0">
+                <div class="flex gap-4">
+                    <div class="flex flex-col items-center">
+                        <div class="w-2.5 h-2.5 rounded-full bg-terra"></div>
+                        <div class="w-0.5 h-12 bg-stone-200 my-1"></div>
+                    </div>
+                    <div>
+                        <p class="text-[14px] font-bold text-stone-900">Mar 15, 2026</p>
+                        <p class="text-[13px] text-stone-500">Dinner with Sarah. Tried the txuleta.</p>
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <div class="flex flex-col items-center">
+                        <div class="w-2.5 h-2.5 rounded-full bg-stone-300"></div>
+                        <div class="w-0.5 h-12 bg-stone-200 my-1"></div>
+                    </div>
+                    <div>
+                        <p class="text-[14px] font-bold text-stone-800">Jan 22, 2026</p>
+                        <p class="text-[13px] text-stone-500">Bar seat, solo kroketas run.</p>
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <div class="flex flex-col items-center">
+                        <div class="w-2.5 h-2.5 rounded-full bg-stone-200"></div>
+                    </div>
+                    <p class="text-[14px] font-bold text-stone-400">First Visit: Nov 2025</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CTAs -->
+        <div class="px-6 pb-12 space-y-3">
+            <button class="w-full bg-terra text-white py-4 rounded-full text-[16px] font-bold shadow-warm flex items-center justify-center gap-2">
+                <i data-lucide="refresh-cw" class="w-5 h-5"></i> Re-run Recommendations
+            </button>
+            <button class="w-full bg-white text-terra border-2 border-terra/10 py-4 rounded-full text-[16px] font-bold flex items-center justify-center gap-2">
+                <i data-lucide="sliders" class="w-5 h-5"></i> Update Preferences
+            </button>
+        </div>
+
+        <!-- Tab bar -->
+        <div class="fixed bottom-0 left-0 w-[393px] bg-white/90 backdrop-blur-lg border-t border-stone-100 pb-8 pt-3 px-8 flex justify-between items-center z-50">
+            <button class="flex flex-col items-center gap-1 text-stone-400">
+                <i data-lucide="search" class="w-5 h-5 stroke-[2px]"></i>
+                <span class="text-[10px] font-bold uppercase">Find</span>
+            </button>
+            <button class="flex flex-col items-center gap-1 text-terra">
+                <i data-lucide="bookmark" class="w-5 h-5 stroke-[2.5px] fill-terra"></i>
+                <span class="text-[10px] font-bold uppercase">Spots</span>
+            </button>
+            <button class="flex flex-col items-center gap-1 text-stone-400">
+                <i data-lucide="user" class="w-5 h-5 stroke-[2px]"></i>
+                <span class="text-[10px] font-bold uppercase">Profile</span>
+            </button>
+        </div>
+    </div>
+
+    <script>lucide.createIcons();</script>
+    <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+</body></html>
