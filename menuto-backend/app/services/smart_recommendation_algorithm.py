@@ -40,13 +40,14 @@ class SmartRecommendationAlgorithm:
         self.legacy_engine = legacy_engine or RecommendationEngine()
         # Hand-tuned weights (sum ~= 1.0). Replace with learned weights later.
         self.component_weights: Dict[str, float] = {
-            "personal_taste": 0.4,
+            "personal_taste": 0.3,
             "sentiment": 0.2,
             "craving": 0.15,
             "hunger": 0.05,
             "spice": 0.1,
             "friend": 0.05,
             "restaurant": 0.05,
+            "rating_history": 0.10,
         }
 
     # ------------------------------------------------------------------
@@ -240,7 +241,8 @@ class SmartRecommendationAlgorithm:
                     f"hunger={components.get('hunger', 0):.2f}, "
                     f"spice={components.get('spice', 0):.2f}, "
                     f"friend={components.get('friend', 0):.2f}, "
-                    f"restaurant={components.get('restaurant', 0):.2f}"
+                    f"restaurant={components.get('restaurant', 0):.2f}, "
+                    f"rating_history={components.get('rating_history', 0):.2f}"
                 )
                 hunger_score = components.get("hunger", 0)
                 course = (scored.item.course or "main").lower()
@@ -315,7 +317,14 @@ class SmartRecommendationAlgorithm:
             if components.get("spice", 0) >= 0.5 and len(bullets) < 2:
                 bullets.append("Matches your spice preference")
             
-            # 6. Friend boost
+            # 6. Rating history
+            rating_hist = components.get("rating_history", 0.5)
+            if rating_hist >= 0.7:
+                bullets.append("You've rated similar dishes highly")
+            elif rating_hist <= 0.25 and len(bullets) < 2:
+                bullets.append("Similar dishes didn't match your taste before")
+
+            # 7. Friend boost
             if components.get("friend", 0) >= 0.5:
                 bullets.append("Friend-approved pick")
             
@@ -352,6 +361,7 @@ class SmartRecommendationAlgorithm:
             "spice": self._spice_alignment(item, taste_profile, context),
             "friend": self._friend_boost(item, context),
             "restaurant": self._restaurant_bonus(item, taste_profile),
+            "rating_history": self._rating_history_match(item, context),
         }
 
     def _personal_taste_seed(self, item: ItemFeatures, taste_profile: UserTasteProfile) -> float:
@@ -418,6 +428,40 @@ class SmartRecommendationAlgorithm:
         if context.friend_selected_item_ids and item.item_id in context.friend_selected_item_ids:
             return 0.8
         return 0.0
+
+    def _rating_history_match(self, item: ItemFeatures, context: RecommendationContext) -> float:
+        """Score based on the user's past dish ratings (1-5 stars).
+
+        Uses simple substring matching between the current item name and
+        previously-rated dish names.  Returns 0.5 (neutral) when no match is
+        found so the component neither helps nor hurts.
+        """
+        user_ratings = context.user_dish_ratings
+        if not user_ratings:
+            return 0.5
+
+        item_name_lower = item.name.lower()
+        best_rating: float | None = None
+
+        for rated_name, rating in user_ratings.items():
+            rated_lower = rated_name.lower()
+            # Fuzzy-ish: either name contains the other
+            if rated_lower in item_name_lower or item_name_lower in rated_lower:
+                # If multiple matches, keep the one with the highest rating
+                if best_rating is None or rating > best_rating:
+                    best_rating = rating
+
+        if best_rating is None:
+            return 0.5
+
+        # Map 1-5 star rating to a 0-1 score
+        # 1 -> 0.0, 2 -> 0.2, 3 -> 0.5, 4 -> 0.8, 5 -> 1.0
+        if best_rating >= 4:
+            return self._clamp(0.6 + (best_rating - 4) * 0.2)  # 4->0.8, 5->1.0
+        if best_rating <= 2:
+            return self._clamp(best_rating * 0.1)  # 1->0.1, 2->0.2
+        # 3 stars -> neutral-ish
+        return 0.5
 
     def _restaurant_bonus(self, item: ItemFeatures, taste_profile: UserTasteProfile) -> float:
         rest_pattern = taste_profile.flavor_profile.lower()

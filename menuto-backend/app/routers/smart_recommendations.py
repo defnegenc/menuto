@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from fastapi import APIRouter, HTTPException, Request
 
 from app.services.menu_data_service import MenuDataService
@@ -47,6 +48,32 @@ async def generate_smart_recommendations(
         hunger_raw = context_weights.get("hungerLevel")
         spice_raw = context_weights.get("spiceTolerance")
 
+        # Fetch user's past dish ratings to feed into the algorithm
+        user_ratings_map: dict[str, float] = {}
+        user_id = data.get("user_id")
+        if user_id:
+            try:
+                from supabase import create_client
+                sb_url = os.getenv("SUPABASE_URL")
+                sb_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+                if sb_url and sb_key:
+                    sb = create_client(sb_url, sb_key)
+                    # Fetch user's ratings with dish names via foreign key join
+                    result = sb.table("dish_ratings").select(
+                        "rating, dish_id, parsed_dishes(name)"
+                    ).eq("user_id", user_id).execute()
+                    for r in (result.data or []):
+                        dish_info = r.get("parsed_dishes")
+                        if dish_info and dish_info.get("name"):
+                            user_ratings_map[dish_info["name"]] = r["rating"]
+                    if user_ratings_map:
+                        logger.info(
+                            "Loaded %d past dish ratings for user %s",
+                            len(user_ratings_map), user_id,
+                        )
+            except Exception as e:
+                logger.warning("Failed to fetch user ratings: %s", e)
+
         context = RecommendationContext(
             hunger_level=_map_hunger_level(hunger_raw),
             craving_tags=context_weights.get("selectedCravings", []) or [],
@@ -55,6 +82,7 @@ async def generate_smart_recommendations(
             budget_max=None,
             friend_selected_item_ids=[fs.get("id") for fs in friend_selections if fs.get("id")],
             restaurant_specific_signals={"name": restaurant_name},
+            user_dish_ratings=user_ratings_map,
         )
 
         legacy_engine = RecommendationEngine()
