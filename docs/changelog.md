@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-03-27 — Major Cleanup Executed (All 5 Phases)
+
+### Phase 1: Security
+- Updated .gitignore to exclude .env files
+- Created .env.example for backend and frontend
+
+### Phase 2: Dead Code Removal
+- Deleted 5 unused auth screens (AuthScreen, ClerkSignInScreen, SignInScreen, SignInScreen 3/4)
+- Deleted mockRecommendations.ts (imported but never called)
+
+### Phase 3: Bug Fixes & Debug Cleanup
+- menu_data_service.py: removed ~60 print statements (645 → ~315 lines)
+- users.py: fixed 2 bare except: clauses, removed 17 print statements
+- smart_recommendations.py: fixed HTTPException swallowing bug, removed 11 prints
+- main.py: documented all router prefixes
+- smart_recommendation_algorithm.py: conditional reasoning strings (DEBUG-only)
+
+### Phase 4: Auth Migration (Clerk → Supabase Auth)
+- Backend: rewrote require_user.py for Supabase HS256 JWT verification
+- Frontend: replaced ClerkProvider with supabase.auth.onAuthStateChange()
+- Created new AuthScreen.tsx using Supabase auth methods
+- Updated api.ts to auto-attach Supabase session tokens
+- Removed @clerk/clerk-expo dependency
+
+### Phase 5: Code Organization
+- Extracted hardcoded constants to constants/index.ts (~190 lines removed from 4 screens)
+- Improved Zustand store: added loading/error states, fixed missing interface members, replaced `any` types
+- Updated TastePreferencesScreen, ProfileScreen, RestaurantSearchScreen, RestaurantSelectionScreen
+
 ## 2026-03-27 — Major Cleanup Plan Created
 - Created CLAUDE.md with project overview and references
 - Created docs/algorithm.md documenting the recommendation engine

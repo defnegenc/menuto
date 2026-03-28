@@ -6,7 +6,7 @@ Restaurant dish recommendation app. React Native/Expo frontend + FastAPI/Supabas
 
 - **Frontend:** React Native 0.79 + Expo 53, TypeScript, Zustand, React Navigation
 - **Backend:** FastAPI (Python), Supabase (Postgres), Google Gemini 2.0 Flash (menu parsing)
-- **Auth:** Clerk (migrating to Supabase Auth)
+- **Auth:** Supabase Auth (migrated from Clerk)
 - **APIs:** Google Places (restaurant search), Supabase (data + auth)
 - **Deploy:** Backend on Render, frontend via Expo/EAS Build
 
@@ -14,10 +14,12 @@ Restaurant dish recommendation app. React Native/Expo frontend + FastAPI/Supabas
 
 ```
 menuto-app/          # React Native mobile app
-  App.tsx            # Entry point, navigation, auth flow
+  App.tsx            # Entry point, navigation, auth flow (Supabase session)
   screens/           # All screens (ProfileScreen, RestaurantSearch, etc.)
   components/        # Reusable UI components
-  services/api.ts    # Backend API client
+  constants/index.ts # Cuisines, dietary restrictions, cities
+  services/api.ts    # Backend API client (auto-attaches Supabase JWT)
+  services/supabase.ts # Supabase client with SecureStore session persistence
   store/useStore.ts  # Zustand global state
   types/index.ts     # TypeScript interfaces
   theme.tsx          # Colors, typography, spacing
@@ -27,7 +29,7 @@ menuto-backend/      # FastAPI Python backend
   app/routers/       # API endpoints (restaurants, dishes, users, menus, etc.)
   app/services/      # Business logic (recommendations, menu parsing)
   app/models.py      # SQLAlchemy models
-  app/require_user.py # Auth middleware (Clerk JWT)
+  app/require_user.py # Auth middleware (Supabase JWT)
 ```
 
 ## Key Commands
@@ -49,9 +51,9 @@ cd menuto-app && npm install && npx expo start
 
 ## Top 3 Things to Improve (Rolling)
 
-1. **Auth migration** — Replace Clerk with Supabase Auth (free, already in stack)
-2. **Debug logging cleanup** — 60+ print() statements in backend, console.logs in frontend
-3. **Screen decomposition** — ProfileScreen (1,606 lines) and ChooseDishLanding (1,569 lines) need splitting
+1. **Screen decomposition** — ProfileScreen (1,606 lines) and ChooseDishLanding (1,569 lines) need splitting into <500 line sub-components
+2. **Feed user ratings into algorithm** — UserRatings exist in Supabase but aren't used by the recommendation scoring
+3. **Loading skeletons** — Replace spinners with skeleton placeholders for perceived performance
 
 ## Rules
 
