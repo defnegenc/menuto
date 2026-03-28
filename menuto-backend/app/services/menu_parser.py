@@ -72,7 +72,7 @@ class MenuParser:
             if not api_key:
                 raise ValueError("Google Gemini API key not found. Set GOOGLE_GEMINI_API_KEY in .env file")
             genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
+            self.model = genai.GenerativeModel('gemini-2.5-flash')
         
         # Headers for requests
         self.headers = {
@@ -315,7 +315,7 @@ class MenuParser:
         *,
         request_id: str = "",
         debug_ctx: Optional[Dict] = None,
-        model: str = "gemini-2.0-flash-exp",
+        model: str = "gemini-2.5-flash",
         timeout_s: int = 180,  # 3 minutes for large menus
     ) -> Tuple[List[Dict], str]:
         """Step 4: Parse with strict JSON response and validation.
@@ -348,7 +348,7 @@ class MenuParser:
                     debug_ctx.setdefault("llm", {})
                     debug_ctx["llm"].update(
                         {
-                            "model": "gemini-2.0-flash-exp",
+                            "model": "gemini-2.5-flash",
                             "prompt_chars": len(user_prompt or ""),
                             "latency_ms": int((t1 - t0) * 1000),
                             "usage": {

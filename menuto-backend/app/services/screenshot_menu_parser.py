@@ -2,7 +2,7 @@
 menuto-backend/app/services/screenshot_menu_parser.py
 
 What this is:
-- OpenAI Vision-based parser for menu *photos/screenshots*.
+- Gemini Vision parser for menu *photos/screenshots*.
 
 Why we keep it:
 - Used by /menu-parsing/parse-screenshot to extract dishes from an uploaded image.
@@ -34,7 +34,7 @@ class ScreenshotMenuParser:
         if not api_key:
             raise ValueError("GOOGLE_GEMINI_API_KEY environment variable is not set")
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        self.model = genai.GenerativeModel('gemini-2.5-flash')
     
     def encode_image_to_base64(self, image_path: str) -> str:
         """Convert image to base64 string"""

@@ -13,7 +13,7 @@ import google.generativeai as genai
 import os
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
-from app.models import Restaurant, Dish
+# Legacy Restaurant/Dish models removed (tables don't exist in Supabase)
 import requests
 from dotenv import load_dotenv
 
@@ -33,7 +33,7 @@ class RecommendationEngine:
             raise ValueError("Google Places API key not found")
             
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        self.model = genai.GenerativeModel('gemini-2.5-flash')
         self.google_api_key = google_api_key
     
     def analyze_user_taste_profile(self, favorite_dishes: List[Dict[str, str]]) -> Dict[str, Any]:

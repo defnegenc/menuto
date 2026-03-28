@@ -13,10 +13,9 @@ Combines multiple signals:
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, or_
+from sqlalchemy import func, and_, text
 from datetime import datetime, timedelta
 from app.models import ParsedDish, ParsedMenu
-from app.models_behavior import DishOrder, DishView, DishRating, DishFavorite
 import logging
 import json
 
@@ -101,48 +100,46 @@ class EnhancedRecommendationAlgorithm:
             return {}
         
         signals = {}
-        
+        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+
         for dish in dishes:
             dish_id_str = str(dish.id)
-            
-            # Get order count
-            order_count = self.db.query(func.count(DishOrder.id)).filter(
-                DishOrder.dish_id == dish.id
+
+            # Get order count (raw SQL — behavioral ORM models removed)
+            order_count = self.db.execute(
+                text("SELECT COUNT(*) FROM dish_orders WHERE dish_id = :did"),
+                {"did": dish.id}
             ).scalar() or 0
-            
+
             # Get view count
-            view_count = self.db.query(func.count(DishView.id)).filter(
-                DishView.dish_id == dish.id
+            view_count = self.db.execute(
+                text("SELECT COUNT(*) FROM dish_views WHERE dish_id = :did"),
+                {"did": dish.id}
             ).scalar() or 0
-            
+
             # Get rating stats
-            rating_stats = self.db.query(
-                func.avg(DishRating.rating),
-                func.count(DishRating.id)
-            ).filter(
-                DishRating.dish_id == dish.id
+            rating_row = self.db.execute(
+                text("SELECT AVG(rating), COUNT(*) FROM dish_ratings WHERE dish_id = :did"),
+                {"did": dish.id}
             ).first()
-            
-            avg_rating = float(rating_stats[0]) if rating_stats[0] else 0.0
-            rating_count = rating_stats[1] or 0
-            
+
+            avg_rating = float(rating_row[0]) if rating_row and rating_row[0] else 0.0
+            rating_count = (rating_row[1] if rating_row else 0) or 0
+
             # Recent order boost (orders in last 30 days)
-            thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-            recent_orders = self.db.query(func.count(DishOrder.id)).filter(
-                and_(
-                    DishOrder.dish_id == dish.id,
-                    DishOrder.ordered_at >= thirty_days_ago
-                )
+            recent_orders = self.db.execute(
+                text("SELECT COUNT(*) FROM dish_orders WHERE dish_id = :did AND ordered_at >= :since"),
+                {"did": dish.id, "since": thirty_days_ago}
             ).scalar() or 0
-            
+
             recent_order_boost = min(recent_orders / max(order_count, 1), 1.0) * 0.3  # Max 0.3 boost
-            
+
             # Extract categories
             categories = [dish.category] if dish.category else []
             if dish.category:
                 # Split if category contains multiple values (e.g., "main, pasta")
                 categories = [c.strip() for c in dish.category.split(',')]
-            
+
             signals[dish_id_str] = DishSignals(
                 dish_id=dish_id_str,
                 dish_name=dish.name,

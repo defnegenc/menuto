@@ -27,11 +27,17 @@ from app.services.menu_parsing_utils import infer_menu_period_from_url, infer_me
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise RuntimeError("Supabase not configured")
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+_supabase: Client | None = None
+
+def _get_supabase() -> Client:
+    global _supabase
+    if _supabase is None:
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        if not url or not key:
+            raise HTTPException(status_code=503, detail="Supabase not configured")
+        _supabase = create_client(url, key)
+    return _supabase
 
 # Placeholder for empty restaurant_url (legacy NOT NULL compat only)
 # Note: menu_url never uses placeholder - text/screenshot ingests generate synthetic IDs
@@ -53,7 +59,7 @@ def _safe_supabase_insert(table: str, payload: Dict, fallback_remove: List[str] 
     Logs the FULL Supabase/PostgREST error body (code, message, details) on failure.
     """
     try:
-        result = supabase.table(table).insert(payload).execute()
+        result = _get_supabase().table(table).insert(payload).execute()
         if not result.data:
             logger.error(f"❌ Supabase {table} insert returned no data")
             logger.error(f"   Payload: {payload}")
@@ -75,7 +81,7 @@ def _safe_supabase_insert(table: str, payload: Dict, fallback_remove: List[str] 
             fallback_payload = {k: v for k, v in payload.items() if k not in fallback_remove}
             logger.info(f"   Retrying without: {fallback_remove}")
             try:
-                result = supabase.table(table).insert(fallback_payload).execute()
+                result = _get_supabase().table(table).insert(fallback_payload).execute()
                 if result.data:
                     logger.info(f"   ✅ Fallback insert succeeded")
                     return result
@@ -126,7 +132,7 @@ def _get_latest_menu_by_place_or_name(place_id: str, restaurant_name: str):
       3) Fallback to case-insensitive name match
     """
     # 1) by place_id column (preferred)
-    menus = supabase.table("parsed_menus") \
+    menus = _get_supabase().table("parsed_menus") \
         .select("*") \
         .eq("place_id", place_id) \
         .order("parsed_at", desc=True) \
@@ -137,7 +143,7 @@ def _get_latest_menu_by_place_or_name(place_id: str, restaurant_name: str):
         return menus.data[0]
 
     # 2) fallback: legacy rows where place_id was stored in restaurant_url
-    menus = supabase.table("parsed_menus") \
+    menus = _get_supabase().table("parsed_menus") \
         .select("*") \
         .eq("restaurant_url", place_id) \
         .order("parsed_at", desc=True) \
@@ -148,7 +154,7 @@ def _get_latest_menu_by_place_or_name(place_id: str, restaurant_name: str):
         return menus.data[0]
 
     # 3) fallback by name (ilike)
-    menus = supabase.table("parsed_menus") \
+    menus = _get_supabase().table("parsed_menus") \
         .select("*") \
         .ilike("restaurant_name", f"%{restaurant_name}%") \
         .order("parsed_at", desc=True) \
@@ -166,7 +172,7 @@ def _get_all_menus_by_place_or_name(place_id: str, restaurant_name: str):
     """
     # 1) by place_id column (preferred)
     menus = (
-        supabase.table("parsed_menus")
+        _get_supabase().table("parsed_menus")
         .select("*")
         .eq("place_id", place_id)
         .order("parsed_at", desc=True)
@@ -178,7 +184,7 @@ def _get_all_menus_by_place_or_name(place_id: str, restaurant_name: str):
 
     # 2) fallback: legacy rows where place_id was stored in restaurant_url
     menus = (
-        supabase.table("parsed_menus")
+        _get_supabase().table("parsed_menus")
         .select("*")
         .eq("restaurant_url", place_id)
         .order("parsed_at", desc=True)
@@ -190,7 +196,7 @@ def _get_all_menus_by_place_or_name(place_id: str, restaurant_name: str):
 
     # 3) fallback by name (ilike)
     menus = (
-        supabase.table("parsed_menus")
+        _get_supabase().table("parsed_menus")
         .select("*")
         .ilike("restaurant_name", f"%{restaurant_name}%")
         .order("parsed_at", desc=True)
@@ -227,7 +233,7 @@ async def get_restaurant_menu(place_id: str, restaurant_name: str, all_menus: bo
             menu_url = m.get("menu_url") or ""
             menu_type = infer_menu_period_from_url(menu_url)
             dish_rows = (
-                supabase.table("parsed_dishes")
+                _get_supabase().table("parsed_dishes")
                 .select("*")
                 .eq("menu_id", menu_id)
                 .execute()
@@ -301,7 +307,7 @@ async def get_menu_coverage(place_id: str, restaurant_name: str):
             }
 
         menu_id = menu["id"]
-        items = supabase.table("parsed_dishes").select("*").eq("menu_id", menu_id).execute().data or []
+        items = _get_supabase().table("parsed_dishes").select("*").eq("menu_id", menu_id).execute().data or []
         user_added = [i for i in items if i.get("is_user_added")]
         parsed = [i for i in items if not i.get("is_user_added")]
         status = "complete" if len(items) >= 5 else "partial" if len(items) > 0 else "missing"
@@ -478,7 +484,7 @@ async def _run_ingest_job(job: IngestJob):
                 
                 # Fetch the existing menu to get its ID and details
                 try:
-                    existing_menu = supabase.table("parsed_menus")\
+                    existing_menu = _get_supabase().table("parsed_menus")\
                         .select("id, dish_count, menu_type")\
                         .eq("menu_url", url)\
                         .eq("place_id", job.place_id)\

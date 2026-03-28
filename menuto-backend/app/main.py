@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import restaurants, dishes, reviews, smart_recommendations, menu_api, menu_parser_api, menu_parsing, users, places, behavioral_tracking
+from app.routers import reviews, smart_recommendations, menu_api, menu_parser_api, menu_parsing, users, places, behavioral_tracking
 from app.require_user import require_user
 from dotenv import load_dotenv
 import os
@@ -70,8 +70,6 @@ app.add_middleware(
 # Router registration
 #
 # API endpoint groups:
-#   /restaurants/*           - Restaurant CRUD and search
-#   /dishes/*                - Dish CRUD
 #   /reviews/*               - Review ingestion
 #   /smart-recommendations/* - AI-powered dish recommendations & behavioral tracking
 #   /menu/*                  - Menu data retrieval
@@ -81,8 +79,6 @@ app.add_middleware(
 #   /api/places/*            - Google Places proxy      (prefix on router)
 # ---------------------------------------------------------------------------
 
-app.include_router(restaurants.router, prefix="/restaurants", tags=["restaurants"])
-app.include_router(dishes.router, prefix="/dishes", tags=["dishes"])
 app.include_router(reviews.router, prefix="/reviews", tags=["reviews"])
 
 app.include_router(smart_recommendations.router, prefix="/smart-recommendations", tags=["smart-recommendations"])
