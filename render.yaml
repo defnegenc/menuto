@@ -11,19 +11,17 @@ services:
     envVars:
       - key: API_ENV
         value: prod
-      - key: DATABASE_URL
-        sync: false
-      - key: CLERK_ISSUER
-        value: https://clerk.usemenuto.com
-      - key: CLERK_AUDIENCE
-        value: menuto-backend
-      - key: CLERK_SECRET_KEY
-        sync: false
-      - key: CLERK_PUBLISHABLE_KEY
-        sync: false
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_KEY
         sync: false
-      - key: OPENAI_API_KEY
+      - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: GOOGLE_PLACES_API_KEY
+        sync: false
+      - key: GOOGLE_GEMINI_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://usemenuto.com,https://app.usemenuto.com
