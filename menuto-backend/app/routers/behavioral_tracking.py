@@ -61,7 +61,7 @@ async def track_dish_order(
     Track when a user orders a dish (critical signal).
     Call this when user confirms they're ordering/ordered this dish.
     """
-    user_id = user.get("sub")  # Clerk user ID
+    user_id = user.get("sub")  # Supabase Auth user ID
     
     try:
         dish_id_int = int(request.dish_id)

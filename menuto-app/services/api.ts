@@ -1,22 +1,12 @@
 import { UserPreferences, RecommendationResponse, MenuScanResult } from '../types';
+import { supabase } from './supabase';
 
 // Change this to your backend URL
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8080';
 
-// Helper function to get Clerk token
-let authTokenGetter: (() => Promise<string | null>) | null = null;
-
-export const setAuthTokenGetter = (getter: () => Promise<string | null>) => {
-  authTokenGetter = getter;
-};
-
-export const isAuthGetterWired = () => !!authTokenGetter;
-
 const getAuthToken = async (): Promise<string | null> => {
-  if (authTokenGetter) {
-    return await authTokenGetter();
-  }
-  return null;
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
 };
 
 async function request(path: string, opts: RequestInit = {}) {
@@ -697,7 +687,7 @@ class MenutoAPI {
     try {
       // Basic validation
       if (!userId || userId === 'undefined') {
-        throw new Error('Invalid user ID format - must be a proper Clerk user ID');
+        throw new Error('Invalid user ID format');
       }
       
       // Destructure to remove any incoming id/created_at/updated_at from prefs
@@ -1021,53 +1011,3 @@ class MenutoAPI {
 }
 
 export const api = new MenutoAPI();
-
-export async function ensureUserProfile(userId: string, email?: string) {
-  const payload = {
-    id: userId,
-    email,
-    home_base: undefined,
-    preferred_cuisines: [],
-    spice_tolerance: 3,
-    price_preference: 2,
-    dietary_restrictions: [],
-    favorite_restaurants: [],
-    favorite_dishes: [],
-  };
-
-  async function request(path: string, opts: RequestInit = {}) {
-    // Get token directly from Clerk each time
-    const token = await getAuthToken();
-    const headers = new Headers(opts.headers || {});
-    
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    } else {
-      // If no token, try one more time with a small delay
-      await new Promise(resolve => setTimeout(resolve, 100));
-      const retryToken = await getAuthToken();
-      if (retryToken) {
-        headers.set('Authorization', `Bearer ${retryToken}`);
-      }
-    }
-    
-    const res = await fetch(`${API_BASE}${path}`, { ...opts, headers });
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`${res.status} ${body}`);
-    }
-    return res.json();
-  }
-
-  try {
-    return await request(`/users/${userId}/preferences`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-  } catch (error) {
-    console.error('Ensure user profile error:', error);
-    // Return the payload as fallback so the app can continue
-    return payload;
-  }
-}

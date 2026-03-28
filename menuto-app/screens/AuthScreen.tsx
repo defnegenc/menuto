@@ -11,7 +11,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useSignIn, useSignUp, useAuth } from '@clerk/clerk-expo';
+import { supabase } from '../services/supabase';
 import { useStore } from '../store/useStore';
 import { api } from '../services/api';
 import { theme } from '../theme';
@@ -21,27 +21,20 @@ interface Props {
   onAuthComplete: () => void;
 }
 
-export function ClerkAuthScreen({ onAuthComplete }: Props) {
+export function AuthScreen({ onAuthComplete }: Props) {
   const [isSignUp, setIsSignUp] = useState(false);
-  const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email'); // Toggle between email and phone
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showVerification, setShowVerification] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
-  const [signUpAttempt, setSignUpAttempt] = useState<any>(null);
   const [lastAuthLabel, setLastAuthLabel] = useState<string | null>(null);
   const [lastAuthIdentifier, setLastAuthIdentifier] = useState<string | null>(null);
-  
-  const { signIn, setActive } = useSignIn();
-  const { signUp, setActive: setActiveSignUp } = useSignUp();
-  const { userId: authUserId } = useAuth();
+
   const { setUser } = useStore();
-  const [pendingUserPayload, setPendingUserPayload] = useState<any | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -61,75 +54,15 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
     };
   }, []);
 
-  // Persist to Supabase only when we actually HAVE a userId from Clerk
-  React.useEffect(() => {
-    if (!authUserId || !pendingUserPayload) return;
-    
-    (async () => {
-      try {
-        // Try to load existing user data first
-        try {
-          const userData = await api.getUserPreferences(authUserId);
-          if (userData) {
-            let updatedUser = userData;
-            if (pendingUserPayload) {
-              const mergedPayload = Object.fromEntries(
-                Object.entries(pendingUserPayload).filter(([, value]) => value !== undefined && value !== null)
-              );
-              updatedUser = { ...userData, ...mergedPayload };
-              await api.saveUserPreferences(authUserId, updatedUser);
-            }
-            setUser(updatedUser, authUserId);
-          } else {
-            // Create user in Supabase with the pending payload
-            const userToCreate = { id: authUserId, ...pendingUserPayload };
-            await api.saveUserPreferences(authUserId, userToCreate);
-            setUser(userToCreate, authUserId);
-          }
-        } catch (error) {
-          // Create user in Supabase with the pending payload
-          const userToCreate = { id: authUserId, ...pendingUserPayload };
-          await api.saveUserPreferences(authUserId, userToCreate);
-          setUser(userToCreate, authUserId);
-        }
-        
-        setPendingUserPayload(null);
-        
-        // Add a small delay to ensure the user data is properly set in the store
-        // before calling onAuthComplete
-        setTimeout(() => {
-          onAuthComplete();
-        }, 100);
-      } catch (e) {
-        console.error('Failed to save user data:', e);
-        Alert.alert('Error', 'Failed to save user data. Please try again.');
-      }
-    })();
-  }, [authUserId, pendingUserPayload, setUser, onAuthComplete]);
-
-  // Add null checks for Clerk hooks
-  if (!signIn || !signUp || !setActive || !setActiveSignUp) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.content}>
-          <Text style={styles.title}>Loading...</Text>
-          <Text style={styles.subtitle}>Please wait while we initialize authentication.</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
 
   const validatePassword = (password: string) => {
-    // More robust password validation
     if (password.length < 8) {
       return { valid: false, message: 'Password must be at least 8 characters long' };
     }
-    // Check for at least one letter and one number (common requirement)
     if (!/[a-zA-Z]/.test(password)) {
       return { valid: false, message: 'Password must contain at least one letter' };
     }
@@ -139,17 +72,33 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
     return { valid: true, message: '' };
   };
 
-  const validatePhoneNumber = (phone: string) => {
-    // Basic E.164 format validation (international format)
-    // Should start with + followed by country code and number
-    const e164Regex = /^\+[1-9]\d{1,14}$/;
-    return e164Regex.test(phone);
-  };
-
   const validateUsername = (username: string) => {
-    // Username should be 3-20 characters, alphanumeric and underscores only
     const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
     return usernameRegex.test(username);
+  };
+
+  const saveNewUserProfile = async (userId: string, userEmail: string) => {
+    const userPayload = {
+      id: userId,
+      name: name.trim() || undefined,
+      username: username.trim() || undefined,
+      email: userEmail,
+      home_base: undefined,
+      preferred_cuisines: [],
+      spice_tolerance: 3,
+      price_preference: 2,
+      dietary_restrictions: [],
+      favorite_restaurants: [],
+      favorite_dishes: [],
+    };
+    try {
+      await api.saveUserPreferences(userId, userPayload);
+      setUser(userPayload, userId);
+    } catch (e) {
+      console.error('Failed to save new user profile:', e);
+      // Still set locally so the app can proceed
+      setUser(userPayload, userId);
+    }
   };
 
   const handleVerification = async () => {
@@ -160,52 +109,34 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
 
     setIsLoading(true);
     try {
-      await signUpAttempt.attemptEmailAddressVerification({
-        code: verificationCode.trim()
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: email.trim(),
+        token: verificationCode.trim(),
+        type: 'signup',
       });
-      
-      // Activate the Clerk session first
-      await setActiveSignUp({ session: signUpAttempt.createdSessionId });
 
-      // Use the actual Clerk user ID - never fall back to generated IDs
-      const userId = signUpAttempt.createdUserId;
-      if (!userId) {
-        Alert.alert('Error', 'Unable to create user profile. Please try again.');
+      if (error) {
+        Alert.alert('Error', error.message || 'Verification failed');
         return;
       }
-      const sanitizedPayload = {
-        name: name.trim() || undefined,
-        username: username.trim() || undefined,
-        email: email.trim(),
-        home_base: undefined,
-        preferred_cuisines: [],
-        spice_tolerance: 3,
-        price_preference: 2,
-        dietary_restrictions: [],
-        favorite_restaurants: [],
-        favorite_dishes: [],
-      };
-      setPendingUserPayload(sanitizedPayload);
-      // effect above will fire once authUserId becomes truthy and handle onAuthComplete
-      
-      Alert.alert(
-        'Success', 
-        'Account created successfully!'
-      );
+
+      if (data.session && data.user) {
+        await setLastAuth({ method: 'email_password_sign_up', identifier: email.trim(), ts: Date.now() });
+        await saveNewUserProfile(data.user.id, email.trim());
+        Alert.alert('Success', 'Account created successfully!');
+        onAuthComplete();
+      } else {
+        Alert.alert('Error', 'Verification succeeded but no session was created. Please try signing in.');
+        setShowVerification(false);
+      }
     } catch (error: any) {
-      Alert.alert('Error', error.errors?.[0]?.message || 'Verification failed');
+      Alert.alert('Error', error?.message || 'Verification failed');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleAuth = async () => {
-    // Check if user is already signed in
-    if (authUserId && !isSignUp) {
-      onAuthComplete();
-      return;
-    }
-
     // Validate inputs
     if (isSignUp && !name.trim()) {
       Alert.alert('Error', 'Please enter your name');
@@ -252,83 +183,63 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
 
     try {
       if (isSignUp) {
-        // Starting sign up process
-        // Sign up with Clerk
-        const result = await signUp.create({
-          emailAddress: email,
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
           password,
+          options: {
+            data: {
+              name: name.trim(),
+              username: username.trim(),
+            },
+          },
         });
 
-        if (result.status === 'complete') {
-          await setActiveSignUp({ session: result.createdSessionId });
-          await setLastAuth({ method: 'email_password_sign_up', identifier: email.trim() || undefined, ts: Date.now() });
-          
-          const sanitizedPayload = {
-            name: name.trim() || undefined,
-            username: username.trim() || undefined,
-            email: email.trim(),
-            home_base: undefined,
-            preferred_cuisines: [],
-            spice_tolerance: 3,
-            price_preference: 2,
-            dietary_restrictions: [],
-            favorite_restaurants: [],
-            favorite_dishes: [],
-          };
-          
-          setPendingUserPayload(sanitizedPayload);
+        if (error) {
+          Alert.alert('Error', error.message);
+          return;
+        }
 
-          Alert.alert(
-            'Success', 
-            'Account created successfully!'
-          );
-        } else if (result.status === 'missing_requirements') {
-          // Check if email verification is needed
-          if (result.verifications?.emailAddress) {
-            try {
-              await result.prepareEmailAddressVerification();
-              setSignUpAttempt(result);
-              setShowVerification(true);
-            } catch (error) {
-              Alert.alert('Error', 'Failed to send verification email. Please try again.');
-            }
-          } else {
-            Alert.alert('Error', 'Please complete all required fields.');
-          }
-        } else {
-          Alert.alert('Error', `Signup status: ${result.status}`);
+        // If email confirmation is required (no session yet), show verification
+        if (data.user && !data.session) {
+          setShowVerification(true);
+          Alert.alert('Verification Required', 'A verification code has been sent to your email.');
+          return;
+        }
+
+        // If sign-up is complete with session (email confirmation disabled)
+        if (data.session && data.user) {
+          await setLastAuth({ method: 'email_password_sign_up', identifier: email.trim(), ts: Date.now() });
+          await saveNewUserProfile(data.user.id, email.trim());
+          Alert.alert('Success', 'Account created successfully!');
+          onAuthComplete();
         }
       } else {
-        // Sign in with Clerk
-        const result = await signIn.create({
-          identifier: email,
+        // Sign in
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
           password,
         });
 
-        if (result.status === 'complete') {
-          await setActive({ session: result.createdSessionId });
-          await setLastAuth({ method: 'email_password_sign_in', identifier: email.trim() || undefined, ts: Date.now() });
-          
-          // For sign-in, don't set pending payload - let App.tsx load existing user data
-          // The App.tsx useEffect will detect the new authUserId and load user data
-          
-          Alert.alert(
-            'Success', 
-            'Signed in successfully!'
-          );
+        if (error) {
+          if (error.message?.toLowerCase().includes('invalid login credentials')) {
+            Alert.alert('Error', 'Invalid email or password. Check your credentials or sign up for a new account.', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Sign Up', onPress: () => setIsSignUp(true) },
+            ]);
+          } else {
+            Alert.alert('Error', error.message);
+          }
+          return;
+        }
+
+        if (data.session) {
+          await setLastAuth({ method: 'email_password_sign_in', identifier: email.trim(), ts: Date.now() });
+          // For sign-in, let App.tsx load existing user data via the auth state change listener
+          Alert.alert('Success', 'Signed in successfully!');
         }
       }
     } catch (error: any) {
-      const msg = error?.errors?.[0]?.message || error?.message || 'Authentication failed';
-      // Common Clerk error when user tries to sign in but doesn't exist
-      if (!isSignUp && typeof msg === 'string' && msg.toLowerCase().includes("couldn't find your account")) {
-        Alert.alert('Account not found', 'No account exists for this email. Want to sign up instead?', [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Sign Up', onPress: () => setIsSignUp(true) },
-        ]);
-      } else {
-        Alert.alert('Error', msg);
-      }
+      Alert.alert('Error', error?.message || 'Authentication failed');
     } finally {
       setIsLoading(false);
     }
@@ -337,7 +248,7 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
   if (showVerification) {
     return (
       <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           style={styles.keyboardView}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
@@ -391,12 +302,12 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView 
+        <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
@@ -411,7 +322,7 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
               <View style={styles.lastAuthBadge}>
                 <Text style={styles.lastAuthBadgeText}>
                   Last used: {lastAuthLabel}
-                  {lastAuthIdentifier ? ` • ${lastAuthIdentifier}` : ''}
+                  {lastAuthIdentifier ? ` \u2022 ${lastAuthIdentifier}` : ''}
                 </Text>
               </View>
             )}
@@ -446,7 +357,6 @@ export function ClerkAuthScreen({ onAuthComplete }: Props) {
                 />
               </View>
             )}
-
 
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Email</Text>

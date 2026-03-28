@@ -35,7 +35,7 @@ async def startup_event():
     logger.info("Menuto API Starting Up")
     logger.info("PORT: %s", port)
     logger.info("DATABASE_URL: %s", "set" if os.getenv("DATABASE_URL") else "NOT SET")
-    logger.info("CLERK_ISSUER: %s", os.getenv("CLERK_ISSUER", "not set"))
+    logger.info("SUPABASE_JWT_SECRET: %s", "set" if os.getenv("SUPABASE_JWT_SECRET") else "NOT SET")
     supabase_url = os.getenv('SUPABASE_URL')
     logger.info("SUPABASE_URL: %s", supabase_url[:30] + '...' if supabase_url and len(supabase_url) > 30 else supabase_url if supabase_url else "NOT SET")
     logger.info("SUPABASE_KEY: %s", "set" if os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY") else "NOT SET")

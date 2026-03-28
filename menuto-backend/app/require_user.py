@@ -1,54 +1,37 @@
 # app/require_user.py
 import os
+import logging
 from fastapi import Header, HTTPException
-from jwt import PyJWKClient, decode as jwt_decode, InvalidTokenError
+from jwt import decode as jwt_decode, InvalidTokenError
 
-ISSUER = (os.getenv("CLERK_ISSUER") or "").rstrip("/")
-AUDIENCE = os.getenv("CLERK_AUDIENCE") or ""
-JWKS_URL = os.getenv("CLERK_JWKS_URL") or f"{ISSUER}/.well-known/jwks.json"
+logger = logging.getLogger(__name__)
+
+JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
 DEV = (os.getenv("API_ENV") or "prod").lower() == "dev"
 
-print("[auth] PyJWT validator -> iss:", ISSUER, "aud:", AUDIENCE)
-
-# cache the JWK client
-_jwk_client = PyJWKClient(JWKS_URL) if JWKS_URL else None
+logger.info("[auth] Supabase JWT validator configured (dev=%s)", DEV)
 
 async def require_user(authorization: str = Header(None)):
     # In dev mode, allow requests without proper auth for testing
     if DEV and (not authorization or not authorization.startswith("Bearer ")):
-        print("⚠️ Dev mode: Allowing request without auth")
+        logger.warning("Dev mode: Allowing request without auth")
         return {"sub": "dev-user", "email": "dev@example.com"}
-    
+
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing token")
 
     token = authorization.split(" ", 1)[1]
     try:
-        if not _jwk_client:
-            if DEV:
-                print("⚠️ Dev mode: JWKS not configured, allowing request")
-                return {"sub": "dev-user", "email": "dev@example.com"}
-            raise HTTPException(status_code=500, detail="JWKS not configured")
-
-        signing_key = _jwk_client.get_signing_key_from_jwt(token)
         payload = jwt_decode(
             token,
-            signing_key.key,
-            algorithms=["RS256"],
-            issuer=ISSUER,
-            audience=AUDIENCE or None,
-            options={"verify_aud": bool(AUDIENCE)},
-            leeway=60,
+            JWT_SECRET,
+            algorithms=["HS256"],
+            audience="authenticated",
         )
         return payload
-
     except InvalidTokenError as e:
+        logger.warning("Invalid token: %s", e)
         if DEV:
-            print(f"⚠️ Dev mode: Invalid token error: {e}, allowing request")
+            logger.warning("Dev mode: Invalid token error, allowing request")
             return {"sub": "dev-user", "email": "dev@example.com"}
-        raise HTTPException(status_code=401, detail=(str(e) if DEV else "Invalid token"))
-    except Exception as e:
-        if DEV:
-            print(f"⚠️ Dev mode: Auth error: {e}, allowing request")
-            return {"sub": "dev-user", "email": "dev@example.com"}
-        raise HTTPException(status_code=401, detail=(str(e) if DEV else "Invalid token"))
+        raise HTTPException(status_code=401, detail="Invalid token")

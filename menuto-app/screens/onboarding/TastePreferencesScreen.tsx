@@ -14,62 +14,14 @@ import { useStore } from '../../store/useStore';
 import { UserPreferences } from '../../types';
 import { theme } from '../../theme';
 import { SearchBar } from '../../components/SearchBar';
-
-const POPULAR_CUISINES = [
-  'Italian', 'Japanese', 'Mexican', 'Chinese', 'Indian', 
-  'Thai', 'French', 'American', 'Korean', 'Vietnamese',
-  'Mediterranean', 'Greek', 'Spanish', 'Turkish'
-];
-
-const ALL_CUISINES = [
-  // Popular cuisines (already shown above)
-  ...POPULAR_CUISINES,
-  
-  // Regional Asian
-  'Persian', 'Georgian', 'Nepalese', 'Pakistani',
-  'Bangladeshi', 'Sri Lankan', 'Afghan', 'Indonesian',
-  'Malaysian', 'Filipino', 'Burmese', 'Laotian', 'Cambodian',
-  
-  // Middle Eastern & North African
-  'Lebanese', 'Moroccan', 'Tunisian', 'Algerian', 'Egyptian', 'Israeli',
-  'Syrian', 'Jordanian', 'Iraqi', 'Yemeni', 'Ethiopian',
-  'Eritrean', 'Sudanese',
-  
-  // European
-  'Russian', 'Ukrainian', 'Polish', 'Hungarian', 'Czech',
-  'Romanian', 'Bulgarian', 'Croatian', 'Serbian', 'Albanian',
-  'Portuguese', 'Dutch', 'German', 'Austrian', 'Swiss',
-  'Swedish', 'Norwegian', 'Danish', 'Finnish', 'Estonian',
-  'Latvian', 'Lithuanian',
-  
-  // Latin American & Caribbean
-  'Peruvian', 'Colombian', 'Venezuelan', 'Ecuadorian', 'Brazilian',
-  'Argentinian', 'Chilean', 'Bolivian', 'Paraguayan', 'Uruguayan',
-  'Cuban', 'Dominican', 'Puerto Rican', 'Jamaican', 'Haitian',
-  'Trinidadian', 'Barbadian',
-  
-  // African
-  'Nigerian', 'Ghanaian', 'Senegalese', 'Ivorian', 'Malian',
-  'South African', 'Kenyan', 'Tanzanian', 'Ugandan',
-  
-  // Specialty & Fusion
-  'Fusion', 'Experimental', 'Vegan', 'Vegetarian', 'Raw', 'Molecular Gastronomy',
-  'Farm-to-Table', 'Comfort Food', 'Soul Food', 'Cajun', 'Creole'
-];
-
-const DIETARY_RESTRICTIONS = [
-  'Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 
-  'Nut-Free', 'Keto', 'Pescatarian', 'Halal', 'Kosher'
-];
-
-// Popular cities for home base selection
-const HOME_BASE_CITIES = [
-  { name: 'New York', emoji: '🗽', coordinates: '40.7128,-74.0060' },
-  { name: 'Los Angeles', emoji: '🌴', coordinates: '34.0522,-118.2437' },
-  { name: 'San Francisco', emoji: '🌉', coordinates: '37.7749,-122.4194' },
-  { name: 'London', emoji: '☕', coordinates: '51.5074,-0.1278' },
-  { name: 'Istanbul', emoji: '🕌', coordinates: '41.0082,28.9784' },
-];
+import {
+  POPULAR_CUISINES,
+  ALL_CUISINES,
+  DIETARY_RESTRICTIONS,
+  HOME_BASE_CITIES,
+  SPICE_LABELS,
+  SPICE_LEVELS,
+} from '../../constants';
 
 interface Props {
   onComplete: () => void;
@@ -195,14 +147,7 @@ export function TastePreferencesScreen({ onComplete, onBack }: Props) {
   };
 
   const getSpiceLabel = (level: number) => {
-    switch(level) {
-      case 1: return 'Hand me the milk';
-      case 2: return 'Gentle warmth';
-      case 3: return 'Bring it on';
-      case 4: return 'Spicy is my middle name';
-      case 5: return 'Set me on fire';
-      default: return 'Gentle warmth';
-    }
+    return SPICE_LABELS[level] || 'Gentle warmth';
   };
 
 

@@ -1,7 +1,7 @@
 // Type definitions for Menuto app
 
 export interface UserPreferences {
-  id?: string; // Changed from number to string to match Clerk user IDs
+  id?: string; // Supabase Auth user UUID
   name?: string;
   username?: string; // Unique username for the user
   email?: string;

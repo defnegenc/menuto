@@ -19,48 +19,12 @@ import { UnifiedHeader } from '../components/UnifiedHeader';
 import { RestaurantCard } from '../components/RestaurantCard';
 import { SearchBar } from '../components/SearchBar';
 import { api } from '../services/api';
-
-const POPULAR_CUISINES = [
-  'Italian', 'Japanese', 'Mexican', 'Chinese', 'Indian', 
-  'Thai', 'French', 'American', 'Korean', 'Vietnamese',
-  'Mediterranean', 'Greek', 'Spanish', 'Turkish'
-];
-
-const ALL_CUISINES = [
-  ...POPULAR_CUISINES,
-  'Persian', 'Georgian', 'Nepalese', 'Pakistani',
-  'Bangladeshi', 'Sri Lankan', 'Afghan', 'Indonesian',
-  'Malaysian', 'Filipino', 'Burmese', 'Laotian', 'Cambodian',
-  'Lebanese', 'Moroccan', 'Tunisian', 'Algerian', 'Egyptian', 'Israeli',
-  'Syrian', 'Jordanian', 'Iraqi', 'Yemeni', 'Ethiopian',
-  'Eritrean', 'Sudanese',
-  'Russian', 'Ukrainian', 'Polish', 'Hungarian', 'Czech',
-  'Romanian', 'Bulgarian', 'Croatian', 'Serbian', 'Albanian',
-  'Portuguese', 'Dutch', 'German', 'Austrian', 'Swiss',
-  'Swedish', 'Norwegian', 'Danish', 'Finnish', 'Estonian',
-  'Latvian', 'Lithuanian',
-  'Peruvian', 'Colombian', 'Venezuelan', 'Ecuadorian', 'Brazilian',
-  'Argentinian', 'Chilean', 'Bolivian', 'Paraguayan', 'Uruguayan',
-  'Cuban', 'Dominican', 'Puerto Rican', 'Jamaican', 'Haitian',
-  'Trinidadian', 'Barbadian',
-  'Nigerian', 'Ghanaian', 'Senegalese', 'Ivorian', 'Malian',
-  'South African', 'Kenyan', 'Tanzanian', 'Ugandan',
-  'Fusion', 'Experimental', 'Vegan', 'Vegetarian', 'Raw', 'Molecular Gastronomy',
-  'Farm-to-Table', 'Comfort Food', 'Soul Food', 'Cajun', 'Creole'
-];
-
-const DIETARY_RESTRICTIONS = [
-  'Vegetarian', 'Vegan', 'Gluten-Free', 'Dairy-Free', 
-  'Nut-Free', 'Keto', 'Pescatarian', 'Halal', 'Kosher'
-];
-
-const HOME_BASE_CITIES = [
-  { name: 'New York', emoji: '🗽', coordinates: '40.7128,-74.0060' },
-  { name: 'Los Angeles', emoji: '🌴', coordinates: '34.0522,-118.2437' },
-  { name: 'San Francisco', emoji: '🌉', coordinates: '37.7749,-122.4194' },
-  { name: 'London', emoji: '☕', coordinates: '51.5074,-0.1278' },
-  { name: 'Istanbul', emoji: '🕌', coordinates: '41.0082,28.9784' },
-];
+import {
+  POPULAR_CUISINES,
+  ALL_CUISINES,
+  DIETARY_RESTRICTIONS,
+  HOME_BASE_CITIES,
+} from '../constants';
 
 interface Props {
   onSelectRestaurant: (restaurant: FavoriteRestaurant) => void;

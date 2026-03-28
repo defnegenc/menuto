@@ -9,7 +9,6 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.usemenuto.com",
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsudXNlbWVudXRvLmNvbSQ",
         "EXPO_PUBLIC_SUPABASE_URL": "https://jakutukxbpbrwldpgybl.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impha3V0dWt4YnBicndsZHBneWJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzA2NDcsImV4cCI6MjA3MTcwNjY0N30.N0313cVKlZR_FuudzVryBDz38QWMlqIHvqVq14QvC6w"
       }
@@ -18,7 +17,6 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.usemenuto.com",
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsudXNlbWVudXRvLmNvbSQ",
         "EXPO_PUBLIC_SUPABASE_URL": "https://jakutukxbpbrwldpgybl.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impha3V0dWt4YnBicndsZHBneWJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzA2NDcsImV4cCI6MjA3MTcwNjY0N30.N0313cVKlZR_FuudzVryBDz38QWMlqIHvqVq14QvC6w"
       }
@@ -32,7 +30,6 @@
         "HUSKY": "0",
         "CI": "1",
         "EXPO_PUBLIC_API_URL": "https://api.usemenuto.com",
-        "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsudXNlbWVudXRvLmNvbSQ",
         "EXPO_PUBLIC_SUPABASE_URL": "https://jakutukxbpbrwldpgybl.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impha3V0dWt4YnBicndsZHBneWJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYxMzA2NDcsImV4cCI6MjA3MTcwNjY0N30.N0313cVKlZR_FuudzVryBDz38QWMlqIHvqVq14QvC6w"
       }

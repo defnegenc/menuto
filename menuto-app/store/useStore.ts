@@ -1,21 +1,30 @@
 import { create } from 'zustand';
-import { UserPreferences, RecommendationResponse, MenuScanResult } from '../types';
+import { UserPreferences, RecommendationResponse, MenuScanResult, FavoriteRestaurant } from '../types';
 import { api } from '../services/api';
 
 interface AppState {
   // User data
   user: UserPreferences | null;
   userId: string | null;
-  
+
   // Current session
   currentScan: MenuScanResult | null;
   currentRecommendations: RecommendationResponse | null;
-  
+
+  // Loading & error states
+  isLoading: boolean;
+  loadingMessage: string;
+  error: string | null;
+
   // Actions
-  debugState: () => any;
+  debugState: () => AppState;
   setUser: (user: UserPreferences | null, userId: string) => void;
   setCurrentScan: (scan: MenuScanResult) => void;
   setRecommendations: (recommendations: RecommendationResponse) => void;
+  updateTop3Restaurants: (restaurants: FavoriteRestaurant[], userId: string) => Promise<void>;
+  setLoading: (loading: boolean, message?: string) => void;
+  setError: (error: string | null) => void;
+  clearError: () => void;
   clearSession: () => void;
 }
 
@@ -25,11 +34,13 @@ export const useStore = create<AppState>((set, get) => ({
   userId: null,
   currentScan: null,
   currentRecommendations: null,
-  
+  isLoading: false,
+  loadingMessage: '',
+  error: null,
+
   // Debug function
-  debugState: () => {
-    const state = get();
-    return state;
+  debugState: (): AppState => {
+    return get();
   },
   
   // Actions
@@ -58,7 +69,7 @@ export const useStore = create<AppState>((set, get) => ({
   setRecommendations: (recommendations: RecommendationResponse) => 
     set({ currentRecommendations: recommendations }),
     
-  updateTop3Restaurants: async (restaurants: any[], userId: string) => {
+  updateTop3Restaurants: async (restaurants: FavoriteRestaurant[], userId: string) => {
     const currentUser = get().user;
     if (currentUser) {
       const updatedUser = { ...currentUser, top_3_restaurants: restaurants };
@@ -71,7 +82,17 @@ export const useStore = create<AppState>((set, get) => ({
       }
     }
   },
-    
-  clearSession: () => 
+
+  // Loading & error actions
+  setLoading: (loading: boolean, message?: string) =>
+    set({ isLoading: loading, loadingMessage: message || '' }),
+
+  setError: (error: string | null) =>
+    set({ error }),
+
+  clearError: () =>
+    set({ error: null }),
+
+  clearSession: () =>
     set({ currentScan: null, currentRecommendations: null }),
 }));
