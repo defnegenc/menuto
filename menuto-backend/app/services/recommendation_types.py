@@ -29,6 +29,8 @@ class RecommendationContext:
     friend_selected_item_ids: List[str] = field(default_factory=list)
     restaurant_specific_signals: Dict[str, Any] = field(default_factory=dict)
     user_dish_ratings: Dict[str, float] = field(default_factory=dict)  # {dish_name: rating 1-5}
+    user_behavioral_signals: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    # Maps dish_name -> {"views": 3, "orders": 1, "favorited": True}
 
 
 @dataclass

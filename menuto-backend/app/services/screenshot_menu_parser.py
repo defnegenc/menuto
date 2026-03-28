@@ -13,7 +13,7 @@ import base64
 import json
 import logging
 from typing import List, Dict, Any
-import google.generativeai as genai
+from google import genai
 import os
 from dotenv import load_dotenv
 from PIL import Image
@@ -33,8 +33,7 @@ class ScreenshotMenuParser:
         api_key = os.getenv('GOOGLE_GEMINI_API_KEY')
         if not api_key:
             raise ValueError("GOOGLE_GEMINI_API_KEY environment variable is not set")
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-2.5-flash')
+        self.client = genai.Client(api_key=api_key)
     
     def encode_image_to_base64(self, image_path: str) -> str:
         """Convert image to base64 string"""
@@ -101,9 +100,10 @@ Return ONLY valid JSON, no other text.
             logger.info("Making Gemini Vision API call...")
             # Load image for Gemini
             img = Image.open(image_path)
-            response = self.model.generate_content(
-                [prompt, img],
-                generation_config=genai.types.GenerationConfig(
+            response = self.client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=[prompt, img],
+                config=genai.types.GenerateContentConfig(
                     temperature=0.1,
                     max_output_tokens=4000,
                     response_mime_type="application/json",

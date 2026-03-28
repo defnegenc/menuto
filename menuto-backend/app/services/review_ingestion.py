@@ -14,7 +14,7 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-import google.generativeai as genai
+from google import genai
 import httpx
 from supabase import Client, create_client
 
@@ -31,11 +31,10 @@ if SUPABASE_URL and SUPABASE_KEY:
     _sb = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Gemini client
-_gemini_model = None
+_gemini_client = None
 gemini_key = os.getenv("GOOGLE_GEMINI_API_KEY")
 if gemini_key:
-    genai.configure(api_key=gemini_key)
-    _gemini_model = genai.GenerativeModel("gemini-2.5-flash")
+    _gemini_client = genai.Client(api_key=gemini_key)
 
 
 # ---------------------------------------------------------------------------
@@ -161,7 +160,7 @@ def _enrich_reviews_batch(reviews: List[Dict], place_id: str) -> List[Dict]:
     Use Gemini to extract dish mentions and sentiment from all reviews at once.
     Single LLM call for all reviews (cheaper than per-review calls).
     """
-    if not _gemini_model or not reviews:
+    if not _gemini_client or not reviews:
         # No LLM available — return reviews with empty dish_mentions
         for r in reviews:
             r["dish_mentions"] = []
@@ -202,9 +201,10 @@ Rules:
 - Return ONLY the JSON array, no other text"""
 
     try:
-        response = _gemini_model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
+        response = _gemini_client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+            config=genai.types.GenerateContentConfig(
                 temperature=0.1,
                 response_mime_type="application/json",
             ),

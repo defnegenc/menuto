@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Tuple, Union
 from urllib.parse import urljoin, urlparse
 from uuid import uuid4
 
-import google.generativeai as genai
+from google import genai
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
@@ -71,8 +71,7 @@ class MenuParser:
             api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
             if not api_key:
                 raise ValueError("Google Gemini API key not found. Set GOOGLE_GEMINI_API_KEY in .env file")
-            genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel('gemini-2.5-flash')
+            self.client = genai.Client(api_key=api_key)
         
         # Headers for requests
         self.headers = {
@@ -333,9 +332,10 @@ class MenuParser:
                 logger.info(f"[{rid}] 🚀 Calling Gemini Flash 3...")
                 t0 = time.perf_counter()
                 full_prompt = f"You are a menu parsing expert. Return ONLY a valid JSON object, no markdown, no commentary.\n\n{user_prompt}"
-                resp = self.model.generate_content(
-                    full_prompt,
-                    generation_config=genai.types.GenerationConfig(
+                resp = self.client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=full_prompt,
+                    config=genai.types.GenerateContentConfig(
                         temperature=0.1,
                         max_output_tokens=16384,
                         response_mime_type="application/json",

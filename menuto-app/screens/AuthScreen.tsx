@@ -14,8 +14,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../services/supabase';
 import { useStore } from '../store/useStore';
 import { api } from '../services/api';
+import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
 
 import { formatLastAuthMethod, getLastAuth, setLastAuth } from '../utils/lastAuth';
+
+WebBrowser.maybeCompleteAuthSession();
 
 interface Props {
   onAuthComplete: () => void;
@@ -245,6 +249,101 @@ export function AuthScreen({ onAuthComplete }: Props) {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsLoading(true);
+      // For Expo on iOS, this generates: menuto://auth/callback (using app.json scheme)
+      const redirectUrl = AuthSession.makeRedirectUri({
+        scheme: 'menuto',
+        path: 'auth/callback',
+      });
+      console.log('OAuth redirect URL:', redirectUrl);
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (error) {
+        Alert.alert('Error', error.message);
+        return;
+      }
+
+      if (data?.url) {
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+
+        if (result.type === 'success' && result.url) {
+          // Extract tokens from the redirect URL
+          const url = new URL(result.url);
+          const params = new URLSearchParams(url.hash.substring(1)); // hash fragment
+          const accessToken = params.get('access_token');
+          const refreshToken = params.get('refresh_token');
+
+          if (accessToken && refreshToken) {
+            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+
+            if (sessionError) {
+              Alert.alert('Error', sessionError.message);
+              return;
+            }
+
+            if (sessionData.session?.user) {
+              const userId = sessionData.session.user.id;
+              const userEmail = sessionData.session.user.email || '';
+              const userName = sessionData.session.user.user_metadata?.full_name || '';
+
+              // Check if user profile already exists
+              let isNewUser = false;
+              try {
+                const existingUser = await api.getUserPreferences(userId);
+                if (!existingUser) isNewUser = true;
+              } catch {
+                isNewUser = true;
+              }
+
+              if (isNewUser) {
+                // Create profile directly with Google name
+                const userPayload = {
+                  id: userId,
+                  name: userName || undefined,
+                  username: undefined,
+                  email: userEmail,
+                  home_base: undefined,
+                  preferred_cuisines: [],
+                  spice_tolerance: 3,
+                  price_preference: 2,
+                  dietary_restrictions: [],
+                  favorite_restaurants: [],
+                  favorite_dishes: [],
+                };
+                try {
+                  await api.saveUserPreferences(userId, userPayload);
+                  setUser(userPayload, userId);
+                } catch (e) {
+                  console.error('Failed to save Google user profile:', e);
+                  setUser(userPayload, userId);
+                }
+              }
+
+              await setLastAuth({ method: 'google', identifier: userEmail, ts: Date.now() });
+              onAuthComplete();
+            }
+          }
+        }
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Google sign-in failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (showVerification) {
     return (
       <SafeAreaView style={styles.container}>
@@ -349,6 +448,24 @@ export function AuthScreen({ onAuthComplete }: Props) {
             >
               <Text style={[styles.tabText, isSignUp && styles.tabTextActive]}>Sign Up</Text>
             </TouchableOpacity>
+          </View>
+
+          {/* Google Sign In */}
+          <TouchableOpacity
+            style={styles.googleButton}
+            onPress={handleGoogleSignIn}
+            disabled={isLoading}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.googleIcon}>G</Text>
+            <Text style={styles.googleButtonText}>Continue with Google</Text>
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
           </View>
 
           <View style={styles.form}>
@@ -528,6 +645,46 @@ const styles = StyleSheet.create({
     color: MEDIUM,
     textAlign: 'center',
     lineHeight: 24,
+  },
+  // Google button
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E7E5E4',
+    borderRadius: 999,
+    paddingVertical: 16,
+    marginBottom: 0,
+  },
+  googleIcon: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 20,
+    color: TERRA,
+  },
+  googleButtonText: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 16,
+    color: DARK,
+  },
+  // Divider
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E7E5E4',
+  },
+  dividerText: {
+    fontFamily: 'DMSans-Medium',
+    fontSize: 13,
+    color: LIGHT_TEXT,
   },
   // Tab toggle
   tabContainer: {

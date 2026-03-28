@@ -40,14 +40,15 @@ class SmartRecommendationAlgorithm:
         self.legacy_engine = legacy_engine or RecommendationEngine()
         # Hand-tuned weights (sum ~= 1.0). Replace with learned weights later.
         self.component_weights: Dict[str, float] = {
-            "personal_taste": 0.3,
-            "sentiment": 0.2,
-            "craving": 0.15,
+            "personal_taste": 0.30,
+            "sentiment": 0.17,
+            "craving": 0.10,
+            "rating_history": 0.10,
+            "spice": 0.10,
+            "behavioral": 0.08,
             "hunger": 0.05,
-            "spice": 0.1,
             "friend": 0.05,
             "restaurant": 0.05,
-            "rating_history": 0.10,
         }
 
     # ------------------------------------------------------------------
@@ -255,7 +256,8 @@ class SmartRecommendationAlgorithm:
                     f"spice={components.get('spice', 0):.2f}, "
                     f"friend={components.get('friend', 0):.2f}, "
                     f"restaurant={components.get('restaurant', 0):.2f}, "
-                    f"rating_history={components.get('rating_history', 0):.2f}"
+                    f"rating_history={components.get('rating_history', 0):.2f}, "
+                    f"behavioral={components.get('behavioral', 0):.2f}"
                 )
                 hunger_score = components.get("hunger", 0)
                 course = (scored.item.course or "main").lower()
@@ -337,7 +339,18 @@ class SmartRecommendationAlgorithm:
             elif rating_hist <= 0.25 and len(bullets) < 2:
                 bullets.append("Similar dishes didn't match your taste before")
 
-            # 7. Friend boost
+            # 7. Behavioral signals
+            behavioral_score = components.get("behavioral", 0.5)
+            if behavioral_score >= 0.95:
+                bullets.append("One of your saved favorites")
+            elif behavioral_score >= 0.85:
+                bullets.append("You've ordered this before and came back for more")
+            elif behavioral_score >= 0.7:
+                bullets.append("You've tried this before")
+            elif behavioral_score >= 0.65:
+                bullets.append("You've been eyeing this one")
+
+            # 8. Friend boost
             if components.get("friend", 0) >= 0.5:
                 bullets.append("Friend-approved pick")
             
@@ -375,6 +388,7 @@ class SmartRecommendationAlgorithm:
             "friend": self._friend_boost(item, context),
             "restaurant": self._restaurant_bonus(item, taste_profile),
             "rating_history": self._rating_history_match(item, context),
+            "behavioral": self._behavioral_match(item, context),
         }
 
     def _personal_taste_seed(self, item: ItemFeatures, taste_profile: UserTasteProfile) -> float:
@@ -476,6 +490,32 @@ class SmartRecommendationAlgorithm:
         # 3 stars -> neutral-ish
         return 0.5
 
+    def _behavioral_match(self, item: ItemFeatures, context: RecommendationContext) -> float:
+        """Score based on the user's behavioral signals (views, orders, favorites)."""
+        signals = context.user_behavioral_signals
+        if not signals:
+            return 0.5  # neutral
+
+        item_name_lower = item.name.lower()
+        for dish_name, data in signals.items():
+            if dish_name.lower() in item_name_lower or item_name_lower in dish_name.lower():
+                views = data.get("views", 0)
+                orders = data.get("orders", 0)
+                favorited = data.get("favorited", False)
+
+                if favorited:
+                    return 0.95  # user explicitly saved this
+                if orders >= 2:
+                    return 0.85  # ordered multiple times
+                if orders == 1:
+                    return 0.7   # ordered once (positive signal)
+                if views >= 3:
+                    return 0.65  # viewed multiple times but never ordered (curious)
+                if views >= 1:
+                    return 0.55  # viewed once
+
+        return 0.5  # no match
+
     def _restaurant_bonus(self, item: ItemFeatures, taste_profile: UserTasteProfile) -> float:
         rest_pattern = taste_profile.flavor_profile.lower()
         text = f"{item.name} {item.description}".lower()
@@ -527,6 +567,7 @@ class SmartRecommendationAlgorithm:
                 "spice": 0.4,
                 "friend": 0.0,
                 "restaurant": 0.4,
+                "behavioral": 0.5,
             }
             scored.append(
                 ScoredItem(

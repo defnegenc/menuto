@@ -74,31 +74,82 @@ async def generate_smart_recommendations(
             else "late_night"
         )
 
+        # Create Supabase client once for all user-data fetches
+        from supabase import create_client
+        sb_url = os.getenv("SUPABASE_URL")
+        sb_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        sb = None
+        if sb_url and sb_key:
+            try:
+                sb = create_client(sb_url, sb_key)
+            except Exception as e:
+                logger.warning("Failed to create Supabase client: %s", e)
+
         # Fetch user's past dish ratings to feed into the algorithm
         user_ratings_map: dict[str, float] = {}
         user_id = data.get("user_id")
-        if user_id:
+        if user_id and sb:
             try:
-                from supabase import create_client
-                sb_url = os.getenv("SUPABASE_URL")
-                sb_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-                if sb_url and sb_key:
-                    sb = create_client(sb_url, sb_key)
-                    # Fetch user's ratings with dish names via foreign key join
-                    result = sb.table("dish_ratings").select(
-                        "rating, dish_id, parsed_dishes(name)"
-                    ).eq("user_id", user_id).execute()
-                    for r in (result.data or []):
-                        dish_info = r.get("parsed_dishes")
-                        if dish_info and dish_info.get("name"):
-                            user_ratings_map[dish_info["name"]] = r["rating"]
-                    if user_ratings_map:
-                        logger.info(
-                            "Loaded %d cross-restaurant dish ratings for user %s (all restaurants)",
-                            len(user_ratings_map), user_id,
-                        )
+                # Fetch user's ratings with dish names via foreign key join
+                result = sb.table("dish_ratings").select(
+                    "rating, dish_id, parsed_dishes(name)"
+                ).eq("user_id", user_id).execute()
+                for r in (result.data or []):
+                    dish_info = r.get("parsed_dishes")
+                    if dish_info and dish_info.get("name"):
+                        user_ratings_map[dish_info["name"]] = r["rating"]
+                if user_ratings_map:
+                    logger.info(
+                        "Loaded %d cross-restaurant dish ratings for user %s (all restaurants)",
+                        len(user_ratings_map), user_id,
+                    )
             except Exception as e:
                 logger.warning("Failed to fetch user ratings: %s", e)
+
+        # Fetch behavioral signals (views, orders, favorites)
+        behavioral_signals: dict[str, dict] = {}
+        if user_id and sb:
+            try:
+                # Fetch orders with dish names
+                orders_result = sb.table("dish_orders").select(
+                    "dish_id, parsed_dishes(name)"
+                ).eq("user_id", user_id).execute()
+
+                for r in (orders_result.data or []):
+                    dish = r.get("parsed_dishes")
+                    if dish and dish.get("name"):
+                        name = dish["name"]
+                        behavioral_signals.setdefault(name, {"views": 0, "orders": 0, "favorited": False})
+                        behavioral_signals[name]["orders"] += 1
+
+                # Fetch views with dish names
+                views_result = sb.table("dish_views").select(
+                    "dish_id, parsed_dishes(name)"
+                ).eq("user_id", user_id).execute()
+
+                for r in (views_result.data or []):
+                    dish = r.get("parsed_dishes")
+                    if dish and dish.get("name"):
+                        name = dish["name"]
+                        behavioral_signals.setdefault(name, {"views": 0, "orders": 0, "favorited": False})
+                        behavioral_signals[name]["views"] += 1
+
+                # Fetch favorites with dish names
+                favs_result = sb.table("dish_favorites").select(
+                    "dish_id, parsed_dishes(name)"
+                ).eq("user_id", user_id).is_("removed_at", "null").execute()
+
+                for r in (favs_result.data or []):
+                    dish = r.get("parsed_dishes")
+                    if dish and dish.get("name"):
+                        name = dish["name"]
+                        behavioral_signals.setdefault(name, {"views": 0, "orders": 0, "favorited": False})
+                        behavioral_signals[name]["favorited"] = True
+
+                if behavioral_signals:
+                    logger.info("Loaded behavioral signals for %d dishes", len(behavioral_signals))
+            except Exception as e:
+                logger.warning("Failed to fetch behavioral signals: %s", e)
 
         context = RecommendationContext(
             hunger_level=_map_hunger_level(hunger_raw),
@@ -110,6 +161,7 @@ async def generate_smart_recommendations(
                 "meal_period": meal_period,
             },
             user_dish_ratings=user_ratings_map,
+            user_behavioral_signals=behavioral_signals,
         )
 
         legacy_engine = RecommendationEngine()
@@ -123,6 +175,29 @@ async def generate_smart_recommendations(
             restaurant_place_id=restaurant_place_id,
             restaurant_name=restaurant_name,
         )
+
+        # Check menu freshness
+        menu_stale = False
+        age_days: int | None = None
+        try:
+            if sb:
+                menu_meta = sb.table("parsed_menus").select("parsed_at").eq(
+                    "place_id", restaurant_place_id
+                ).order("parsed_at", desc=True).limit(1).maybe_single().execute()
+                if menu_meta.data:
+                    from datetime import timedelta, timezone
+                    parsed_at = datetime.fromisoformat(
+                        menu_meta.data["parsed_at"].replace("Z", "+00:00")
+                    )
+                    age_days = (datetime.now(timezone.utc) - parsed_at).days
+                    if age_days > 90:
+                        menu_stale = True
+                        logger.info(
+                            "Menu for %s is %d days old (stale)",
+                            restaurant_name, age_days,
+                        )
+        except Exception as e:
+            logger.warning("Menu freshness check failed: %s", e)
 
         if not menu_items:
             return {
@@ -188,6 +263,8 @@ async def generate_smart_recommendations(
             "recommendations": recommendations_payload,
             "total_count": len(recommendations_payload),
             "message": f"Found {len(recommendations_payload)} personalized recommendations based on real menu items",
+            "menu_stale": menu_stale,
+            "menu_age_days": age_days if menu_stale else None,
         }
 
     except HTTPException:

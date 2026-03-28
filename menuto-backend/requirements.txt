@@ -33,25 +33,7 @@ deprecation==2.1.0
     #   storage3
 fastapi==0.104.1
     # via -r requirements.in
-google-ai-generativelanguage==0.6.15
-    # via google-generativeai
-google-api-core[grpc]==2.29.0
-    # via
-    #   google-ai-generativelanguage
-    #   google-api-python-client
-    #   google-generativeai
-google-api-python-client==2.187.0
-    # via google-generativeai
-google-auth==2.47.0
-    # via
-    #   google-ai-generativelanguage
-    #   google-api-core
-    #   google-api-python-client
-    #   google-auth-httplib2
-    #   google-generativeai
-google-auth-httplib2==0.3.0
-    # via google-api-python-client
-google-generativeai==0.8.6
+google-genai>=1.0.0
     # via -r requirements.in
 googleapis-common-protos==1.72.0
     # via
@@ -113,7 +95,6 @@ protobuf==5.29.5
     # via
     #   google-ai-generativelanguage
     #   google-api-core
-    #   google-generativeai
     #   googleapis-common-protos
     #   grpcio-status
     #   proto-plus
@@ -131,7 +112,6 @@ pydantic==2.11.7
     # via
     #   -r requirements.in
     #   fastapi
-    #   google-generativeai
     #   postgrest
     #   realtime
     #   storage3
@@ -181,11 +161,9 @@ supabase-auth==2.20.0
 supabase-functions==2.20.0
     # via supabase
 tqdm==4.67.1
-    # via google-generativeai
 typing-extensions==4.15.0
     # via
     #   fastapi
-    #   google-generativeai
     #   grpcio
     #   pydantic
     #   pydantic-core

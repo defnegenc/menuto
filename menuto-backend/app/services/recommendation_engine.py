@@ -9,7 +9,7 @@ Why we keep it:
 - Also used by review ingestion helpers.
 """
 
-import google.generativeai as genai
+from google import genai
 import os
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
@@ -32,8 +32,7 @@ class RecommendationEngine:
         if not google_api_key:
             raise ValueError("Google Places API key not found")
             
-        genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-2.5-flash')
+        self.client = genai.Client(api_key=api_key)
         self.google_api_key = google_api_key
     
     def analyze_user_taste_profile(self, favorite_dishes: List[Dict[str, str]]) -> Dict[str, Any]:
@@ -67,9 +66,10 @@ class RecommendationEngine:
         
         try:
             full_prompt = f"You are a food taste analyst. Return only valid JSON.\n\n{prompt}"
-            response = self.model.generate_content(
-                full_prompt,
-                generation_config=genai.types.GenerationConfig(
+            response = self.client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=full_prompt,
+                config=genai.types.GenerateContentConfig(
                     temperature=0.1,
                     max_output_tokens=300,
                     response_mime_type="application/json",
@@ -160,9 +160,10 @@ class RecommendationEngine:
         
         try:
             full_prompt = f"You are a restaurant review analyst. Extract ONLY SPECIFIC DISH NAMES from reviews. NEVER extract generic category names like 'desserts', 'appetizers', 'mains'. Return only valid JSON.\n\n{prompt}"
-            response = self.model.generate_content(
-                full_prompt,
-                generation_config=genai.types.GenerationConfig(
+            response = self.client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=full_prompt,
+                config=genai.types.GenerateContentConfig(
                     temperature=0.1,
                     max_output_tokens=600,
                     response_mime_type="application/json",
