@@ -61,16 +61,20 @@ Sign In → Onboarding (preferences) → Main Tabs
 - **SearchBar** — Debounced (300ms), location-aware, Google Places autocomplete.
 - **UnifiedHeader** — Consistent header with back navigation across all screens.
 
-## Current UX Problems
+## Current UX Problems (post-cleanup)
 
-- ProfileScreen is 1,606 lines — UI logic and data fetching tangled together
 - No loading skeletons — just spinners, which feel slow
 - Error states show raw error messages, not user-friendly recovery options
 - No empty states for "no restaurants saved" or "no recommendations found"
-- Auth flow has 3+ screens (Clerk migration remnants) — confusing entry point
+
+## Fixed UX Problems
+
+- ~~ProfileScreen 1,606 lines~~ → Decomposed into 4 files (ProfileHeader, TastePreferencesCard, SavedRestaurantsList)
+- ~~Auth flow has 3+ screens~~ → Single AuthScreen with Supabase Auth
+- ~~Constants hardcoded in screens~~ → Centralized in constants/index.ts
 
 ## Top 3 UX Improvements
 
 1. **Loading skeletons** — Replace spinners with skeleton placeholders on recommendation and restaurant screens. Makes the app feel faster even when API is slow.
 2. **Empty states with CTAs** — When no restaurants saved: show illustration + "Search for your first restaurant" button. When no recommendations: explain why and suggest actions.
-3. **Streamlined auth** — Single auth screen with Supabase Auth (email + social). Remove the 3-screen Clerk flow.
+3. **Post-meal feedback loop** — After ordering a recommended dish, prompt for a quick rating. This feeds into the rating_history scoring component and makes recommendations smarter over time.

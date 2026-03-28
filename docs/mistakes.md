@@ -33,3 +33,11 @@ Lessons learned from this codebase. Don't repeat these.
 ## 8. Commit restructuring atomically
 **What happened:** A major directory restructuring left 209 files staged as deletions with 15 untracked replacements. The repo was in a broken state for an unknown period.
 **Rule:** Restructure in a single commit. Use `git mv` so git tracks the rename. Never leave the repo in a half-restructured state.
+
+## 9. Don't use two ORMs for the same database
+**What happened:** Backend had both SQLAlchemy models AND Supabase client calls. The SQLAlchemy models referenced tables that didn't exist in Supabase. Three routers (restaurants, dishes, reviews) silently failed.
+**Rule:** One data access layer. If using Supabase, use the Supabase client everywhere. Don't maintain SQLAlchemy models alongside.
+
+## 10. Pin your LLM model versions
+**What happened:** `gemini-2.0-flash-exp` was deprecated with no warning. The entire parsing and recommendation pipeline broke with a 404 error.
+**Rule:** Use stable model names (e.g., `gemini-2.5-flash`) not experimental ones. When an LLM model is updated, test before deploying.
