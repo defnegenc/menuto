@@ -237,22 +237,38 @@ class SmartRecommendationAlgorithm:
         constrained to items that still score well.
         (Ref: SERAL, Feb 2025 — serendipity improves engagement.)
         """
-        # --- Identify user's familiar cuisines/dish-types ---
-        familiar_cuisines: set[str] = set()
+        # --- Identify user's familiar dish-types, proteins, and courses ---
+        # Within a single-cuisine restaurant, "novel" means a dish-type,
+        # protein, or course the user doesn't usually order.
         familiar_types: set[str] = set()
+        familiar_proteins: set[str] = set()
+        familiar_courses: set[str] = set()
         if taste_profile:
-            familiar_cuisines = {c.lower() for c in taste_profile.cuisine_preferences}
             familiar_types = {d.lower() for d in taste_profile.dish_types}
+        # Also check behavioral signals for what they usually order
+        if context:
+            for name, data in context.user_behavioral_signals.items():
+                if data.get("orders", 0) >= 1:
+                    familiar_courses.add(name.lower())  # rough — course info not in signals
 
         def _is_novel(item: ItemFeatures) -> bool:
-            """True if the item's cuisine and dish-type are outside the user's history."""
-            cuisine = (item.cuisine or "").lower()
+            """True if the item differs from the user's usual picks on the menu.
+
+            At a single-cuisine restaurant, novel = different course, protein,
+            or dish-type than what the user usually orders.
+            """
+            item_lower = f"{item.name} {item.description}".lower()
             course = (item.course or "").lower()
-            desc_lower = item.description.lower()
-            # Novel if cuisine doesn't overlap AND no dish-type keyword matches
-            cuisine_novel = not cuisine or cuisine not in familiar_cuisines
-            type_novel = not any(dt in desc_lower or dt in item.name.lower() for dt in familiar_types)
-            return cuisine_novel and type_novel
+            protein = (item.protein or "").lower()
+
+            # Novel if dish-type keywords don't overlap user's favorites
+            type_novel = not any(dt in item_lower for dt in familiar_types) if familiar_types else False
+            # Novel if protein is different from what user usually picks
+            protein_novel = bool(protein) and protein not in familiar_proteins if familiar_proteins else False
+            # Novel if course is one the user rarely orders
+            course_novel = bool(course) and course not in familiar_courses if familiar_courses else False
+
+            return type_novel or protein_novel or course_novel
 
         # --- Standard diversification (course+protein buckets) for limit-1 slots ---
         main_limit = max(limit - 1, 1)
@@ -437,9 +453,9 @@ class SmartRecommendationAlgorithm:
             if components.get("friend", 0) >= 0.5:
                 bullets.append("Friend-approved pick")
             
-            # 9. Discovery pick
+            # 9. Discovery pick (different dish-type/protein/course than usual)
             if scored.is_discovery:
-                bullets.insert(0, "Something new to try — outside your usual picks")
+                bullets.insert(0, "Something different from your usual order")
 
             # Default fallback (only if we have nothing)
             if not bullets:
@@ -513,6 +529,7 @@ Pick the best {limit} dishes considering:
 2. Course variety — mix starters/mains/sides when possible, don't pick 3 of the same category
 3. Honor the craving — at least one dish should match if a craving was specified
 4. Respect the scores — prefer higher-scored dishes but override when meal balance demands it
+5. This is a single restaurant menu — all dishes are the same cuisine. Focus on variety of dish types, proteins, and preparation styles rather than cuisine diversity.
 
 Return JSON array of exactly {limit} objects:
 [
