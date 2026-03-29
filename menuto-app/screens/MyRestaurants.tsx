@@ -291,8 +291,9 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   headerAccent: {
+    fontFamily: 'PlayfairDisplay-Italic',
     color: TERRA,
-    fontStyle: 'italic',
+    fontWeight: '500',
   },
   // Search
   searchSection: {
@@ -313,6 +314,7 @@ const styles = StyleSheet.create({
   searchIcon: {
     fontSize: 18,
     color: LIGHT_TEXT,
+    transform: [{ scaleX: -1 }],
   },
   searchText: {
     flex: 1,

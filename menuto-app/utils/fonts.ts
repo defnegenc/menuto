@@ -11,6 +11,9 @@ export const loadFonts = async () => {
       'DMSans-Medium': require('../assets/fonts/DMSans-folder/DMSans_18pt-Medium.ttf'),
       'DMSans-SemiBold': require('../assets/fonts/DMSans-folder/DMSans_24pt-SemiBold.ttf'),
       'DMSans-Bold': require('../assets/fonts/DMSans-folder/DMSans_18pt-Bold.ttf'),
+      'PlayfairDisplay-Italic': require('../assets/fonts/PlayfairDisplay-Italic.ttf'),
+      'IBMPlexMono-Bold': require('../assets/fonts/IBMPlexMono-Bold.ttf'),
+      'IBMPlexMono-SemiBold': require('../assets/fonts/IBMPlexMono-SemiBold.ttf'),
     });
     console.log('✅ Essential fonts loaded successfully!');
   } catch (error) {

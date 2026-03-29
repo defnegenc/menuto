@@ -183,7 +183,7 @@ export const IntroScreen: React.FC<IntroScreenProps> = ({ onGetStarted, onLogin 
       >
         <View style={styles.cardContent}>
           <Text style={styles.headline}>
-            Eat what you{'\n'}actually crave.
+            Eat what you{'\n'}actually <Text style={styles.headlineAccent}>crave.</Text>
           </Text>
           <Text style={styles.subline}>
             Personalized dish recommendations for every mood and every meal.
@@ -354,8 +354,13 @@ const styles = StyleSheet.create({
     fontSize: 36,
     lineHeight: 40,
     letterSpacing: -1.5,
-    color: '#1C1917',
+    color: '#111827',
     textAlign: 'center',
+  },
+  headlineAccent: {
+    fontFamily: 'PlayfairDisplay-Italic',
+    color: TERRA,
+    fontWeight: '500',
   },
   subline: {
     fontFamily: 'DMSans-Regular',

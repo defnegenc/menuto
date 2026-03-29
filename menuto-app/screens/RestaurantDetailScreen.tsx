@@ -19,12 +19,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { useStore } from '../store/useStore';
 import { api } from '../services/api';
 import { FavoriteRestaurant, ParsedDish } from '../types';
-import { theme } from '../theme';
-import { Header } from '../components/Header';
 import { MenuItemCard } from '../components/MenuItemCard';
 import { DishChip } from '../components/DishChip';
-import { LoadingScreen } from '../components/LoadingScreen';
-import { SearchBar } from '../components/SearchBar';
 import { NoMenuState } from '../components/NoMenuState';
 
 interface Props {
@@ -733,24 +729,33 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header 
-        onBack={onBack}
-        restaurantName={restaurant.name}
-        restaurantAddress={(restaurant.vicinity ?? 'Location unknown').split(',').slice(0, 3).join(', ')}
-      />
+      {/* Inline header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+          <Text style={styles.backArrow}>{'<'}</Text>
+        </TouchableOpacity>
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.restaurantName} numberOfLines={1}>{restaurant.name}</Text>
+          <Text style={styles.restaurantAddress} numberOfLines={1}>
+            {(restaurant.vicinity ?? 'Location unknown').split(',').slice(0, 3).join(', ')}
+          </Text>
+        </View>
+      </View>
 
       {isLoading && (
-        <LoadingScreen 
-          message="Loading menu" 
-          subMessage="Getting your restaurant's delicious dishes ready"
-        />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#E9323D" />
+          <Text style={styles.loadingMessage}>Loading menu</Text>
+          <Text style={styles.loadingSubMessage}>Getting your restaurant's delicious dishes ready</Text>
+        </View>
       )}
 
       {isParsing && (
-        <LoadingScreen 
-          message={loadingMessages[loadingMessageIndex]}
-          subMessage="Menu is parsing! Check back later to see the menu items."
-        />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#E9323D" />
+          <Text style={styles.loadingMessage}>{loadingMessages[loadingMessageIndex]}</Text>
+          <Text style={styles.loadingSubMessage}>Menu is parsing! Check back later to see the menu items.</Text>
+        </View>
       )}
 
       {!isLoading && !isParsing && (
@@ -765,11 +770,16 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
             <View style={styles.menuContainer}>
               {/* Fixed Search Bar - Always at the top, never remounts */}
               <View style={styles.searchContainer}>
-                <SearchBar
-                  value={searchText}
-                  onChangeText={handleSearchMenu}
-                  placeholder="Search the menu..."
-                />
+                <View style={styles.searchInput}>
+                  <Text style={styles.searchIcon}>{'🔍'}</Text>
+                  <TextInput
+                    style={styles.searchText}
+                    value={searchText}
+                    onChangeText={handleSearchMenu}
+                    placeholder="Search the menu..."
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
               </View>
 
               {/* Search Results - Show when searching */}

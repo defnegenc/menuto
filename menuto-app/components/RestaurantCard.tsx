@@ -30,7 +30,7 @@ export const RestaurantCard: React.FC<Props> = ({
       onPress={() => onSelectRestaurant(restaurant)}
       activeOpacity={0.7}
     >
-      {/* Top row: name + cuisine badge + remove */}
+      {/* Top row: name */}
       <View style={styles.topRow}>
         <View style={styles.nameColumn}>
           {rank !== undefined && (
@@ -40,11 +40,6 @@ export const RestaurantCard: React.FC<Props> = ({
           )}
           <Text style={styles.name} numberOfLines={1}>{restaurant.name}</Text>
         </View>
-        {restaurant.cuisine_type && (
-          <View style={styles.cuisineBadge}>
-            <Text style={styles.cuisineText}>{restaurant.cuisine_type}</Text>
-          </View>
-        )}
       </View>
 
       {/* Address */}
@@ -124,10 +119,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   name: {
-    fontFamily: 'DMSans-SemiBold',
-    fontSize: 19,
+    fontFamily: 'IBMPlexMono-SemiBold',
+    fontSize: 17,
     color: '#111827',
     flex: 1,
+    letterSpacing: -0.5,
   },
   cuisineBadge: {
     backgroundColor: '#F9FAFB',

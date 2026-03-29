@@ -53,9 +53,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   name: {
-    fontFamily: 'DMSans-SemiBold',
-    fontSize: 17,
+    fontFamily: 'IBMPlexMono-SemiBold',
+    fontSize: 16,
     color: '#111827',
+    letterSpacing: -0.5,
   },
   address: {
     fontFamily: 'DMSans-Regular',

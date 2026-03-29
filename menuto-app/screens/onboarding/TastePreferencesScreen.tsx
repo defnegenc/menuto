@@ -227,7 +227,7 @@ export function TastePreferencesScreen({ onComplete, onBack }: Props) {
         <Text style={styles.stepLabelText}>Your Palate Profile</Text>
       </View>
       <Text style={styles.headline}>
-        Any dietary{'\n'}<Text style={styles.headlineAccent}>needs?</Text>
+        Any{'\n'}<Text style={styles.headlineAccent}>dietary needs?</Text>
       </Text>
       <Text style={styles.subline}>
         We'll filter recommendations to match what you can eat. Skip if no restrictions.
@@ -508,8 +508,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   headlineAccent: {
+    fontFamily: 'PlayfairDisplay-Italic',
     color: RED,
-    fontStyle: 'italic',
+    fontWeight: '500',
   },
   subline: {
     fontFamily: 'DMSans-Regular',

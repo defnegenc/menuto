@@ -363,8 +363,9 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   headlineAccent: {
+    fontFamily: 'PlayfairDisplay-Italic',
     color: RED,
-    fontStyle: 'italic',
+    fontWeight: '500',
   },
   subtitle: {
     fontFamily: 'DMSans-Regular',
@@ -491,12 +492,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   resultName: {
-    fontFamily: 'DMSans-Medium',
-    fontSize: 17,
+    fontFamily: 'IBMPlexMono-SemiBold',
+    fontSize: 16,
     color: '#1F2937',
+    letterSpacing: -0.5,
   },
   resultNameSelected: {
-    fontFamily: 'DMSans-SemiBold',
     color: '#111827',
   },
   resultAddress: {
