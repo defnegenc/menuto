@@ -12,12 +12,10 @@ DEV = (os.getenv("API_ENV") or "prod").lower() == "dev"
 logger.info("[auth] Supabase JWT validator configured (dev=%s)", DEV)
 
 async def require_user(authorization: str = Header(None)):
-    # In dev mode, allow requests without proper auth for testing
-    if DEV and (not authorization or not authorization.startswith("Bearer ")):
-        logger.warning("Dev mode: Allowing request without auth")
-        return {"sub": "dev-user", "email": "dev@example.com"}
-
     if not authorization or not authorization.startswith("Bearer "):
+        if DEV:
+            logger.warning("Dev mode: No auth header, allowing request")
+            return {"sub": "dev-user", "email": "dev@example.com"}
         raise HTTPException(status_code=401, detail="Missing token")
 
     token = authorization.split(" ", 1)[1]
@@ -32,6 +30,13 @@ async def require_user(authorization: str = Header(None)):
     except InvalidTokenError as e:
         logger.warning("Invalid token: %s", e)
         if DEV:
-            logger.warning("Dev mode: Invalid token error, allowing request")
+            # In dev mode, decode without verification to extract user info
+            try:
+                unverified = jwt_decode(token, options={"verify_signature": False})
+                logger.warning("Dev mode: Using unverified token for sub=%s", unverified.get("sub"))
+                return unverified
+            except Exception:
+                pass
+            logger.warning("Dev mode: Falling back to dev-user")
             return {"sub": "dev-user", "email": "dev@example.com"}
         raise HTTPException(status_code=401, detail="Invalid token")

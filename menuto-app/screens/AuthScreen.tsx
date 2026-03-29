@@ -269,7 +269,10 @@ export function AuthScreen({ onAuthComplete }: Props) {
       }
 
       if (data?.url) {
+        console.log('Opening OAuth URL:', data.url.substring(0, 100));
         const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
+        console.log('OAuth result type:', result.type);
+        console.log('OAuth result url:', result.type === 'success' ? result.url?.substring(0, 200) : 'n/a');
 
         if (result.type === 'success' && result.url) {
           // Extract tokens — Supabase puts them in the hash fragment

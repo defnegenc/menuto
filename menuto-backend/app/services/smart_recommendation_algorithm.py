@@ -55,6 +55,139 @@ class SmartRecommendationAlgorithm:
         }
 
     # ------------------------------------------------------------------
+    # Per-user learned weights (Thompson Sampling)
+    # ------------------------------------------------------------------
+
+    def _sample_user_weights(self, user_id: str | None) -> Dict[str, float] | None:
+        """Sample personalized weights from per-user Beta priors (Thompson Sampling).
+
+        Returns sampled weights if user has priors, None to use defaults.
+        Requires priors for at least 5 components to activate (avoids noisy priors).
+        """
+        if not user_id:
+            return None
+        try:
+            from supabase import create_client
+
+            sb_url = os.getenv("SUPABASE_URL")
+            sb_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+            if not sb_url or not sb_key:
+                return None
+            sb = create_client(sb_url, sb_key)
+            result = (
+                sb.table("user_weight_priors")
+                .select("component, alpha, beta")
+                .eq("user_id", user_id)
+                .execute()
+            )
+            if not result.data or len(result.data) < 5:
+                return None
+
+            import random
+
+            sampled = {}
+            for row in result.data:
+                component = row["component"]
+                a, b = row["alpha"], row["beta"]
+                sampled[component] = random.betavariate(a, b)
+
+            # Normalize to sum to 1.0
+            total = sum(sampled.values())
+            if total > 0:
+                sampled = {k: v / total for k, v in sampled.items()}
+
+            logger.info("Sampled personalized weights for user %s", user_id)
+            return sampled
+        except Exception as e:
+            logger.warning("Failed to sample user weights: %s", e)
+            return None
+
+    @staticmethod
+    def update_weight_priors(
+        user_id: str,
+        component_scores: Dict[str, float],
+        outcome: str,
+    ) -> None:
+        """Update per-user Beta priors based on feedback.
+
+        For positive outcomes: increment alpha for components that scored high.
+        For negative outcomes: increment beta for components that scored high
+        (those components led to a bad recommendation).
+        """
+        try:
+            from supabase import create_client
+
+            sb_url = os.getenv("SUPABASE_URL")
+            sb_key = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+            if not sb_url or not sb_key:
+                return
+            sb = create_client(sb_url, sb_key)
+
+            for component, score in component_scores.items():
+                if score <= 0.3:
+                    continue
+
+                # Fetch current priors
+                existing = (
+                    sb.table("user_weight_priors")
+                    .select("alpha, beta")
+                    .eq("user_id", user_id)
+                    .eq("component", component)
+                    .maybe_single()
+                    .execute()
+                )
+
+                current_alpha = existing.data["alpha"] if existing.data else 2.0
+                current_beta = existing.data["beta"] if existing.data else 2.0
+
+                if outcome == "positive":
+                    current_alpha += score
+                else:
+                    current_beta += score * 0.5
+
+                sb.table("user_weight_priors").upsert(
+                    {
+                        "user_id": user_id,
+                        "component": component,
+                        "alpha": current_alpha,
+                        "beta": current_beta,
+                        "updated_at": "now()",
+                    },
+                    on_conflict="user_id,component",
+                ).execute()
+        except Exception as e:
+            logger.warning("Failed to update weight priors: %s", e)
+
+    # ------------------------------------------------------------------
+    # Occasion context modifier
+    # ------------------------------------------------------------------
+
+    def _occasion_modifier(self, item: ItemFeatures, context: RecommendationContext) -> float:
+        """Slight scoring adjustments based on dining occasion."""
+        occasion = context.dining_occasion
+        if not occasion:
+            return 0.0
+
+        is_shareable = item.is_shareable
+        course = (item.course or "").lower()
+
+        if occasion == "date":
+            if is_shareable:
+                return 0.05
+            return 0.0
+        elif occasion == "family":
+            if course in {"main", "pizza", "pasta"}:
+                return 0.03
+            return 0.0
+        elif occasion == "business":
+            return 0.0
+        elif occasion == "friends":
+            if is_shareable:
+                return 0.05
+            return 0.0
+        return 0.0
+
+    # ------------------------------------------------------------------
     # Public entrypoints
     # ------------------------------------------------------------------
 
@@ -68,8 +201,35 @@ class SmartRecommendationAlgorithm:
         context: RecommendationContext,
         limit: int = 5,
     ) -> List[ScoredItem]:
+        # Try personalized weights via Thompson Sampling
+        user_weights = self._sample_user_weights(context.user_id)
+        if user_weights:
+            self.component_weights = user_weights
+
         raw_profile = self.legacy_engine.analyze_user_taste_profile(user_favorite_dishes)
         taste_profile = UserTasteProfile.from_legacy(raw_profile)
+
+        # Improvement 3: Refresh taste profile with recent high-rated dishes
+        rated_dish_names = [
+            name for name, rating in context.user_dish_ratings.items() if rating >= 4
+        ]
+        if rated_dish_names:
+            enriched_favorites = list(user_favorite_dishes)  # copy
+            for name in rated_dish_names:
+                if not any(
+                    d.get("dish_name", "").lower() == name.lower()
+                    for d in enriched_favorites
+                ):
+                    enriched_favorites.append({"dish_name": name, "restaurant_id": "rated"})
+
+            if len(enriched_favorites) > len(user_favorite_dishes):
+                raw_profile = self.legacy_engine.analyze_user_taste_profile(enriched_favorites)
+                taste_profile = UserTasteProfile.from_legacy(raw_profile)
+                logger.info(
+                    "Refreshed taste profile with %d rated dishes (total: %d)",
+                    len(rated_dish_names),
+                    len(enriched_favorites),
+                )
 
         candidates = self.get_candidates_with_dietary_constraints(
             menu_items,
@@ -215,7 +375,7 @@ class SmartRecommendationAlgorithm:
             score = sum(
                 components.get(name, 0.0) * weight
                 for name, weight in self.component_weights.items()
-            )
+            ) + self._occasion_modifier(item, context)
             ranked.append(
                 ScoredItem(
                     item=item,
@@ -582,6 +742,7 @@ THEIR MOOD RIGHT NOW:
 - Craving: {cravings}
 - Adventurousness: {adventurousness}
 - Meal: {meal_period or 'not specified'}
+- Dining: {context.dining_occasion or 'not specified'} (party of {context.party_size})
 
 THEIR HISTORY AT THIS RESTAURANT:
 - Dishes they loved: {', '.join(loved_dishes) if loved_dishes else 'first visit or no ratings yet'}

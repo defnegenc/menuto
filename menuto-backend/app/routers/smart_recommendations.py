@@ -202,6 +202,9 @@ async def generate_smart_recommendations(
         except Exception as e:
             logger.warning("Failed to fetch dish popularity: %s", e)
 
+        dining_occasion = context_weights.get("diningOccasion")
+        party_size = context_weights.get("partySize", 1)
+
         context = RecommendationContext(
             hunger_level=_map_hunger_level(hunger_raw),
             craving_tags=context_weights.get("selectedCravings", []) or [],
@@ -215,6 +218,9 @@ async def generate_smart_recommendations(
             user_dish_ratings=user_ratings_map,
             user_behavioral_signals=behavioral_signals,
             dish_popularity=dish_popularity,
+            user_id=user_id,
+            dining_occasion=dining_occasion,
+            party_size=party_size,
         )
 
         legacy_engine = RecommendationEngine()
@@ -400,6 +406,34 @@ async def explain_recommendation(request: Request):
     except Exception as e:
         logger.error("Recommendation explanation error: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/feedback")
+async def submit_recommendation_feedback(request: Request):
+    """Submit feedback on a recommendation to train per-user weights."""
+    try:
+        data = await request.json()
+        user_id = data.get("user_id")
+        dish_id = data.get("dish_id")
+        outcome = data.get("outcome")  # "positive" or "negative"
+        component_scores = data.get("component_scores", {})
+
+        if not user_id or not outcome or not component_scores:
+            raise HTTPException(
+                status_code=400,
+                detail="user_id, outcome, and component_scores required",
+            )
+
+        SmartRecommendationAlgorithm.update_weight_priors(user_id, component_scores, outcome)
+        return {
+            "status": "ok",
+            "message": f"Updated weight priors for {len(component_scores)} components",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Feedback error: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.post("/build-taste-profile")
 async def build_taste_profile(request: Request):

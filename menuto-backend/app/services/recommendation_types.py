@@ -33,6 +33,9 @@ class RecommendationContext:
     # Maps dish_name -> {"views": 3, "orders": 1, "favorited": True}
     dish_popularity: Dict[str, float] = field(default_factory=dict)
     # Maps dish_name -> 0.0-1.0 normalized popularity (most ordered = 1.0)
+    user_id: Optional[str] = None
+    dining_occasion: Optional[str] = None  # "date", "business", "family", "friends", "solo"
+    party_size: int = 1
 
 
 @dataclass
