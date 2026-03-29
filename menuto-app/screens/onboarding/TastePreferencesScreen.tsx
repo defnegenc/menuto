@@ -211,20 +211,30 @@ export function TastePreferencesScreen({ onComplete, onBack }: Props) {
       <View style={styles.sectionBlock}>
         <Text style={styles.sectionTitle}>Spice tolerance</Text>
         <View style={styles.spiceContainer}>
-          <View style={styles.spiceTrack}>
-            <View style={[styles.spiceFill, { width: `${((spiceTolerance - 1) / 4) * 100}%` }]} />
+          {/* Track with dots overlaid — dots centered on the line */}
+          <View style={styles.spiceTrackWrapper}>
+            <View style={styles.spiceTrack}>
+              <View style={[styles.spiceFill, { width: `${((spiceTolerance - 1) / 4) * 100}%` }]} />
+            </View>
+            <View style={styles.spiceDotsRow}>
+              {[1, 2, 3, 4, 5].map(level => (
+                <TouchableOpacity
+                  key={level}
+                  style={[styles.spiceDot, spiceTolerance >= level && styles.spiceDotActive]}
+                  onPress={() => setSpiceTolerance(level)}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                />
+              ))}
+            </View>
           </View>
-          <View style={styles.spiceDotsRow}>
-            {[1, 2, 3, 4, 5].map(level => (
-              <TouchableOpacity
-                key={level}
-                style={[styles.spiceDot, spiceTolerance >= level && styles.spiceDotActive]}
-                onPress={() => setSpiceTolerance(level)}
-              />
-            ))}
+          <View style={styles.spiceLabelRow}>
+            <Text style={styles.spiceLabelEnd}>Mild</Text>
+            <View style={styles.spiceCenter}>
+              <Text style={styles.spiceEmoji}>{'🌶️'.repeat(spiceTolerance)}</Text>
+              <Text style={styles.spiceLabel}>{SPICE_LABELS[spiceTolerance]}</Text>
+            </View>
+            <Text style={styles.spiceLabelEnd}>Fire</Text>
           </View>
-          <Text style={styles.spiceEmoji}>{'🌶️'.repeat(spiceTolerance)}</Text>
-          <Text style={styles.spiceLabel}>{SPICE_LABELS[spiceTolerance]}</Text>
         </View>
       </View>
     </View>
@@ -485,28 +495,33 @@ const styles = StyleSheet.create({
   },
   // Spice
   spiceContainer: {
-    alignItems: 'center',
-    marginTop: 8,
-    gap: 8,
+    marginTop: 12,
+    gap: 12,
+  },
+  spiceTrackWrapper: {
+    position: 'relative',
+    height: 28,
+    justifyContent: 'center',
+    paddingHorizontal: 11,  // half of dot width — so dots at edges sit centered on track ends
   },
   spiceTrack: {
-    width: '100%',
-    height: 4,
-    backgroundColor: '#F5F5F4',
-    borderRadius: 2,
+    position: 'absolute',
+    left: 11,
+    right: 11,
+    height: 3,
+    backgroundColor: '#F0EEEC',
+    borderRadius: 1.5,
     overflow: 'hidden',
   },
   spiceFill: {
-    height: 4,
+    height: 3,
     backgroundColor: TERRA,
-    borderRadius: 2,
+    borderRadius: 1.5,
   },
   spiceDotsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    paddingHorizontal: 4,
-    marginTop: -14,
   },
   spiceDot: {
     width: 22,
@@ -514,26 +529,39 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     backgroundColor: '#FFFFFF',
     borderWidth: 2,
-    borderColor: '#E7E5E4',
+    borderColor: '#E0DEDA',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   spiceDotActive: {
     backgroundColor: TERRA,
     borderColor: TERRA,
   },
+  spiceLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  spiceLabelEnd: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 12,
+    color: LIGHT_TEXT,
+  },
+  spiceCenter: {
+    alignItems: 'center',
+  },
   spiceEmoji: {
-    fontSize: 24,
-    marginTop: 4,
+    fontSize: 22,
   },
   spiceLabel: {
     fontFamily: 'DMSans-Medium',
-    fontSize: 14,
+    fontSize: 13,
     color: TERRA,
     fontStyle: 'italic',
+    marginTop: 2,
   },
   // Map placeholder
   mapPlaceholder: {
