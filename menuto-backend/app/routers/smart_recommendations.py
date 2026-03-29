@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 from app.services.menu_data_service import MenuDataService
 from app.services.recommendation_engine import RecommendationEngine
 from app.services.recommendation_types import HungerLevel, RecommendationContext
-from app.services.review_ingestion import get_dish_sentiment_scores
+from app.services.review_ingestion import get_dish_sentiment_scores, get_review_based_popularity
 from app.services.smart_recommendation_algorithm import SmartRecommendationAlgorithm
 
 logger = logging.getLogger(__name__)
@@ -152,15 +152,17 @@ async def generate_smart_recommendations(
             except Exception as e:
                 logger.warning("Failed to fetch behavioral signals: %s", e)
 
-        # Fetch cross-user dish popularity for this restaurant
+        # Fetch dish popularity from two sources:
+        # 1. Cross-user order counts from Menuto app (dish_orders table)
+        # 2. Review mention frequency from Google (free — already cached)
         dish_popularity: dict[str, float] = {}
         try:
+            # Source 1: Menuto user orders
             if sb:
                 pop_result = sb.table("dish_orders").select(
                     "dish_id, parsed_dishes(name)"
                 ).eq("restaurant_place_id", restaurant_place_id).execute()
 
-                # Count orders per dish
                 dish_order_counts: dict[str, int] = {}
                 for r in (pop_result.data or []):
                     dish = r.get("parsed_dishes")
@@ -168,14 +170,35 @@ async def generate_smart_recommendations(
                         name = dish["name"]
                         dish_order_counts[name] = dish_order_counts.get(name, 0) + 1
 
-                # Normalize to 0-1 (most ordered = 1.0)
                 if dish_order_counts:
                     max_orders = max(dish_order_counts.values())
                     dish_popularity = {
                         name: count / max_orders
                         for name, count in dish_order_counts.items()
                     }
-                    logger.info("Loaded popularity data for %d dishes at %s", len(dish_popularity), restaurant_name)
+
+            # Source 2: Google review mention frequency (free, no extra API calls)
+            review_popularity = get_review_based_popularity(restaurant_place_id)
+            if review_popularity:
+                # Merge: if we have order data, blend 60/40 (orders are stronger signal).
+                # If no order data, review mentions are the sole popularity signal.
+                if dish_popularity:
+                    for name, review_score in review_popularity.items():
+                        if name in dish_popularity:
+                            dish_popularity[name] = 0.6 * dish_popularity[name] + 0.4 * review_score
+                        else:
+                            dish_popularity[name] = review_score * 0.8  # slightly discount review-only
+                else:
+                    dish_popularity = review_popularity
+
+            if dish_popularity:
+                logger.info(
+                    "Popularity data: %d dishes (%d from orders, %d from reviews) at %s",
+                    len(dish_popularity),
+                    len(dish_order_counts) if sb else 0,
+                    len(review_popularity),
+                    restaurant_name,
+                )
         except Exception as e:
             logger.warning("Failed to fetch dish popularity: %s", e)
 

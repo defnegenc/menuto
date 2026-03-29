@@ -102,6 +102,42 @@ def get_dish_sentiment_scores(place_id: str) -> Dict[str, float]:
     }
 
 
+def get_review_based_popularity(place_id: str) -> Dict[str, float]:
+    """Estimate dish popularity from review mention frequency.
+
+    If 4 out of 5 reviews mention "Margherita Pizza", it's probably the
+    most popular dish. Returns {dish_name: 0.0-1.0} where 1.0 = mentioned
+    in every review.
+
+    This is a FREE popularity signal — no extra API calls beyond the
+    reviews we already fetch and cache.
+    """
+    reviews = get_reviews_for_restaurant(place_id)
+    if not reviews:
+        return {}
+
+    mention_counts: Dict[str, int] = {}
+    total_reviews = len(reviews)
+
+    for review in reviews:
+        # Count each dish only once per review (even if mentioned multiple times)
+        seen_in_review: set[str] = set()
+        for dish_name in review.get("dish_mentions", []):
+            normalized = dish_name.strip().title()
+            if normalized not in seen_in_review:
+                seen_in_review.add(normalized)
+                mention_counts[normalized] = mention_counts.get(normalized, 0) + 1
+
+    if not mention_counts:
+        return {}
+
+    # Normalize: mentioned in N out of total_reviews → N/total_reviews
+    return {
+        name: round(count / total_reviews, 3)
+        for name, count in mention_counts.items()
+    }
+
+
 def get_dish_attributes(place_id: str) -> Dict[str, List[str]]:
     """Get aggregated attributes per dish from reviews.
 
