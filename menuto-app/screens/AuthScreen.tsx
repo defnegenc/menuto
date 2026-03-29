@@ -302,17 +302,12 @@ export function AuthScreen({ onAuthComplete }: Props) {
               const userEmail = sessionData.session.user.email || '';
               const userName = sessionData.session.user.user_metadata?.full_name || '';
 
-              // Check if user profile already exists
-              let isNewUser = false;
+              // Create profile if new user (backend returns 404)
               try {
                 const existingUser = await api.getUserPreferences(userId);
-                if (!existingUser) isNewUser = true;
+                if (!existingUser) throw new Error('not found');
               } catch {
-                isNewUser = true;
-              }
-
-              if (isNewUser) {
-                // Create profile directly with Google name
+                // New user — create profile
                 const userPayload = {
                   id: userId,
                   name: userName || undefined,
@@ -328,14 +323,13 @@ export function AuthScreen({ onAuthComplete }: Props) {
                 };
                 try {
                   await api.saveUserPreferences(userId, userPayload);
-                  setUser(userPayload, userId);
                 } catch (e) {
                   console.error('Failed to save Google user profile:', e);
-                  setUser(userPayload, userId);
                 }
               }
 
               await setLastAuth({ method: 'google', identifier: userEmail, ts: Date.now() });
+              // Let App.tsx auth listener handle routing (session is already set)
               onAuthComplete();
             }
           }

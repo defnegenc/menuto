@@ -1,557 +1,302 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
-  TextInput,
-  ActivityIndicator,
-  Modal,
+  Animated,
 } from 'react-native';
-import { theme } from '../../theme';
 import { ParsedDish } from '../../types';
-import { NoMenuState } from '../../components/NoMenuState';
+
+const TERRA = '#CE3E25';
 
 interface DishScoringCardProps {
-  selectedRestaurant: any;
   menuDishes: ParsedDish[];
   isLoadingMenu: boolean;
-  showQuestions: boolean;
-  // Review modal
-  showReviewModal: boolean;
-  onSetShowReviewModal: (show: boolean) => void;
-  onConfirmMenu: () => void;
-  onAddMoreItems: () => void;
-  // Menu actions
-  onAddMenuPDF: () => void;
-  onPasteMenuText: () => void;
+  menuFound: boolean;
   onAddPhoto: () => void;
-  // Text modal
-  showTextModal: boolean;
-  menuText: string;
-  onSetShowTextModal: (show: boolean) => void;
-  onSetMenuText: (text: string) => void;
-  onSubmitMenuText: () => void;
-  // URL modal
-  showMenuUrlModal: boolean;
-  menuUrls: string[];
-  onSetShowMenuUrlModal: (show: boolean) => void;
-  onSetMenuUrls: React.Dispatch<React.SetStateAction<string[]>>;
-  onSubmitMenuUrls: () => void;
+  onAddMenuLink: () => void;
+  onPasteMenuText: () => void;
+  onReviewMenu?: () => void;
 }
 
-export function DishScoringCard({
-  selectedRestaurant,
-  menuDishes,
-  isLoadingMenu,
-  showQuestions,
-  showReviewModal,
-  onSetShowReviewModal,
-  onConfirmMenu,
-  onAddMoreItems,
-  onAddMenuPDF,
-  onPasteMenuText,
-  onAddPhoto,
-  showTextModal,
-  menuText,
-  onSetShowTextModal,
-  onSetMenuText,
-  onSubmitMenuText,
-  showMenuUrlModal,
-  menuUrls,
-  onSetShowMenuUrlModal,
-  onSetMenuUrls,
-  onSubmitMenuUrls,
-}: DishScoringCardProps) {
+const LOADING_MESSAGES = [
+  'Reading menu...',
+  'Extracting dishes...',
+  'Almost done...',
+];
+
+function AnimatedLoadingText() {
+  const [messageIndex, setMessageIndex] = useState(0);
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        setMessageIndex((prev) =>
+          prev < LOADING_MESSAGES.length - 1 ? prev + 1 : prev
+        );
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
+      });
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [opacity]);
+
   return (
-    <>
-      {/* Step 2: Show when restaurant is selected but menu not confirmed yet */}
-      {!showQuestions && (
-        <View style={styles.stepSection}>
-          <Text style={styles.stepText}>Step 2: Add or confirm menu</Text>
-          <View style={styles.stepUnderline} />
-        </View>
-      )}
-
-      {/* Menu confirmed - show when menu is found and confirmed */}
-      {menuDishes.length > 0 && showQuestions && (
-        <>
-          <View style={styles.separatorLine} />
-          <View style={styles.menuConfirmedSection}>
-            <Text style={styles.menuConfirmedText}>Menu confirmed</Text>
-            <TouchableOpacity
-              style={styles.reviewButton}
-              onPress={() => onSetShowReviewModal(true)}
-            >
-              <Text style={styles.reviewButtonText}>Review</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.separatorLine} />
-        </>
-      )}
-
-      {/* Menu loading and content */}
-      {isLoadingMenu ? (
-        <View style={styles.loadingState}>
-          <ActivityIndicator size="large" color="#E9323D" />
-          <Text style={styles.loadingText}>Checking menu...</Text>
-        </View>
-      ) : menuDishes.length > 0 ? (
-        <>
-          {!showQuestions && (
-            <View style={styles.menuFoundSection}>
-              <Text style={styles.menuFoundText}>Menu found!</Text>
-              <TouchableOpacity
-                style={styles.reviewButton}
-                onPress={() => onSetShowReviewModal(true)}
-              >
-                <Text style={styles.reviewButtonText}>Review</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </>
-      ) : (
-        <View style={styles.noMenuSection}>
-          <NoMenuState
-            onAddMenuPDF={onAddMenuPDF}
-            onPasteMenuText={onPasteMenuText}
-            onAddPhoto={onAddPhoto}
-          />
-        </View>
-      )}
-
-      {/* Text Input Modal */}
-      <Modal
-        visible={showTextModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => onSetShowTextModal(false)}>
-              <Text style={styles.modalCancelButton}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Paste Menu Text</Text>
-            <TouchableOpacity onPress={onSubmitMenuText} disabled={!menuText.trim()}>
-              <Text
-                style={[
-                  styles.modalSubmitButton,
-                  !menuText.trim() && styles.modalSubmitButtonDisabled,
-                ]}
-              >
-                Submit
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.modalContent}>
-            <Text style={styles.modalInstructions}>
-              Paste the menu text below. Include dish names, descriptions, and prices if available.
-            </Text>
-
-            <TextInput
-              style={styles.textInput}
-              value={menuText}
-              onChangeText={onSetMenuText}
-              placeholder="Paste menu text here..."
-              multiline
-              textAlignVertical="top"
-              autoFocus
-            />
-          </View>
-        </View>
-      </Modal>
-
-      {/* Review Menu Modal */}
-      <Modal
-        visible={showReviewModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => onSetShowReviewModal(false)}>
-              <Text style={styles.modalCancelButton}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Menu Summary</Text>
-            <View style={{ width: 60 }} />
-          </View>
-
-          <ScrollView style={styles.modalContent}>
-            <Text style={styles.modalInstructions}>
-              Review the menu items found for {selectedRestaurant?.name}
-            </Text>
-
-            {(() => {
-              const grouped: { [key: string]: ParsedDish[] } = {};
-              menuDishes.forEach((dish) => {
-                const category = dish.category || 'other';
-                if (!grouped[category]) {
-                  grouped[category] = [];
-                }
-                grouped[category].push(dish);
-              });
-
-              return Object.keys(grouped).map((category) => (
-                <View key={category} style={styles.reviewCategorySection}>
-                  <Text style={styles.reviewCategoryTitle}>
-                    {category.charAt(0).toUpperCase() + category.slice(1)}
-                  </Text>
-                  {grouped[category].slice(0, 5).map((dish, idx) => (
-                    <View key={idx} style={styles.reviewDishItem}>
-                      <Text style={styles.reviewDishName}>{dish.name}</Text>
-                      {dish.description && (
-                        <Text style={styles.reviewDishDescription}>{dish.description}</Text>
-                      )}
-                    </View>
-                  ))}
-                  {grouped[category].length > 5 && (
-                    <Text style={styles.reviewMoreText}>
-                      + {grouped[category].length - 5} more items
-                    </Text>
-                  )}
-                </View>
-              ));
-            })()}
-          </ScrollView>
-
-          <View style={styles.reviewModalActions}>
-            <TouchableOpacity
-              style={styles.reviewActionButton}
-              onPress={onAddMoreItems}
-            >
-              <Text style={styles.reviewActionButtonText}>Add more items</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.reviewActionButton, styles.reviewConfirmButton]}
-              onPress={onConfirmMenu}
-            >
-              <Text
-                style={[
-                  styles.reviewActionButtonText,
-                  styles.reviewConfirmButtonText,
-                ]}
-              >
-                Confirm
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Menu URL Modal */}
-      <Modal
-        visible={showMenuUrlModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => onSetShowMenuUrlModal(false)}>
-              <Text style={styles.modalCancelButton}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Add Menu URLs</Text>
-            <TouchableOpacity onPress={onSubmitMenuUrls}>
-              <Text style={styles.modalSubmitButton}>Parse</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.modalContent}>
-            <Text style={styles.modalInstructions}>
-              Add one or more menu links (website, PDF, or image). We'll parse and save them to this restaurant.
-            </Text>
-
-            {menuUrls.map((value, idx) => (
-              <View key={`menu-url-${idx}`} style={styles.menuUrlRow}>
-                <TextInput
-                  style={[styles.menuUrlInput, { flex: 1 }]}
-                  value={value}
-                  onChangeText={(text) => {
-                    onSetMenuUrls((prev) =>
-                      prev.map((p, i) => (i === idx ? text : p))
-                    );
-                  }}
-                  placeholder="https://example.com/menu or menu.pdf"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                {menuUrls.length > 1 && (
-                  <TouchableOpacity
-                    style={styles.removeUrlButton}
-                    onPress={() =>
-                      onSetMenuUrls((prev) => prev.filter((_, i) => i !== idx))
-                    }
-                  >
-                    <Text style={styles.removeUrlButtonText}>Remove</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
-
-            <TouchableOpacity
-              style={styles.addUrlButton}
-              onPress={() => onSetMenuUrls((prev) => [...prev, ''])}
-            >
-              <Text style={styles.addUrlButtonText}>+ Add another URL</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-    </>
+    <Animated.Text style={[styles.loadingMessage, { opacity }]}>
+      {LOADING_MESSAGES[messageIndex]}
+    </Animated.Text>
   );
 }
 
-const TERRA = '#E9323D';
-const MEDIUM_COLOR = '#5A4D48';
-const LIGHT_TEXT = '#8C7E77';
+function LoadingDots() {
+  const dot1 = useRef(new Animated.Value(0.3)).current;
+  const dot2 = useRef(new Animated.Value(0.3)).current;
+  const dot3 = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const animate = (dot: Animated.Value, delay: number) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(dot, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(dot, {
+            toValue: 0.3,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+    const a1 = animate(dot1, 0);
+    const a2 = animate(dot2, 150);
+    const a3 = animate(dot3, 300);
+    a1.start();
+    a2.start();
+    a3.start();
+    return () => {
+      a1.stop();
+      a2.stop();
+      a3.stop();
+    };
+  }, [dot1, dot2, dot3]);
+
+  return (
+    <View style={styles.dotsRow}>
+      {[dot1, dot2, dot3].map((dot, i) => (
+        <Animated.View
+          key={i}
+          style={[styles.dot, { opacity: dot }]}
+        />
+      ))}
+    </View>
+  );
+}
+
+export function DishScoringCard({
+  menuDishes,
+  isLoadingMenu,
+  menuFound,
+  onAddPhoto,
+  onAddMenuLink,
+  onPasteMenuText,
+  onReviewMenu,
+}: DishScoringCardProps) {
+  // Loading state
+  if (isLoadingMenu) {
+    return (
+      <View style={styles.card}>
+        <View style={styles.loadingContainer}>
+          <LoadingDots />
+          <AnimatedLoadingText />
+        </View>
+      </View>
+    );
+  }
+
+  // Menu found state
+  if (menuFound && menuDishes.length > 0) {
+    return (
+      <View style={styles.card}>
+        <View style={styles.menuFoundRow}>
+          <View style={styles.menuFoundLeft}>
+            <Text style={styles.checkmark}>&#x2713;</Text>
+            <Text style={styles.menuFoundText}>
+              Menu found{' '}
+              <Text style={styles.menuFoundCount}>
+                &middot; {menuDishes.length} dishes
+              </Text>
+            </Text>
+          </View>
+          {onReviewMenu && (
+            <TouchableOpacity onPress={onReviewMenu} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.reviewLink}>Review</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    );
+  }
+
+  // No menu state — two big buttons + text link
+  return (
+    <View style={styles.card}>
+      <Text style={styles.noMenuTitle}>Add menu to get started</Text>
+      <Text style={styles.noMenuSubtitle}>
+        We need the menu to recommend dishes for you.
+      </Text>
+
+      <View style={styles.bigButtonsRow}>
+        <TouchableOpacity style={styles.bigButton} onPress={onAddPhoto} activeOpacity={0.7}>
+          <Text style={styles.bigButtonEmoji}>&#x1F4F7;</Text>
+          <Text style={styles.bigButtonLabel}>Snap menu</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.bigButton} onPress={onAddMenuLink} activeOpacity={0.7}>
+          <Text style={styles.bigButtonEmoji}>&#x1F517;</Text>
+          <Text style={styles.bigButtonLabel}>Paste link</Text>
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity onPress={onPasteMenuText} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <Text style={styles.pasteTextLink}>Or paste menu text</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
-  stepSection: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.xl,
-    paddingBottom: theme.spacing.md,
+  card: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: '#FAFAF9',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#F5F5F4',
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 2,
   },
-  stepText: {
-    fontSize: 13,
-    color: MEDIUM_COLOR,
-    marginBottom: theme.spacing.sm,
-    fontFamily: 'DMSans-Regular',
+
+  // Loading state
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    gap: 16,
   },
-  stepUnderline: {
-    height: 1,
-    backgroundColor: '#E7E5E4',
-    alignSelf: 'stretch',
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 8,
   },
-  separatorLine: {
-    height: 1,
-    backgroundColor: '#E7E5E4',
-    marginVertical: theme.spacing.md,
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: TERRA,
   },
-  menuFoundSection: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.md,
+  loadingMessage: {
+    fontSize: 15,
+    fontFamily: 'DMSans-Medium',
+    color: '#44403C',
+    letterSpacing: -0.3,
+  },
+
+  // Menu found state
+  menuFoundRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  menuFoundLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  checkmark: {
+    fontSize: 16,
+    color: '#22C55E',
+    fontFamily: 'DMSans-Bold',
   },
   menuFoundText: {
-    fontSize: 20,
-    fontFamily: 'DMSans-Bold',
-    color: '#1C1917',
-    letterSpacing: -1.5,
-    flex: 1,
-  },
-  menuConfirmedSection: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  menuConfirmedText: {
-    fontSize: 20,
-    fontFamily: 'DMSans-Bold',
-    color: '#1C1917',
-    letterSpacing: -1.5,
-    flex: 1,
-  },
-  reviewButton: {
-    backgroundColor: '#1C1917',
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.md,
-    borderRadius: 999,
-  },
-  reviewButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontFamily: 'DMSans-Bold',
-  },
-  loadingState: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing.xl,
-    gap: theme.spacing.sm,
-  },
-  loadingText: {
-    fontSize: 13,
-    color: '#A8A29E',
-    fontFamily: 'DMSans-Regular',
-  },
-  noMenuSection: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.sm,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F4',
-  },
-  modalCancelButton: {
-    fontSize: 14,
-    color: MEDIUM_COLOR,
-    fontFamily: 'DMSans-Regular',
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontFamily: 'DMSans-Bold',
-    color: '#1C1917',
-  },
-  modalSubmitButton: {
-    fontSize: 14,
-    color: TERRA,
-    fontFamily: 'DMSans-Bold',
-  },
-  modalSubmitButtonDisabled: {
-    color: LIGHT_TEXT,
-  },
-  modalContent: {
-    flex: 1,
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.lg,
-  },
-  modalInstructions: {
-    fontSize: 14,
-    color: MEDIUM_COLOR,
-    marginBottom: theme.spacing.lg,
-    lineHeight: 20,
-    fontFamily: 'DMSans-Regular',
-  },
-  textInput: {
-    flex: 1,
-    backgroundColor: '#FAFAF9',
-    borderRadius: 16,
-    padding: 14,
-    fontSize: 14,
-    color: '#1C1917',
-    fontFamily: 'DMSans-Regular',
-    borderWidth: 1,
-    borderColor: '#F5F5F4',
-    textAlignVertical: 'top',
-  },
-  menuUrlRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.md,
-  },
-  menuUrlInput: {
-    borderWidth: 1,
-    borderColor: '#F5F5F4',
-    borderRadius: 16,
-    padding: 14,
-    fontSize: 14,
-    color: '#1C1917',
-    backgroundColor: '#FAFAF9',
-    fontFamily: 'DMSans-Regular',
-  },
-  addUrlButton: {
-    marginTop: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#F5F5F4',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FAFAF9',
-  },
-  addUrlButtonText: {
-    fontSize: 14,
-    fontFamily: 'DMSans-Bold',
-    color: TERRA,
-  },
-  removeUrlButton: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: 999,
-    backgroundColor: '#FAFAF9',
-    borderWidth: 1,
-    borderColor: '#F5F5F4',
-  },
-  removeUrlButtonText: {
-    color: MEDIUM_COLOR,
-    fontSize: 12,
-    fontFamily: 'DMSans-Bold',
-  },
-  reviewCategorySection: {
-    marginBottom: theme.spacing.lg,
-    backgroundColor: '#FAFAF9',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#F5F5F4',
-    padding: theme.spacing.lg,
-  },
-  reviewCategoryTitle: {
-    fontSize: 13,
-    fontFamily: 'DMSans-Bold',
-    color: '#1C1917',
-    marginBottom: theme.spacing.sm,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  reviewDishItem: {
-    marginBottom: theme.spacing.sm,
-    paddingBottom: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F4',
-  },
-  reviewDishName: {
-    fontSize: 14,
-    color: '#1C1917',
-    marginBottom: 4,
+    fontSize: 15,
     fontFamily: 'DMSans-Medium',
+    color: '#1C1917',
   },
-  reviewDishDescription: {
-    fontSize: 12,
-    color: '#A8A29E',
-    fontFamily: 'DMSans-Italic',
-  },
-  reviewMoreText: {
-    fontSize: 12,
-    color: LIGHT_TEXT,
-    fontStyle: 'italic',
+  menuFoundCount: {
+    color: '#78716C',
     fontFamily: 'DMSans-Regular',
-    marginTop: theme.spacing.xs,
   },
-  reviewModalActions: {
+  reviewLink: {
+    fontSize: 14,
+    fontFamily: 'DMSans-Medium',
+    color: TERRA,
+    textDecorationLine: 'underline',
+  },
+
+  // No menu state
+  noMenuTitle: {
+    fontSize: 18,
+    fontFamily: 'DMSans-Bold',
+    color: '#1C1917',
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  noMenuSubtitle: {
+    fontSize: 14,
+    fontFamily: 'DMSans-Regular',
+    color: '#78716C',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  bigButtonsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.xxxl,
-    borderTopWidth: 1,
-    borderTopColor: '#E7E5E4',
-    gap: theme.spacing.md,
+    gap: 12,
+    marginBottom: 16,
   },
-  reviewActionButton: {
+  bigButton: {
     flex: 1,
-    paddingVertical: 18,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E7E5E4',
-    borderRadius: 999,
     backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F5F5F4',
+    paddingVertical: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 1,
   },
-  reviewConfirmButton: {
-    backgroundColor: '#1C1917',
-    borderColor: '#1C1917',
+  bigButtonEmoji: {
+    fontSize: 24,
   },
-  reviewActionButtonText: {
+  bigButtonLabel: {
     fontSize: 14,
     fontFamily: 'DMSans-Bold',
     color: '#1C1917',
   },
-  reviewConfirmButtonText: {
-    color: '#FFFFFF',
+  pasteTextLink: {
+    fontSize: 13,
+    fontFamily: 'DMSans-Regular',
+    color: '#A8A29E',
+    textAlign: 'center',
+    textDecorationLine: 'underline',
   },
 });

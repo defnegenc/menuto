@@ -6,6 +6,10 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Modal,
+  TextInput,
+  TouchableOpacity,
+  Animated,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,6 +26,8 @@ import { PostMealFeedback } from './PostMealFeedback';
 import { MultiDishScoring } from './MultiDishScoring';
 import { DishScoringCard } from './choosedish/DishScoringCard';
 import { PreferencesPanel } from './choosedish/PreferencesPanel';
+
+const TERRA = '#CE3E25';
 
 interface Props {
   onSelectRestaurant?: (restaurant: FavoriteRestaurant) => void;
@@ -46,13 +52,14 @@ export function ChooseDishLanding({
   const [selectedRestaurant, setSelectedRestaurant] = useState<any>(null);
   const [menuDishes, setMenuDishes] = useState<ParsedDish[]>([]);
   const [isLoadingMenu, setIsLoadingMenu] = useState(false);
-  const [showQuestions, setShowQuestions] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
+
+  // Modals managed here (moved out of DishScoringCard)
   const [showTextModal, setShowTextModal] = useState(false);
   const [showMenuUrlModal, setShowMenuUrlModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [menuUrls, setMenuUrls] = useState<string[]>(['']);
   const [menuText, setMenuText] = useState('');
-  const [isParsing, setIsParsing] = useState(false);
 
   // Question states
   const [hungerLevel, setHungerLevel] = useState(3);
@@ -116,14 +123,11 @@ export function ChooseDishLanding({
       const response = await api.getRestaurantMenu(restaurant.name, restaurant.place_id);
       if (response.dishes && Array.isArray(response.dishes) && response.dishes.length > 0) {
         setMenuDishes(response.dishes);
-        setShowQuestions(false);
       } else {
         setMenuDishes([]);
-        setShowQuestions(false);
       }
     } catch (error) {
       setMenuDishes([]);
-      setShowQuestions(false);
     } finally {
       setIsLoadingMenu(false);
     }
@@ -149,7 +153,7 @@ export function ChooseDishLanding({
     if (!done) Alert.alert('Timeout', 'Menu parsing is taking longer than expected. Please check back later.');
   };
 
-  const handleAddMenuPDF = () => {
+  const handleAddMenuLink = () => {
     if (!selectedRestaurant) { Alert.alert('Error', 'No restaurant selected'); return; }
     setMenuUrls(['']);
     setShowMenuUrlModal(true);
@@ -275,6 +279,9 @@ export function ChooseDishLanding({
     return <Component key={restaurant.place_id} restaurant={restaurant} onPress={() => handleRestaurantSelection(restaurant)} />;
   };
 
+  // Derived state: menu is found when we have dishes and aren't loading
+  const menuFound = !isLoadingMenu && menuDishes.length > 0;
+
   if (showDishRecommendations && selectedRestaurant) {
     return (
       <DishRecommendations
@@ -311,11 +318,7 @@ export function ChooseDishLanding({
     return (
       <View style={styles.container}>
         <UnifiedHeader title="Choose Dish" showUnderline={false} />
-        <View style={[styles.parsingContainer, { paddingTop: insets.top }]}>
-          <ActivityIndicator size="large" color="#E9323D" />
-          <Text style={styles.parsingText}>Parsing your menu...</Text>
-          <Text style={styles.parsingSubtext}>This may take a few moments</Text>
-        </View>
+        <ParsingScreen restaurantName={selectedRestaurant?.name} />
       </View>
     );
   }
@@ -371,7 +374,7 @@ export function ChooseDishLanding({
               )}
               {isSearching && (
                 <View style={styles.loadingState}>
-                  <ActivityIndicator size="small" color="#E9323D" />
+                  <ActivityIndicator size="small" color={TERRA} />
                   <Text style={styles.loadingText}>Searching restaurants...</Text>
                 </View>
               )}
@@ -389,36 +392,17 @@ export function ChooseDishLanding({
           {selectedRestaurant && (
             <>
               <DishScoringCard
-                selectedRestaurant={selectedRestaurant}
                 menuDishes={menuDishes}
                 isLoadingMenu={isLoadingMenu}
-                showQuestions={showQuestions}
-                showReviewModal={showReviewModal}
-                onSetShowReviewModal={setShowReviewModal}
-                onConfirmMenu={() => {
-                  setShowReviewModal(false);
-                  setShowQuestions(true);
-                }}
-                onAddMoreItems={() => {
-                  setShowReviewModal(false);
-                  setShowMenuUrlModal(true);
-                }}
-                onAddMenuPDF={handleAddMenuPDF}
-                onPasteMenuText={handlePasteMenuText}
+                menuFound={menuFound}
                 onAddPhoto={handleAddPhoto}
-                showTextModal={showTextModal}
-                menuText={menuText}
-                onSetShowTextModal={setShowTextModal}
-                onSetMenuText={setMenuText}
-                onSubmitMenuText={handleSubmitMenuText}
-                showMenuUrlModal={showMenuUrlModal}
-                menuUrls={menuUrls}
-                onSetShowMenuUrlModal={setShowMenuUrlModal}
-                onSetMenuUrls={setMenuUrls}
-                onSubmitMenuUrls={handleSubmitMenuUrls}
+                onAddMenuLink={handleAddMenuLink}
+                onPasteMenuText={handlePasteMenuText}
+                onReviewMenu={() => setShowReviewModal(true)}
               />
 
-              {showQuestions && menuDishes.length > 0 && (
+              {/* Preferences show immediately when menu is found */}
+              {menuFound && (
                 <PreferencesPanel
                   hungerLevel={hungerLevel}
                   preferenceLevel={preferenceLevel}
@@ -435,12 +419,200 @@ export function ChooseDishLanding({
           )}
         </>
       </ScrollView>
+
+      {/* Text Input Modal */}
+      <Modal
+        visible={showTextModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowTextModal(false)}>
+              <Text style={styles.modalCancelButton}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Paste Menu Text</Text>
+            <TouchableOpacity onPress={handleSubmitMenuText} disabled={!menuText.trim()}>
+              <Text
+                style={[
+                  styles.modalSubmitButton,
+                  !menuText.trim() && styles.modalSubmitButtonDisabled,
+                ]}
+              >
+                Submit
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalInstructions}>
+              Paste the menu text below. Include dish names, descriptions, and prices if available.
+            </Text>
+            <TextInput
+              style={styles.textInput}
+              value={menuText}
+              onChangeText={setMenuText}
+              placeholder="Paste menu text here..."
+              multiline
+              textAlignVertical="top"
+              autoFocus
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Menu URL Modal */}
+      <Modal
+        visible={showMenuUrlModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowMenuUrlModal(false)}>
+              <Text style={styles.modalCancelButton}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Paste Menu Link</Text>
+            <TouchableOpacity onPress={handleSubmitMenuUrls}>
+              <Text style={styles.modalSubmitButton}>Parse</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalInstructions}>
+              Add one or more menu links (website, PDF, or image). We'll parse and save them to this restaurant.
+            </Text>
+            {menuUrls.map((value, idx) => (
+              <View key={`menu-url-${idx}`} style={styles.menuUrlRow}>
+                <TextInput
+                  style={[styles.menuUrlInput, { flex: 1 }]}
+                  value={value}
+                  onChangeText={(text) => {
+                    setMenuUrls((prev) =>
+                      prev.map((p, i) => (i === idx ? text : p))
+                    );
+                  }}
+                  placeholder="https://example.com/menu"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {menuUrls.length > 1 && (
+                  <TouchableOpacity
+                    style={styles.removeUrlButton}
+                    onPress={() =>
+                      setMenuUrls((prev) => prev.filter((_, i) => i !== idx))
+                    }
+                  >
+                    <Text style={styles.removeUrlButtonText}>Remove</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+            <TouchableOpacity
+              style={styles.addUrlButton}
+              onPress={() => setMenuUrls((prev) => [...prev, ''])}
+            >
+              <Text style={styles.addUrlButtonText}>+ Add another URL</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Review Menu Modal */}
+      <Modal
+        visible={showReviewModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowReviewModal(false)}>
+              <Text style={styles.modalCancelButton}>Close</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>
+              {menuDishes.length} dishes
+            </Text>
+            <View style={{ width: 50 }} />
+          </View>
+          <ScrollView style={styles.modalContent}>
+            {(() => {
+              const grouped: { [key: string]: ParsedDish[] } = {};
+              menuDishes.forEach((dish) => {
+                const category = dish.category || 'other';
+                if (!grouped[category]) {
+                  grouped[category] = [];
+                }
+                grouped[category].push(dish);
+              });
+              return Object.keys(grouped).map((category) => (
+                <View key={category} style={styles.reviewCategorySection}>
+                  <Text style={styles.reviewCategoryTitle}>
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                  </Text>
+                  {grouped[category].map((dish, idx) => (
+                    <View key={idx} style={styles.reviewDishItem}>
+                      <Text style={styles.reviewDishName}>{dish.name}</Text>
+                      {dish.description && (
+                        <Text style={styles.reviewDishDescription}>{dish.description}</Text>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              ));
+            })()}
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
 
-const TERRA = '#E9323D';
-const MEDIUM = '#5A4D48';
+// Parsing screen with animated messages
+const PARSING_MESSAGES = [
+  'Reading menu...',
+  'Extracting dishes...',
+  'Almost done...',
+];
+
+function ParsingScreen({ restaurantName }: { restaurantName?: string }) {
+  const [messageIndex, setMessageIndex] = useState(0);
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }).start(() => {
+        setMessageIndex((prev) => (prev < PARSING_MESSAGES.length - 1 ? prev + 1 : prev));
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 250,
+          useNativeDriver: true,
+        }).start();
+      });
+    }, 2800);
+    return () => clearInterval(interval);
+  }, [opacity]);
+
+  return (
+    <View style={styles.parsingContainer}>
+      {restaurantName && (
+        <Text style={styles.parsingRestaurantName}>{restaurantName}</Text>
+      )}
+      <View style={styles.parsingDotsRow}>
+        <View style={[styles.parsingDot, { opacity: 0.3 }]} />
+        <View style={[styles.parsingDot, { opacity: 0.6 }]} />
+        <View style={styles.parsingDot} />
+      </View>
+      <Animated.Text style={[styles.parsingText, { opacity }]}>
+        {PARSING_MESSAGES[messageIndex]}
+      </Animated.Text>
+      <Text style={styles.parsingSubtext}>This may take a few moments</Text>
+    </View>
+  );
+}
+
+const MEDIUM = '#44403C';
 
 const styles = StyleSheet.create({
   container: {
@@ -519,24 +691,181 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: 'DMSans-Regular',
   },
+
+  // Parsing screen
   parsingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: theme.spacing.xl,
   },
+  parsingRestaurantName: {
+    fontSize: 28,
+    fontFamily: 'DMSans-Bold',
+    color: '#1C1917',
+    letterSpacing: -1.5,
+    marginBottom: 32,
+    textAlign: 'center',
+  },
+  parsingDotsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 20,
+  },
+  parsingDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: TERRA,
+  },
   parsingText: {
     fontSize: 18,
     fontFamily: 'DMSans-Bold',
     color: '#1C1917',
-    marginTop: theme.spacing.lg,
     textAlign: 'center',
   },
   parsingSubtext: {
     fontSize: 14,
-    color: MEDIUM,
+    color: '#78716C',
     marginTop: theme.spacing.sm,
     textAlign: 'center',
     fontFamily: 'DMSans-Regular',
+  },
+
+  // Modals
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F4',
+  },
+  modalCancelButton: {
+    fontSize: 14,
+    color: '#44403C',
+    fontFamily: 'DMSans-Regular',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontFamily: 'DMSans-Bold',
+    color: '#1C1917',
+  },
+  modalSubmitButton: {
+    fontSize: 14,
+    color: TERRA,
+    fontFamily: 'DMSans-Bold',
+  },
+  modalSubmitButtonDisabled: {
+    color: '#A8A29E',
+  },
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.lg,
+  },
+  modalInstructions: {
+    fontSize: 14,
+    color: '#44403C',
+    marginBottom: theme.spacing.lg,
+    lineHeight: 20,
+    fontFamily: 'DMSans-Regular',
+  },
+  textInput: {
+    flex: 1,
+    backgroundColor: '#FAFAF9',
+    borderRadius: 16,
+    padding: 14,
+    fontSize: 14,
+    color: '#1C1917',
+    fontFamily: 'DMSans-Regular',
+    borderWidth: 1,
+    borderColor: '#F5F5F4',
+    textAlignVertical: 'top',
+  },
+  menuUrlRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+  },
+  menuUrlInput: {
+    borderWidth: 1,
+    borderColor: '#F5F5F4',
+    borderRadius: 16,
+    padding: 14,
+    fontSize: 14,
+    color: '#1C1917',
+    backgroundColor: '#FAFAF9',
+    fontFamily: 'DMSans-Regular',
+  },
+  addUrlButton: {
+    marginTop: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#F5F5F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FAFAF9',
+  },
+  addUrlButtonText: {
+    fontSize: 14,
+    fontFamily: 'DMSans-Bold',
+    color: TERRA,
+  },
+  removeUrlButton: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: 999,
+    backgroundColor: '#FAFAF9',
+    borderWidth: 1,
+    borderColor: '#F5F5F4',
+  },
+  removeUrlButtonText: {
+    color: '#44403C',
+    fontSize: 12,
+    fontFamily: 'DMSans-Bold',
+  },
+
+  // Review modal
+  reviewCategorySection: {
+    marginBottom: theme.spacing.lg,
+    backgroundColor: '#FAFAF9',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#F5F5F4',
+    padding: theme.spacing.lg,
+  },
+  reviewCategoryTitle: {
+    fontSize: 13,
+    fontFamily: 'DMSans-Bold',
+    color: '#1C1917',
+    marginBottom: theme.spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  reviewDishItem: {
+    marginBottom: theme.spacing.sm,
+    paddingBottom: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F4',
+  },
+  reviewDishName: {
+    fontSize: 14,
+    color: '#1C1917',
+    marginBottom: 4,
+    fontFamily: 'DMSans-Medium',
+  },
+  reviewDishDescription: {
+    fontSize: 12,
+    color: '#A8A29E',
+    fontFamily: 'DMSans-Regular',
+    fontStyle: 'italic',
   },
 });

@@ -392,7 +392,7 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
     return (
       <View style={styles.container}>
         <View style={styles.headerSection}>
-          <Text style={styles.sectionLabel}>ONBOARDING</Text>
+          <Text style={styles.sectionLabel}>YOUR SPOTS</Text>
           <Text style={styles.headline}>
             Add your{'\n'}
             <Text style={styles.headlineAccent}>restaurants</Text>
@@ -409,7 +409,7 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.headerSection}>
-        <Text style={styles.sectionLabel}>ONBOARDING</Text>
+        <Text style={styles.sectionLabel}>YOUR SPOTS</Text>
         <Text style={styles.headline}>
           Add your{'\n'}
           <Text style={styles.headlineAccent}>restaurants</Text>
@@ -607,21 +607,19 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
         {/* No Results */}
         {searchQuery && !isSearching && searchResults.length === 0 && (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateIcon}>🔍</Text>
-            <Text style={styles.emptyStateTitle}>No Results</Text>
+            <Text style={styles.emptyStateTitle}>No results</Text>
             <Text style={styles.emptyStateText}>
               No restaurants found for "{searchQuery}". Try a different search term.
             </Text>
           </View>
         )}
-        
-        {/* Initial State - Instructions */}
+
+        {/* Initial State */}
         {!searchQuery && selectedRestaurants.length === 0 && (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateIcon}>🍽️</Text>
-            <Text style={styles.emptyStateTitle}>Find Your Favorites</Text>
+            <Text style={styles.emptyStateTitle}>Find your favorites</Text>
             <Text style={styles.emptyStateText}>
-              Search for restaurants you love to add them to your list. You can also add favorite dishes and menus later.
+              Search for restaurants you love. You can add favorite dishes and menus later.
             </Text>
           </View>
         )}
@@ -657,8 +655,8 @@ const styles = StyleSheet.create({
     backgroundColor: CREAM,
   },
   headerSection: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
+    paddingHorizontal: 32,
+    paddingTop: 56,
     paddingBottom: 8,
     backgroundColor: CREAM,
   },
@@ -788,24 +786,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,
-    paddingVertical: 60,
-  },
-  emptyStateIcon: {
-    fontSize: 64,
-    marginBottom: 20,
+    paddingVertical: 80,
   },
   emptyStateTitle: {
-    fontSize: 22,
-    color: DARK,
-    marginBottom: 12,
     fontFamily: 'DMSans-Bold',
+    fontSize: 20,
+    color: DARK,
+    marginBottom: 8,
+    letterSpacing: -0.5,
   },
   emptyStateText: {
-    fontSize: 16,
-    color: MEDIUM,
+    fontFamily: 'DMSans-Regular',
+    fontSize: 15,
+    color: LIGHT_TEXT_COLOR,
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 32,
+    lineHeight: 22,
+    marginBottom: 0,
     fontFamily: 'DMSans-Regular',
   },
   clearButtonContainer: {

@@ -5,7 +5,8 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import { theme } from '../../theme';
+
+const TERRA = '#CE3E25';
 
 interface PreferencesPanelProps {
   hungerLevel: number;
@@ -30,6 +31,56 @@ const cravingOptions = [
   'comforting',
 ];
 
+function SliderControl({
+  value,
+  onChange,
+  leftLabel,
+  rightLabel,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  leftLabel: string;
+  rightLabel: string;
+}) {
+  return (
+    <View>
+      <View style={styles.sliderContainer}>
+        {/* Track */}
+        <View style={styles.sliderTrack} />
+        {/* Dots on track */}
+        <View style={styles.sliderDotsRow}>
+          {[1, 2, 3, 4, 5].map((level) => (
+            <TouchableOpacity
+              key={level}
+              style={styles.sliderDotTouchable}
+              onPress={() => onChange(level)}
+              hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+            >
+              <View
+                style={[
+                  styles.sliderDot,
+                  level <= value && styles.sliderDotActive,
+                ]}
+              />
+            </TouchableOpacity>
+          ))}
+        </View>
+        {/* Active thumb */}
+        <View
+          style={[
+            styles.sliderThumb,
+            { left: `${((value - 1) / 4) * 100}%` },
+          ]}
+        />
+      </View>
+      <View style={styles.sliderLabels}>
+        <Text style={styles.sliderLabel}>{leftLabel}</Text>
+        <Text style={styles.sliderLabel}>{rightLabel}</Text>
+      </View>
+    </View>
+  );
+}
+
 export function PreferencesPanel({
   hungerLevel,
   preferenceLevel,
@@ -42,328 +93,250 @@ export function PreferencesPanel({
   onContinue,
 }: PreferencesPanelProps) {
   return (
-    <>
-      <View style={styles.stepSection}>
-        <Text style={styles.stepText}>
-          Step 3: Indicate your preferences
+    <View style={styles.wrapper}>
+      {/* Hunger Level */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>How hungry are you?</Text>
+        <SliderControl
+          value={hungerLevel}
+          onChange={onSetHungerLevel}
+          leftLabel="Barely hungry"
+          rightLabel="Ravenous"
+        />
+      </View>
+
+      {/* Preference Level */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>
+          Go for what's popular, or match your taste?
         </Text>
-        <View style={styles.stepUnderline} />
+        <SliderControl
+          value={preferenceLevel}
+          onChange={onSetPreferenceLevel}
+          leftLabel="All me"
+          rightLabel="Fan favorites"
+        />
       </View>
-      <View style={styles.questionsSection}>
-        {/* Hunger Level */}
-        <View style={styles.questionContainer}>
-          <Text style={styles.questionTitle}>How hungry are you?</Text>
-          <View style={styles.simpleSlider}>
-            <View style={styles.simpleSliderTrack} />
-            <View style={styles.sliderStops}>
-              {[1, 2, 3, 4, 5].map((level) => (
-                <TouchableOpacity
-                  key={level}
-                  style={styles.invisibleStop}
-                  onPress={() => onSetHungerLevel(level)}
-                />
-              ))}
-            </View>
-            <View
-              style={[
-                styles.sliderThumb,
-                { left: `${((hungerLevel - 1) / 4) * 100}%` },
-              ]}
-            />
-          </View>
-          <View style={styles.sliderLabels}>
-            <Text style={styles.sliderLabel}>Barely hungry</Text>
-            <Text style={styles.sliderLabel}>Ravenous</Text>
-          </View>
-        </View>
 
-        {/* Preference Level */}
-        <View style={styles.questionContainer}>
-          <Text style={styles.questionTitle}>
-            Go for what's popular, or match your preferences?
-          </Text>
-          <View style={styles.simpleSlider}>
-            <View style={styles.simpleSliderTrack} />
-            <View style={styles.sliderStops}>
-              {[1, 2, 3, 4, 5].map((level) => (
-                <TouchableOpacity
-                  key={level}
-                  style={styles.invisibleStop}
-                  onPress={() => onSetPreferenceLevel(level)}
-                />
-              ))}
-            </View>
-            <View
-              style={[
-                styles.sliderThumb,
-                { left: `${((preferenceLevel - 1) / 4) * 100}%` },
-              ]}
-            />
-          </View>
-          <View style={styles.sliderLabels}>
-            <Text style={styles.sliderLabel}>All me</Text>
-            <Text style={styles.sliderLabel}>Fan favorites</Text>
-          </View>
-        </View>
-
-        {/* Craving Selection */}
-        <View style={styles.questionContainer}>
-          <Text style={styles.questionTitle}>What are you craving?</Text>
-          <Text style={styles.questionSubtitle}>
-            Select all that apply
-          </Text>
-          <View style={styles.cravingChipsContainer}>
-            {cravingOptions.map((craving) => {
-              const isSelected = selectedCravings.includes(craving);
-              return (
-                <TouchableOpacity
-                  key={craving}
+      {/* Craving Selection */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>What are you craving?</Text>
+        <Text style={styles.sectionSubtitle}>Select all that apply</Text>
+        <View style={styles.chipsContainer}>
+          {cravingOptions.map((craving) => {
+            const isSelected = selectedCravings.includes(craving);
+            return (
+              <TouchableOpacity
+                key={craving}
+                style={[
+                  styles.chip,
+                  isSelected && styles.chipSelected,
+                ]}
+                onPress={() => onToggleCraving(craving)}
+                activeOpacity={0.7}
+              >
+                <Text
                   style={[
-                    styles.cravingChip,
-                    isSelected && styles.cravingChipSelected,
+                    styles.chipText,
+                    isSelected && styles.chipTextSelected,
                   ]}
-                  onPress={() => onToggleCraving(craving)}
                 >
-                  <Text
-                    style={[
-                      styles.cravingChipText,
-                      isSelected && styles.cravingChipTextSelected,
-                    ]}
-                  >
-                    {craving}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                  {craving}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
-
-        {/* Meal Structure Selection */}
-        <View style={styles.questionContainer}>
-          <Text style={styles.questionTitle}>
-            What do you want to order?
-          </Text>
-          <View style={styles.mealStructureContainer}>
-            <TouchableOpacity
-              style={[
-                styles.mealStructureOption,
-                mealStructure === 'main' &&
-                  styles.mealStructureOptionSelected,
-              ]}
-              onPress={() => onSetMealStructure('main')}
-            >
-              <Text
-                style={[
-                  styles.mealStructureText,
-                  mealStructure === 'main' &&
-                    styles.mealStructureTextSelected,
-                ]}
-              >
-                Just a main
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.mealStructureOption,
-                mealStructure === 'main+starter' &&
-                  styles.mealStructureOptionSelected,
-              ]}
-              onPress={() => onSetMealStructure('main+starter')}
-            >
-              <Text
-                style={[
-                  styles.mealStructureText,
-                  mealStructure === 'main+starter' &&
-                    styles.mealStructureTextSelected,
-                ]}
-              >
-                Main + starter
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.mealStructureOption,
-                mealStructure === 'share' &&
-                  styles.mealStructureOptionSelected,
-              ]}
-              onPress={() => onSetMealStructure('share')}
-            >
-              <Text
-                style={[
-                  styles.mealStructureText,
-                  mealStructure === 'share' &&
-                    styles.mealStructureTextSelected,
-                ]}
-              >
-                Something to share
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Continue Button */}
-        <TouchableOpacity
-          style={styles.continueButton}
-          onPress={onContinue}
-        >
-          <Text style={styles.continueButtonText}>Continue</Text>
-        </TouchableOpacity>
       </View>
-    </>
+
+      {/* Meal Structure Selection */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>What do you want to order?</Text>
+        <View style={styles.chipsContainer}>
+          {[
+            { key: 'main', label: 'Just a main' },
+            { key: 'main+starter', label: 'Main + starter' },
+            { key: 'share', label: 'Something to share' },
+          ].map(({ key, label }) => {
+            const isSelected = mealStructure === key;
+            return (
+              <TouchableOpacity
+                key={key}
+                style={[
+                  styles.chip,
+                  isSelected && styles.chipSelected,
+                ]}
+                onPress={() => onSetMealStructure(key)}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    isSelected && styles.chipTextSelected,
+                  ]}
+                >
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Continue Button */}
+      <TouchableOpacity
+        style={styles.continueButton}
+        onPress={onContinue}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.continueButtonText}>Continue</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
-const TERRA = '#E9323D';
-const MEDIUM_COLOR = '#5A4D48';
-const LIGHT_TEXT = '#8C7E77';
-
 const styles = StyleSheet.create({
-  stepSection: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.xl,
-    paddingBottom: theme.spacing.md,
+  wrapper: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    gap: 24,
   },
-  stepText: {
-    fontSize: 13,
-    color: MEDIUM_COLOR,
-    marginBottom: theme.spacing.sm,
-    fontFamily: 'DMSans-Regular',
+
+  // Section cards
+  sectionCard: {
+    backgroundColor: '#FAFAF9',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#F5F5F4',
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 2,
   },
-  stepUnderline: {
-    height: 1,
-    backgroundColor: '#E7E5E4',
-    alignSelf: 'stretch',
-  },
-  questionsSection: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.lg,
-  },
-  questionContainer: {
-    marginBottom: theme.spacing.xxxl,
-  },
-  questionTitle: {
-    fontSize: 20,
+  sectionTitle: {
+    fontSize: 22,
     fontFamily: 'DMSans-Bold',
     color: '#1C1917',
-    letterSpacing: -1.5,
-    marginBottom: theme.spacing.sm,
+    letterSpacing: -0.8,
+    marginBottom: 8,
   },
-  questionSubtitle: {
+  sectionSubtitle: {
     fontSize: 14,
-    color: MEDIUM_COLOR,
-    marginBottom: theme.spacing.md,
+    color: '#78716C',
+    marginBottom: 12,
     fontFamily: 'DMSans-Regular',
   },
-  simpleSlider: {
+
+  // Slider
+  sliderContainer: {
     width: '100%',
-    height: 40,
-    paddingHorizontal: theme.spacing.md,
+    height: 44,
+    paddingHorizontal: 10,
     justifyContent: 'center',
     position: 'relative',
   },
-  simpleSliderTrack: {
+  sliderTrack: {
     width: '100%',
     height: 4,
     backgroundColor: '#F5F5F4',
     borderRadius: 999,
   },
-  sliderStops: {
+  sliderDotsRow: {
     position: 'absolute',
     top: 0,
-    left: theme.spacing.md,
-    right: theme.spacing.md,
+    left: 10,
+    right: 10,
     bottom: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  invisibleStop: {
-    flex: 1,
-    height: '100%',
+  sliderDotTouchable: {
+    width: 24,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sliderDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#E7E5E4',
+  },
+  sliderDotActive: {
+    backgroundColor: TERRA,
+    opacity: 0.4,
   },
   sliderThumb: {
     position: 'absolute',
     top: '50%',
-    marginTop: -10,
-    marginLeft: -10,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    marginTop: -12,
+    marginLeft: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: TERRA,
-    ...theme.shadows.md,
+    shadowColor: TERRA,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
   sliderLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 4,
   },
   sliderLabel: {
     fontSize: 12,
-    color: LIGHT_TEXT,
+    color: '#A8A29E',
     fontFamily: 'DMSans-Regular',
   },
-  cravingChipsContainer: {
+
+  // Chips (shared for cravings + meal structure)
+  chipsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.sm,
+    gap: 8,
   },
-  cravingChip: {
-    backgroundColor: '#FAFAF9',
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: '#F5F5F4',
-  },
-  cravingChipSelected: {
-    backgroundColor: TERRA,
-    borderColor: TERRA,
-    shadowColor: TERRA,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cravingChipText: {
-    fontSize: 13,
-    color: '#78716C',
-    fontFamily: 'DMSans-Regular',
-  },
-  cravingChipTextSelected: {
-    color: '#FFFFFF',
-    fontFamily: 'DMSans-Bold',
-  },
-  mealStructureContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.sm,
-  },
-  mealStructureOption: {
+  chip: {
     backgroundColor: '#FAFAF9',
     borderRadius: 999,
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#E7E5E4',
+    borderColor: '#F5F5F4',
   },
-  mealStructureOptionSelected: {
+  chipSelected: {
     backgroundColor: TERRA,
     borderColor: TERRA,
+    shadowColor: TERRA,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  mealStructureText: {
+  chipText: {
     fontSize: 14,
     color: '#78716C',
     fontFamily: 'DMSans-Regular',
   },
-  mealStructureTextSelected: {
+  chipTextSelected: {
     color: '#FFFFFF',
     fontFamily: 'DMSans-Bold',
   },
+
+  // Continue button
   continueButton: {
     backgroundColor: '#1C1917',
     borderRadius: 999,
-    paddingVertical: 18,
+    height: 56,
     alignItems: 'center',
-    marginTop: theme.spacing.xl,
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 16,
   },
   continueButtonText: {
     color: '#FFFFFF',
