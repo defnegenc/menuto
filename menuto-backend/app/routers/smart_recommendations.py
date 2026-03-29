@@ -151,6 +151,33 @@ async def generate_smart_recommendations(
             except Exception as e:
                 logger.warning("Failed to fetch behavioral signals: %s", e)
 
+        # Fetch cross-user dish popularity for this restaurant
+        dish_popularity: dict[str, float] = {}
+        try:
+            if sb:
+                pop_result = sb.table("dish_orders").select(
+                    "dish_id, parsed_dishes(name)"
+                ).eq("restaurant_place_id", restaurant_place_id).execute()
+
+                # Count orders per dish
+                dish_order_counts: dict[str, int] = {}
+                for r in (pop_result.data or []):
+                    dish = r.get("parsed_dishes")
+                    if dish and dish.get("name"):
+                        name = dish["name"]
+                        dish_order_counts[name] = dish_order_counts.get(name, 0) + 1
+
+                # Normalize to 0-1 (most ordered = 1.0)
+                if dish_order_counts:
+                    max_orders = max(dish_order_counts.values())
+                    dish_popularity = {
+                        name: count / max_orders
+                        for name, count in dish_order_counts.items()
+                    }
+                    logger.info("Loaded popularity data for %d dishes at %s", len(dish_popularity), restaurant_name)
+        except Exception as e:
+            logger.warning("Failed to fetch dish popularity: %s", e)
+
         context = RecommendationContext(
             hunger_level=_map_hunger_level(hunger_raw),
             craving_tags=context_weights.get("selectedCravings", []) or [],
@@ -162,6 +189,7 @@ async def generate_smart_recommendations(
             },
             user_dish_ratings=user_ratings_map,
             user_behavioral_signals=behavioral_signals,
+            dish_popularity=dish_popularity,
         )
 
         legacy_engine = RecommendationEngine()
@@ -228,6 +256,28 @@ async def generate_smart_recommendations(
                             break
         except Exception as e:
             logger.warning("Review enrichment failed, using defaults: %s", e)
+
+        # Cold-start detection: lean on crowd signals when user has no history
+        is_cold_start = (
+            not user_ratings_map
+            and not behavioral_signals
+            and not user_favorite_dishes
+        )
+        if is_cold_start:
+            # Cold-start: lean on crowd signals, reduce personal taste (unreliable)
+            algorithm.component_weights = {
+                "personal_taste": 0.10,  # unreliable without data
+                "sentiment": 0.25,       # what reviewers praise
+                "craving": 0.15,         # still respect current craving
+                "rating_history": 0.0,   # no history
+                "spice": 0.10,
+                "behavioral": 0.0,       # no signals
+                "popularity": 0.25,      # what others order most
+                "hunger": 0.10,          # time-aware
+                "friend": 0.05,
+                "restaurant": 0.0,
+            }
+            logger.info("Cold-start user — using popularity/sentiment-weighted scoring")
 
         scored_recommendations = algorithm.generate_recommendations_from_payload(
             menu_items=menu_items,

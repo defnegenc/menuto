@@ -31,6 +31,8 @@ class RecommendationContext:
     user_dish_ratings: Dict[str, float] = field(default_factory=dict)  # {dish_name: rating 1-5}
     user_behavioral_signals: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     # Maps dish_name -> {"views": 3, "orders": 1, "favorited": True}
+    dish_popularity: Dict[str, float] = field(default_factory=dict)
+    # Maps dish_name -> 0.0-1.0 normalized popularity (most ordered = 1.0)
 
 
 @dataclass

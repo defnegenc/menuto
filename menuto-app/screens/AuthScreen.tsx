@@ -252,14 +252,8 @@ export function AuthScreen({ onAuthComplete }: Props) {
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
-      // Use Expo's auth proxy in dev (Expo Go), native scheme in production
-      const redirectUrl = AuthSession.makeRedirectUri({
-        scheme: 'menuto',
-        path: 'auth/callback',
-        preferLocalhost: false,
-      });
+      const redirectUrl = 'menuto://auth/callback';
       console.log('OAuth redirect URL:', redirectUrl);
-      // If this logs exp://... or localhost, you need a dev build for native scheme
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',

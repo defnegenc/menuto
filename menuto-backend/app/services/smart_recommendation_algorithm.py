@@ -43,14 +43,15 @@ class SmartRecommendationAlgorithm:
         # Hand-tuned weights (sum ~= 1.0). Replace with learned weights later.
         self.component_weights: Dict[str, float] = {
             "personal_taste": 0.30,
-            "sentiment": 0.17,
+            "sentiment": 0.12,
             "craving": 0.10,
             "rating_history": 0.10,
             "spice": 0.10,
             "behavioral": 0.08,
+            "popularity": 0.07,
             "hunger": 0.05,
             "friend": 0.05,
-            "restaurant": 0.05,
+            "restaurant": 0.03,
         }
 
     # ------------------------------------------------------------------
@@ -85,6 +86,9 @@ class SmartRecommendationAlgorithm:
                 user_dietary_constraints,
                 limit,
             )
+
+        # Compute embedding-based taste similarities (2 API calls total)
+        self._embedding_scores = self._compute_taste_embeddings(candidates, taste_profile)
 
         scored = self.score_and_rank(candidates, taste_profile, context)
 
@@ -358,7 +362,8 @@ class SmartRecommendationAlgorithm:
                     f"friend={components.get('friend', 0):.2f}, "
                     f"restaurant={components.get('restaurant', 0):.2f}, "
                     f"rating_history={components.get('rating_history', 0):.2f}, "
-                    f"behavioral={components.get('behavioral', 0):.2f}"
+                    f"behavioral={components.get('behavioral', 0):.2f}, "
+                    f"popularity={components.get('popularity', 0):.2f}"
                 )
                 hunger_score = components.get("hunger", 0)
                 course = (scored.item.course or "main").lower()
@@ -449,11 +454,15 @@ class SmartRecommendationAlgorithm:
             elif behavioral_score >= 0.7:
                 bullets.append("You've tried this before")
 
-            # 8. Friend boost
+            # 8. Popularity
+            if components.get("popularity", 0) >= 0.7:
+                bullets.append("Most popular dish at this restaurant")
+
+            # 9. Friend boost
             if components.get("friend", 0) >= 0.5:
                 bullets.append("Friend-approved pick")
             
-            # 9. Discovery pick (different dish-type/protein/course than usual)
+            # 10. Discovery pick (different dish-type/protein/course than usual)
             if scored.is_discovery:
                 bullets.insert(0, "Something different from your usual order")
 
@@ -603,6 +612,7 @@ Rules:
             "restaurant": self._restaurant_bonus(item, taste_profile),
             "rating_history": self._rating_history_match(item, context),
             "behavioral": self._behavioral_match(item, context),
+            "popularity": self._popularity_match(item, context),
         }
 
     def _personal_taste_seed(self, item: ItemFeatures, taste_profile: UserTasteProfile) -> float:
@@ -623,6 +633,12 @@ Rules:
         )
 
     def _personal_taste_match(self, item: ItemFeatures, taste_profile: UserTasteProfile) -> float:
+        # Use embedding similarity if available (much more accurate than keywords)
+        embedding_score = getattr(self, '_embedding_scores', {}).get(item.item_id)
+        if embedding_score is not None:
+            return embedding_score
+
+        # Fallback to keyword-based matching
         score = self._personal_taste_seed(item, taste_profile)
         if item.cuisine and item.cuisine.lower() in [c.lower() for c in taste_profile.cuisine_preferences]:
             score += 0.1
@@ -710,6 +726,9 @@ Rules:
         Key insight (Hu et al., Yahoo Research): viewing without ordering is an
         implicit *negative* signal — the user considered and rejected the item.
         Confidence in the negative grows with repeated views.
+
+        Repeat-visit intelligence: cross-reference orders with ratings to
+        distinguish "loved it" from "tried it, meh."
         """
         signals = context.user_behavioral_signals
         if not signals:
@@ -725,10 +744,23 @@ Rules:
                 # Explicit positive signals (ordered or saved)
                 if favorited:
                     return 0.95
-                if orders >= 2:
-                    return 0.85  # repeat order — strong positive
-                if orders == 1:
-                    return 0.70  # tried once — positive
+
+                if orders >= 1:
+                    # Cross-reference with ratings to distinguish "loved it" from "tried it"
+                    rating = None
+                    for rated_name, r in context.user_dish_ratings.items():
+                        if rated_name.lower() in item_name_lower or item_name_lower in rated_name.lower():
+                            rating = r
+                            break
+
+                    if rating is not None and rating >= 4:
+                        return 0.85  # ordered AND loved it — resurface
+                    if rating is not None and rating <= 3:
+                        return 0.20  # ordered AND didn't love — strong suppress
+                    # Ordered but no rating
+                    if orders >= 2:
+                        return 0.75  # reordered without rating — likely enjoyed
+                    return 0.45  # tried once, no rating — mild suppress to surface new things
 
                 # Implicit negative: viewed but never ordered = considered and rejected
                 if views >= 3 and orders == 0:
@@ -737,6 +769,16 @@ Rules:
                     return 0.40  # mild implicit negative
 
         return 0.5  # no match — neutral
+
+    def _popularity_match(self, item: ItemFeatures, context: RecommendationContext) -> float:
+        """Score based on cross-user dish popularity at this restaurant."""
+        if not context.dish_popularity:
+            return 0.5
+        item_name_lower = item.name.lower()
+        for dish_name, pop_score in context.dish_popularity.items():
+            if dish_name.lower() in item_name_lower or item_name_lower in dish_name.lower():
+                return self._clamp(pop_score)
+        return 0.5
 
     def _restaurant_bonus(self, item: ItemFeatures, taste_profile: UserTasteProfile) -> float:
         rest_pattern = taste_profile.flavor_profile.lower()
@@ -800,6 +842,70 @@ Rules:
                 )
             )
         return scored
+
+    # ------------------------------------------------------------------
+    # Embedding-based taste matching
+    # ------------------------------------------------------------------
+
+    def _compute_taste_embeddings(
+        self,
+        candidates: List[ItemFeatures],
+        taste_profile: UserTasteProfile,
+    ) -> Dict[str, float]:
+        """Compute embedding-based taste similarity for all candidates.
+
+        Makes exactly 2 API calls: one for the taste profile, one batch for all dishes.
+        Returns {item_id: similarity_score} mapping.
+        """
+        try:
+            from google import genai
+
+            api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
+            if not api_key:
+                return {}
+            client = genai.Client(api_key=api_key)
+
+            # Embed taste profile (1 call)
+            taste_text = (
+                f"I love {', '.join(taste_profile.cuisine_preferences)} cuisine. "
+                f"My flavor preference is {taste_profile.flavor_profile}. "
+                f"I enjoy {', '.join(taste_profile.dish_types)}."
+            )
+            taste_result = client.models.embed_content(
+                model="gemini-embedding-001",
+                contents=taste_text,
+            )
+            taste_vec = taste_result.embeddings[0].values
+
+            # Embed all dish descriptions in one batch call
+            dish_texts = [f"{item.name}: {item.description}" for item in candidates]
+            dish_result = client.models.embed_content(
+                model="gemini-embedding-001",
+                contents=dish_texts,
+            )
+
+            # Compute cosine similarities
+            scores: Dict[str, float] = {}
+            for item, emb in zip(candidates, dish_result.embeddings):
+                sim = self._cosine_similarity(taste_vec, emb.values)
+                # Normalize: cosine sim for related food text is typically 0.4-0.9
+                scores[item.item_id] = self._clamp((sim - 0.3) / 0.5)
+
+            logger.info("Computed embedding similarities for %d dishes", len(scores))
+            return scores
+
+        except Exception as e:
+            logger.warning("Embedding computation failed: %s", e)
+            return {}
+
+    @staticmethod
+    def _cosine_similarity(a: list[float], b: list[float]) -> float:
+        dot = sum(x * y for x, y in zip(a, b))
+        norm_a = sum(x * x for x in a) ** 0.5
+        norm_b = sum(x * x for x in b) ** 0.5
+        if norm_a == 0 or norm_b == 0:
+            return 0.0
+        return dot / (norm_a * norm_b)
 
     # ------------------------------------------------------------------
     # Utility

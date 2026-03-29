@@ -102,6 +102,23 @@ def get_dish_sentiment_scores(place_id: str) -> Dict[str, float]:
     }
 
 
+def get_dish_attributes(place_id: str) -> Dict[str, List[str]]:
+    """Get aggregated attributes per dish from reviews.
+
+    Returns {"Margherita Pizza": ["thin crust", "fresh basil", ...]}
+    """
+    reviews = get_reviews_for_restaurant(place_id)
+    attributes: Dict[str, List[str]] = {}
+    for review in reviews:
+        for dish_name, attrs in review.get("dish_attributes", {}).items():
+            normalized = dish_name.strip().title()
+            if normalized not in attributes:
+                attributes[normalized] = []
+            attributes[normalized].extend(attrs)
+    # Deduplicate
+    return {name: list(set(attrs)) for name, attrs in attributes.items()}
+
+
 # ---------------------------------------------------------------------------
 # Google Places API
 # ---------------------------------------------------------------------------
@@ -165,6 +182,7 @@ def _enrich_reviews_batch(reviews: List[Dict], place_id: str) -> List[Dict]:
         for r in reviews:
             r["dish_mentions"] = []
             r["sentiment_score"] = None
+            r["dish_attributes"] = {}
         return reviews
 
     # Build a single prompt with all review texts
@@ -179,25 +197,28 @@ def _enrich_reviews_batch(reviews: List[Dict], place_id: str) -> List[Dict]:
         for r in reviews:
             r["dish_mentions"] = []
             r["sentiment_score"] = None
+            r["dish_attributes"] = {}
         return reviews
 
     prompt = f"""Analyze these restaurant reviews. For each review, extract:
 1. Any specific dish/food items mentioned by name
 2. A sentiment score from -1.0 (very negative) to 1.0 (very positive)
+3. For each dish mentioned, extract descriptive attributes (taste, texture, portion, preparation style)
 
 {chr(10).join(review_texts)}
 
 Return JSON array with one object per review, in order:
 [
-  {{"review_index": 1, "dish_mentions": ["Margherita Pizza", "Tiramisu"], "sentiment_score": 0.8}},
-  {{"review_index": 2, "dish_mentions": [], "sentiment_score": -0.3}}
+  {{"review_index": 1, "dish_mentions": ["Margherita Pizza", "Tiramisu"], "sentiment_score": 0.8, "dish_attributes": {{"Margherita Pizza": ["thin crust", "fresh basil", "perfectly charred"], "Tiramisu": ["creamy", "generous portion"]}}}},
+  {{"review_index": 2, "dish_mentions": [], "sentiment_score": -0.3, "dish_attributes": {{}}}}
 ]
 
 Rules:
 - Only extract actual dish/food names, not generic terms like "food" or "appetizer"
 - Include drinks if specifically named (e.g., "Espresso Martini")
 - Use the dish name as written in the review, capitalized properly
-- If no dishes mentioned, return empty array
+- If no dishes mentioned, return empty array for dish_mentions and empty object for dish_attributes
+- dish_attributes should contain short descriptive phrases from the review (e.g., "thin crust", "well seasoned", "generous portion")
 - Return ONLY the JSON array, no other text"""
 
     try:
@@ -219,12 +240,14 @@ Rules:
             e = enrichment_map.get(i + 1, {})
             review["dish_mentions"] = e.get("dish_mentions", [])
             review["sentiment_score"] = e.get("sentiment_score")
+            review["dish_attributes"] = e.get("dish_attributes", {})
 
     except Exception as e:
         logger.error("LLM enrichment failed for %s: %s", place_id, e)
         for r in reviews:
             r["dish_mentions"] = []
             r["sentiment_score"] = None
+            r["dish_attributes"] = {}
 
     return reviews
 
