@@ -7,7 +7,7 @@
 export const POPULAR_CUISINES = [
   'Italian', 'Japanese', 'Mexican', 'Chinese', 'Indian',
   'Thai', 'French', 'American', 'Korean', 'Vietnamese',
-  'Mediterranean', 'Greek', 'Spanish', 'Turkish',
+  'Turkish', 'Greek', 'Lebanese', 'Spanish',
 ] as const;
 
 export const ALL_CUISINES = [
@@ -18,32 +18,37 @@ export const ALL_CUISINES = [
   'Persian', 'Georgian', 'Nepalese', 'Pakistani',
   'Bangladeshi', 'Sri Lankan', 'Afghan', 'Indonesian',
   'Malaysian', 'Filipino', 'Burmese', 'Laotian', 'Cambodian',
+  'Tibetan', 'Mongolian', 'Uzbek', 'Kazakh',
 
   // Middle Eastern & North African
-  'Lebanese', 'Moroccan', 'Tunisian', 'Algerian', 'Egyptian', 'Israeli',
-  'Syrian', 'Jordanian', 'Iraqi', 'Yemeni', 'Ethiopian',
-  'Eritrean', 'Sudanese',
+  'Moroccan', 'Tunisian', 'Algerian', 'Egyptian', 'Palestinian', 'Israeli',
+  'Syrian', 'Jordanian', 'Iraqi', 'Yemeni', 'Kurdish', 'Cypriot',
+  'Ethiopian', 'Eritrean', 'Sudanese', 'Libyan',
 
   // European
+  'Basque', 'Catalan', 'Galician', 'Sicilian', 'Sardinian',
   'Russian', 'Ukrainian', 'Polish', 'Hungarian', 'Czech',
-  'Romanian', 'Bulgarian', 'Croatian', 'Serbian', 'Albanian',
-  'Portuguese', 'Dutch', 'German', 'Austrian', 'Swiss',
-  'Swedish', 'Norwegian', 'Danish', 'Finnish', 'Estonian',
-  'Latvian', 'Lithuanian',
+  'Romanian', 'Bulgarian', 'Croatian', 'Serbian', 'Albanian', 'Bosnian',
+  'Portuguese', 'Dutch', 'German', 'Austrian', 'Swiss', 'Belgian',
+  'Swedish', 'Norwegian', 'Danish', 'Finnish', 'Icelandic',
+  'Estonian', 'Latvian', 'Lithuanian',
+  'Scottish', 'Welsh', 'Irish',
 
   // Latin American & Caribbean
   'Peruvian', 'Colombian', 'Venezuelan', 'Ecuadorian', 'Brazilian',
   'Argentinian', 'Chilean', 'Bolivian', 'Paraguayan', 'Uruguayan',
   'Cuban', 'Dominican', 'Puerto Rican', 'Jamaican', 'Haitian',
-  'Trinidadian', 'Barbadian',
+  'Trinidadian', 'Barbadian', 'Oaxacan', 'Yucatecan',
 
   // African
   'Nigerian', 'Ghanaian', 'Senegalese', 'Ivorian', 'Malian',
   'South African', 'Kenyan', 'Tanzanian', 'Ugandan',
+  'Congolese', 'Somali', 'Mozambican', 'Cameroonian',
 
   // Specialty & Fusion
   'Fusion', 'Experimental', 'Vegan', 'Vegetarian', 'Raw', 'Molecular Gastronomy',
   'Farm-to-Table', 'Comfort Food', 'Soul Food', 'Cajun', 'Creole',
+  'Sichuan', 'Cantonese', 'Hunan', 'Dim Sum',
 ] as const;
 
 // ─── Dietary Restrictions ────────────────────────────────────────────────────

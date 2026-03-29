@@ -15,6 +15,7 @@ interface Props {
   onSelectRestaurant: (restaurant: FavoriteRestaurant) => void;
   onAddRestaurant?: () => void;
   onSignOut?: () => void;
+  onTestOnboarding?: () => void;
   onNavigateToDishRecommendations?: (restaurant: FavoriteRestaurant, preferences: {
     hungerLevel: number;
     preferenceLevel: number;
@@ -22,7 +23,7 @@ interface Props {
   }) => void;
 }
 
-export function MainTabScreen({ onSelectRestaurant, onAddRestaurant, onSignOut, onNavigateToDishRecommendations }: Props) {
+export function MainTabScreen({ onSelectRestaurant, onAddRestaurant, onSignOut, onTestOnboarding, onNavigateToDishRecommendations }: Props) {
   // Create wrapper components to pass props
   const MyRestaurantsScreen = () => (
     <MyRestaurants onSelectRestaurant={onSelectRestaurant} onAddRestaurant={onAddRestaurant} />
@@ -36,7 +37,7 @@ export function MainTabScreen({ onSelectRestaurant, onAddRestaurant, onSignOut, 
   );
 
   const ProfileScreenWrapper = () => (
-    <ProfileScreen onSelectRestaurant={onSelectRestaurant} onSignOut={onSignOut} />
+    <ProfileScreen onSelectRestaurant={onSelectRestaurant} onSignOut={onSignOut} onTestOnboarding={onTestOnboarding} />
   );
   return (
     <NavigationContainer>

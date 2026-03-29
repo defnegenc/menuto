@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -24,9 +25,10 @@ import { SavedRestaurantsList } from './profile/SavedRestaurantsList';
 interface Props {
   onSelectRestaurant: (restaurant: FavoriteRestaurant) => void;
   onSignOut?: () => void;
+  onTestOnboarding?: () => void;
 }
 
-export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
+export function ProfileScreen({ onSelectRestaurant, onSignOut, onTestOnboarding }: Props) {
   const insets = useSafeAreaInsets();
   const { user, setUser, userId } = useStore();
 
@@ -375,7 +377,14 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut }: Props) {
   return (
     <View style={styles.container}>
       <View style={[styles.screenHeader, { paddingTop: insets.top }]}>
-        <Text style={styles.screenTitle}>My profile</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.screenTitle}>My profile</Text>
+          {onTestOnboarding && (
+            <TouchableOpacity style={styles.testButton} onPress={onTestOnboarding}>
+              <Text style={styles.testButtonText}>Preview Onboarding</Text>
+            </TouchableOpacity>
+          )}
+        </View>
         <View style={styles.screenHeaderDivider} />
       </View>
 
@@ -469,24 +478,45 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   screenHeader: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
+    paddingHorizontal: 24,
+    paddingBottom: 12,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
   },
   screenTitle: {
-    fontSize: 36,
-    letterSpacing: -2,
-    color: '#1C1917',
-    fontFamily: theme.typography.fontFamilies.bold,
-    marginBottom: theme.spacing.sm,
+    fontFamily: 'DMSans-Bold',
+    fontSize: 44,
+    lineHeight: 46,
+    letterSpacing: -1.5,
+    color: '#111827',
+    marginBottom: 8,
+  },
+  testButton: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 12,
+  },
+  testButtonText: {
+    fontFamily: 'DMSans-Medium',
+    fontSize: 12,
+    color: '#6B7280',
   },
   screenHeaderDivider: {
     height: 1,
-    backgroundColor: '#F5F5F4',
+    backgroundColor: '#F3F4F6',
   },
   scrollView: {
     flex: 1,
   },
   scrollViewContent: {
     flexGrow: 1,
+    paddingBottom: 40,
   },
 });

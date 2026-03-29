@@ -299,6 +299,23 @@ function AppContent() {
     setCurrentScreen('mainTabs');
   };
 
+  // Test onboarding preview — navigates through screens but doesn't save
+  const [isTestOnboarding, setIsTestOnboarding] = useState(false);
+
+  const handleTestOnboarding = () => {
+    setIsTestOnboarding(true);
+    setCurrentScreen('onboarding');
+  };
+
+  const handleTestOnboardingComplete = () => {
+    setCurrentScreen('onboardingRestaurants');
+  };
+
+  const handleTestOnboardingRestaurantsComplete = () => {
+    setIsTestOnboarding(false);
+    setCurrentScreen('mainTabs');
+  };
+
   const handleRestaurantSearchComplete = () => {
     debugLog('handleRestaurantSearchComplete called');
     setCurrentScreen('mainTabs');
@@ -379,16 +396,26 @@ function AppContent() {
         return <AuthScreen onAuthComplete={handleAuthComplete} />;
 
       case 'onboarding':
-        return <TastePreferencesScreen onComplete={handleOnboardingComplete} onBack={handleBackToSignIn} />;
+        return (
+          <TastePreferencesScreen
+            onComplete={isTestOnboarding ? handleTestOnboardingComplete : handleOnboardingComplete}
+            onBack={isTestOnboarding ? () => { setIsTestOnboarding(false); setCurrentScreen('mainTabs'); } : handleBackToSignIn}
+          />
+        );
 
       case 'onboardingRestaurants':
-        return <RestaurantSelectionScreen onComplete={handleOnboardingRestaurantsComplete} />;
+        return (
+          <RestaurantSelectionScreen
+            onComplete={isTestOnboarding ? handleTestOnboardingRestaurantsComplete : handleOnboardingRestaurantsComplete}
+          />
+        );
 
       case 'mainTabs':
         return <MainTabScreen
           onSelectRestaurant={handleSelectRestaurant}
           onAddRestaurant={() => setCurrentScreen('restaurantSearch')}
           onSignOut={handleSignOut}
+          onTestOnboarding={handleTestOnboarding}
           onNavigateToDishRecommendations={handleNavigateToDishRecommendations}
         />;
 

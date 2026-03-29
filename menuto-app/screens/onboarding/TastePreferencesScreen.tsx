@@ -52,6 +52,42 @@ const NEIGHBORHOODS: Record<string, string[]> = {
 
 const CITIES = Object.keys(NEIGHBORHOODS);
 
+const CUISINE_REGIONS: Record<string, string[]> = {
+  Popular: [
+    'Italian', 'Japanese', 'Mexican', 'Chinese', 'Indian',
+    'Thai', 'French', 'American', 'Korean', 'Vietnamese',
+    'Turkish', 'Greek', 'Lebanese', 'Spanish',
+  ],
+  Asian: [
+    'Japanese', 'Chinese', 'Thai', 'Korean', 'Vietnamese', 'Indian',
+    'Persian', 'Georgian', 'Nepalese', 'Pakistani', 'Sri Lankan',
+    'Afghan', 'Indonesian', 'Malaysian', 'Filipino', 'Burmese',
+    'Tibetan', 'Mongolian', 'Uzbek', 'Sichuan', 'Cantonese',
+  ],
+  'Middle East': [
+    'Turkish', 'Lebanese', 'Moroccan', 'Palestinian', 'Egyptian',
+    'Syrian', 'Jordanian', 'Iraqi', 'Yemeni', 'Kurdish', 'Cypriot',
+    'Tunisian', 'Algerian', 'Israeli', 'Libyan',
+  ],
+  European: [
+    'Italian', 'French', 'Spanish', 'Greek', 'Portuguese',
+    'Basque', 'Catalan', 'Galician', 'Sicilian', 'German',
+    'Polish', 'Hungarian', 'Croatian', 'Serbian', 'Russian',
+    'Ukrainian', 'Swedish', 'Irish', 'Dutch', 'Belgian',
+  ],
+  Americas: [
+    'Mexican', 'American', 'Peruvian', 'Colombian', 'Brazilian',
+    'Argentinian', 'Cuban', 'Puerto Rican', 'Jamaican',
+    'Cajun', 'Creole', 'Soul Food',
+  ],
+  African: [
+    'Ethiopian', 'Eritrean', 'Nigerian', 'Ghanaian', 'Senegalese',
+    'South African', 'Kenyan', 'Somali', 'Congolese', 'Cameroonian',
+  ],
+};
+
+const REGION_TABS = Object.keys(CUISINE_REGIONS);
+
 interface Props {
   onComplete: () => void;
   onBack?: () => void;
@@ -73,8 +109,7 @@ export function TastePreferencesScreen({ onComplete, onBack }: Props) {
 
   // Step 2: Cuisines
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
-  const [showAllCuisines, setShowAllCuisines] = useState(false);
-  const [cuisineSearch, setCuisineSearch] = useState('');
+  const [cuisineRegion, setCuisineRegion] = useState('Popular');
 
   // Step 3: Neighborhood
   const [selectedCity, setSelectedCity] = useState('New York');
@@ -190,6 +225,7 @@ export function TastePreferencesScreen({ onComplete, onBack }: Props) {
   const renderDietary = () => (
     <View style={styles.stepContent}>
       <View style={styles.stepLabel}>
+        <View style={styles.stepLabelLine} />
         <Text style={styles.stepLabelText}>Your Palate Profile</Text>
       </View>
       <Text style={styles.headline}>
@@ -253,6 +289,7 @@ export function TastePreferencesScreen({ onComplete, onBack }: Props) {
   const renderCuisines = () => (
     <View style={styles.stepContent}>
       <View style={styles.stepLabel}>
+        <View style={styles.stepLabelLine} />
         <Text style={styles.stepLabelText}>Cuisine Preferences</Text>
       </View>
       <Text style={styles.headline}>
@@ -311,6 +348,7 @@ export function TastePreferencesScreen({ onComplete, onBack }: Props) {
   const renderNeighborhood = () => (
     <View style={styles.stepContent}>
       <View style={styles.stepLabel}>
+        <View style={styles.stepLabelLine} />
         <Text style={styles.stepLabelText}>Location Access</Text>
       </View>
       <Text style={styles.headline}>
@@ -439,20 +477,20 @@ const styles = StyleSheet.create({
   // Progress
   progressRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
-    width: 120,
-    marginBottom: 40,
+    marginBottom: 32,
   },
   progressDot: {
-    flex: 1,
-    height: 5,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   progressDotActive: {
     backgroundColor: RED,
   },
   progressDotInactive: {
-    backgroundColor: `${RED}30`,
+    backgroundColor: '#E5E7EB',
   },
   // Step content
   stepContent: {
@@ -518,8 +556,8 @@ const styles = StyleSheet.create({
   },
   pillUnselected: {
     borderWidth: 1,
-    borderColor: `${RED}40`,
-    backgroundColor: 'transparent',
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
   },
   pillText: {
     fontFamily: 'DMSans-Medium',
@@ -533,7 +571,7 @@ const styles = StyleSheet.create({
     color: RED,
   },
   pillTextUnselected: {
-    color: DARK,
+    color: '#374151',
   },
   // Section blocks
   sectionBlock: {
@@ -734,22 +772,22 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 32,
     paddingTop: 16,
-    backgroundColor: CREAM,
+    backgroundColor: '#FFFFFF',
     gap: 12,
   },
   primaryButton: {
-    backgroundColor: RED,
+    backgroundColor: DARK,
     borderRadius: 999,
     paddingVertical: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    shadowColor: RED,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
     shadowRadius: 16,
-    elevation: 6,
+    elevation: 8,
   },
   primaryButtonText: {
     fontFamily: 'DMSans-Bold',

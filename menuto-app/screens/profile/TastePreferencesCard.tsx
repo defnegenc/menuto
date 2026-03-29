@@ -393,18 +393,21 @@ export function TastePreferencesCard({
   );
 }
 
-const TERRA = '#E9323D';
+const RED = '#E9323D';
+const RED_LIGHT = '#FFF5F5';
+const DARK = '#111111';
 
 const styles = StyleSheet.create({
   section: {
     paddingHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.xl,
+    backgroundColor: '#FFFFFF',
   },
   sectionTitle: {
-    fontSize: 24,
-    color: '#1C1917',
+    fontSize: 22,
+    color: '#111827',
     marginBottom: theme.spacing.sm,
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontFamily: 'DMSans-SemiBold',
   },
   preferenceGroup: {
     marginBottom: theme.spacing.xl,
@@ -416,14 +419,14 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   preferenceLabel: {
-    fontSize: 22,
-    color: '#1C1917',
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontSize: 17,
+    color: '#111827',
+    fontFamily: 'DMSans-Medium',
   },
   editButtonText: {
-    color: TERRA,
-    fontSize: 12,
-    fontFamily: theme.typography.fontFamilies.bold,
+    color: RED,
+    fontSize: 13,
+    fontFamily: 'DMSans-SemiBold',
   },
   chipsContainer: {
     flexDirection: 'row',
@@ -432,22 +435,26 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   cuisineChip: {
-    backgroundColor: '#FDECED',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingVertical: 6,
     borderRadius: 999,
-    borderWidth: 0,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   cuisineChipSelected: {
-    backgroundColor: TERRA,
+    backgroundColor: RED_LIGHT,
+    borderWidth: 2,
+    borderColor: RED,
   },
   cuisineChipText: {
-    fontSize: 12,
-    color: TERRA,
-    fontFamily: theme.typography.fontFamilies.medium,
+    fontSize: 13,
+    color: '#374151',
+    fontFamily: 'DMSans-Medium',
   },
   cuisineChipTextSelected: {
-    color: '#FFFFFF',
+    color: RED,
+    fontFamily: 'DMSans-SemiBold',
   },
   selectedCuisinesContainer: {
     marginTop: theme.spacing.md,
@@ -455,15 +462,15 @@ const styles = StyleSheet.create({
   },
   selectedLabel: {
     fontSize: theme.typography.sizes.sm,
-    color: '#A8A29E',
+    color: '#9CA3AF',
     marginBottom: theme.spacing.sm,
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontFamily: 'DMSans-Medium',
   },
   emptyText: {
     fontSize: theme.typography.sizes.md,
-    color: '#A8A29E',
+    color: '#9CA3AF',
     fontStyle: 'italic',
-    fontFamily: theme.typography.fontFamilies.regular,
+    fontFamily: 'DMSans-Medium',
   },
   expandButton: {
     marginTop: theme.spacing.sm,
@@ -471,8 +478,8 @@ const styles = StyleSheet.create({
   },
   expandButtonText: {
     fontSize: theme.typography.sizes.md,
-    color: TERRA,
-    fontFamily: theme.typography.fontFamilies.medium,
+    color: RED,
+    fontFamily: 'DMSans-Medium',
   },
   collapseButton: {
     marginTop: theme.spacing.sm,
@@ -481,8 +488,8 @@ const styles = StyleSheet.create({
   },
   collapseButtonText: {
     fontSize: theme.typography.sizes.md,
-    color: TERRA,
-    fontFamily: theme.typography.fontFamilies.medium,
+    color: RED,
+    fontFamily: 'DMSans-Medium',
   },
   editButtonsContainer: {
     flexDirection: 'row',
@@ -491,38 +498,43 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
     borderRadius: 999,
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E7E5E4',
+    borderColor: '#E5E7EB',
   },
   cancelButtonText: {
-    fontSize: 14,
-    color: '#1C1917',
-    fontFamily: theme.typography.fontFamilies.medium,
+    fontSize: 17,
+    color: DARK,
+    fontFamily: 'DMSans-SemiBold',
   },
   saveButton: {
     flex: 1,
-    backgroundColor: TERRA,
+    backgroundColor: DARK,
     borderRadius: 999,
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   saveButtonText: {
-    fontSize: 14,
+    fontSize: 17,
     color: '#FFFFFF',
-    fontFamily: theme.typography.fontFamilies.bold,
+    fontFamily: 'DMSans-SemiBold',
   },
   homeBaseDisplayText: {
     fontSize: 14,
-    color: '#1C1917',
-    fontFamily: theme.typography.fontFamilies.medium,
+    color: '#111827',
+    fontFamily: 'DMSans-Medium',
   },
   homeBaseSelector: {
     borderWidth: 1,
-    borderColor: '#E7E5E4',
+    borderColor: '#E5E7EB',
     borderRadius: 10,
     padding: theme.spacing.md,
     backgroundColor: '#FFFFFF',
@@ -535,12 +547,12 @@ const styles = StyleSheet.create({
   },
   homeBaseSelectorText: {
     fontSize: theme.typography.sizes.md,
-    color: '#1C1917',
-    fontFamily: theme.typography.fontFamilies.regular,
+    color: '#111827',
+    fontFamily: 'DMSans-Medium',
   },
   homeBaseSelectorIcon: {
     fontSize: theme.typography.sizes.sm,
-    color: '#A8A29E',
+    color: '#9CA3AF',
   },
   homeBasePickerContainer: {
     marginTop: theme.spacing.sm,
@@ -549,7 +561,7 @@ const styles = StyleSheet.create({
   homeBaseCityList: {
     maxHeight: 200,
     borderWidth: 1,
-    borderColor: '#E7E5E4',
+    borderColor: '#E5E7EB',
     borderRadius: 10,
     backgroundColor: '#FFFFFF',
   },
@@ -559,19 +571,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F4',
+    borderBottomColor: '#F3F4F6',
   },
   homeBaseCityItemSelected: {
-    backgroundColor: '#FDECED',
+    backgroundColor: RED_LIGHT,
+    borderWidth: 1,
+    borderColor: RED,
   },
   homeBaseCityName: {
     fontSize: theme.typography.sizes.md,
-    color: '#1C1917',
-    fontFamily: theme.typography.fontFamilies.regular,
+    color: '#111827',
+    fontFamily: 'DMSans-Medium',
   },
   homeBaseSelectedIcon: {
     fontSize: 18,
-    color: TERRA,
+    color: RED,
     fontWeight: 'bold',
   },
   spiceSliderContainer: {
@@ -595,7 +609,7 @@ const styles = StyleSheet.create({
   sliderTrack: {
     width: '100%',
     height: 6,
-    backgroundColor: '#E7E5E4',
+    backgroundColor: '#F3F4F6',
     borderRadius: 3,
     position: 'relative',
     justifyContent: 'center',
@@ -605,7 +619,7 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     height: '100%',
-    backgroundColor: TERRA,
+    backgroundColor: RED,
     borderRadius: 3,
   },
   sliderStops: {
@@ -623,18 +637,18 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     backgroundColor: '#FFFFFF',
     borderWidth: 3,
-    borderColor: '#E7E5E4',
+    borderColor: '#E5E7EB',
     ...theme.shadows.sm,
   },
   sliderStopActive: {
-    backgroundColor: TERRA,
-    borderColor: TERRA,
+    backgroundColor: RED,
+    borderColor: RED,
     transform: [{ scale: 1.2 }],
   },
   spiceDescription: {
     fontSize: theme.typography.sizes.md,
-    color: '#1C1917',
+    color: '#111827',
     textAlign: 'center',
-    fontFamily: theme.typography.fontFamilies.medium,
+    fontFamily: 'DMSans-Medium',
   },
 });

@@ -257,11 +257,11 @@ class SmartRecommendationAlgorithm:
         reranked = self._llm_rerank(scored[:15], taste_profile, context, limit)
         if reranked:
             # LLM provided reranked results — apply serendipity slot
-            diversified = self.diversify(reranked, limit, taste_profile)
+            diversified = self.diversify(reranked, limit, taste_profile, context)
             return diversified[:limit]
 
         # Fallback: traditional diversify + template explanations
-        diversified = self.diversify(scored, limit, taste_profile)
+        diversified = self.diversify(scored, limit, taste_profile, context)
         enriched = self.add_explanations(diversified, taste_profile, context)
         return enriched[:limit]
 
@@ -298,14 +298,23 @@ class SmartRecommendationAlgorithm:
                 return True
             # Fallback to keyword matching (for menus parsed before dietary_flags existed)
             text = f"{item.name} {item.description}".lower()
+            _MEAT_KEYWORDS = [
+                "chicken", "beef", "pork", "lamb", "fish", "seafood", "shrimp",
+                "prawn", "duck", "veal", "rib", "steak", "salmon", "tuna",
+                "lobster", "crab", "scallop", "yellowtail", "anchovy", "bacon",
+                "sausage", "ham", "turkey", "venison", "rabbit", "octopus",
+                "squid", "calamari", "mussels", "clam", "oyster",
+            ]
             if "vegetarian" in constraints:
-                if any(m in text for m in ["chicken", "beef", "pork", "lamb", "fish", "seafood"]):
+                if any(m in text for m in _MEAT_KEYWORDS):
                     return False
             if "vegan" in constraints:
-                if any(
-                    m in text
-                    for m in ["cheese", "cream", "butter", "egg", "milk", "chicken", "beef", "pork", "fish", "seafood"]
-                ):
+                _DAIRY_KEYWORDS = [
+                    "cheese", "cream", "butter", "egg", "milk", "honey",
+                    "yogurt", "parmesan", "mozzarella", "ricotta", "burrata",
+                    "gelato", "whey",
+                ]
+                if any(m in text for m in _MEAT_KEYWORDS + _DAIRY_KEYWORDS):
                     return False
             return True
 
@@ -392,6 +401,7 @@ class SmartRecommendationAlgorithm:
         scored_items: List[ScoredItem],
         limit: int,
         taste_profile: Optional[UserTasteProfile] = None,
+        context: Optional[RecommendationContext] = None,
     ) -> List[ScoredItem]:
         """Diversify results with a serendipity slot.
 
@@ -458,7 +468,7 @@ class SmartRecommendationAlgorithm:
                     break
 
         # --- Serendipity slot: best novel item above quality floor ---
-        if limit >= 3 and taste_profile and familiar_cuisines:
+        if limit >= 3 and taste_profile and familiar_types:
             min_score = 0.35  # quality floor — must still be a decent dish
             already_ids = {s.item.item_id for s in diversified}
             best_novel: ScoredItem | None = None
