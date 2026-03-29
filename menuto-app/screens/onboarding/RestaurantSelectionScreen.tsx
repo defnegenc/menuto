@@ -430,46 +430,7 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
             Selected: {selectedRestaurants.length}/3
           </Text>
           
-          <TouchableOpacity 
-            style={styles.locationStatus}
-            onPress={() => setShowCityPicker(!showCityPicker)}
-          >
-            {selectedCity ? (
-              <>
-                <Text style={styles.locationIcon}>🏙️</Text>
-                <Text style={styles.locationText}>{selectedCity.name}</Text>
-                <TouchableOpacity 
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    clearCitySelection();
-                  }}
-                  style={styles.clearButtonContainer}
-                >
-                  <Text style={styles.clearButton}>✕</Text>
-                </TouchableOpacity>
-              </>
-            ) : locationStatus === 'loading' ? (
-              <>
-                <ActivityIndicator size="small" color="#E9323D" />
-                <Text style={styles.locationText}>Getting location...</Text>
-              </>
-            ) : user?.home_base ? (
-              <>
-                <Text style={styles.locationIcon}>📍</Text>
-                <Text style={styles.locationText}>Using {user.home_base}</Text>
-              </>
-            ) : locationStatus === 'granted' ? (
-              <>
-                <Text style={styles.locationIcon}>📍</Text>
-                <Text style={styles.locationText}>Using your location</Text>
-              </>
-            ) : (
-              <>
-                <Text style={styles.locationIcon}>🌍</Text>
-                <Text style={styles.locationText}>Tap to choose city</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          {/* City picker hidden — uses home_base from onboarding silently */}
         </View>
       </View>
 

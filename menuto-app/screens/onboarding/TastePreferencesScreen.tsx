@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
   Alert,
   Animated,
   Easing,
@@ -14,6 +15,7 @@ import { useStore } from '../../store/useStore';
 import { UserPreferences } from '../../types';
 import {
   POPULAR_CUISINES,
+  ALL_CUISINES,
   DIETARY_RESTRICTIONS,
   SPICE_LABELS,
 } from '../../constants';
@@ -72,6 +74,8 @@ export function TastePreferencesScreen({ onComplete, onBack }: Props) {
 
   // Step 2: Cuisines
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
+  const [showAllCuisines, setShowAllCuisines] = useState(false);
+  const [cuisineSearch, setCuisineSearch] = useState('');
 
   // Step 3: Neighborhood
   const [selectedCity, setSelectedCity] = useState('New York');
@@ -241,6 +245,12 @@ export function TastePreferencesScreen({ onComplete, onBack }: Props) {
   );
 
   // ─── Step 2: Cuisines ─────────────────────────────────────────────────────
+  const filteredCuisines = showAllCuisines
+    ? (cuisineSearch.trim()
+        ? ALL_CUISINES.filter(c => c.toLowerCase().includes(cuisineSearch.toLowerCase()))
+        : ALL_CUISINES)
+    : POPULAR_CUISINES;
+
   const renderCuisines = () => (
     <View style={styles.stepContent}>
       <View style={styles.stepLabel}>
@@ -251,8 +261,30 @@ export function TastePreferencesScreen({ onComplete, onBack }: Props) {
       </Text>
       <Text style={styles.subline}>Select all that make you happy.</Text>
 
+      {showAllCuisines && (
+        <View style={styles.cuisineSearchContainer}>
+          <TextInput
+            style={styles.cuisineSearchInput}
+            value={cuisineSearch}
+            onChangeText={setCuisineSearch}
+            placeholder="Search cuisines..."
+            placeholderTextColor="#A8A29E"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {cuisineSearch.length > 0 && (
+            <TouchableOpacity
+              style={styles.cuisineSearchClear}
+              onPress={() => setCuisineSearch('')}
+            >
+              <Text style={styles.cuisineSearchClearText}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
       <View style={styles.pillGrid}>
-        {POPULAR_CUISINES.map(cuisine =>
+        {(filteredCuisines as readonly string[]).map(cuisine =>
           renderPill(
             cuisine,
             selectedCuisines.includes(cuisine),
@@ -261,6 +293,18 @@ export function TastePreferencesScreen({ onComplete, onBack }: Props) {
           )
         )}
       </View>
+
+      <TouchableOpacity
+        style={styles.showAllButton}
+        onPress={() => {
+          setShowAllCuisines(!showAllCuisines);
+          setCuisineSearch('');
+        }}
+      >
+        <Text style={styles.showAllButtonText}>
+          {showAllCuisines ? 'Show popular only' : `Show all ${ALL_CUISINES.length} cuisines`}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -562,6 +606,45 @@ const styles = StyleSheet.create({
     color: TERRA,
     fontStyle: 'italic',
     marginTop: 2,
+  },
+  // Cuisine search
+  cuisineSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    backgroundColor: '#FAFAF9',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F5F5F4',
+    paddingHorizontal: 14,
+  },
+  cuisineSearchInput: {
+    flex: 1,
+    fontFamily: 'DMSans-Regular',
+    fontSize: 15,
+    color: '#1C1917',
+    paddingVertical: 12,
+  },
+  cuisineSearchClear: {
+    padding: 4,
+  },
+  cuisineSearchClearText: {
+    fontSize: 16,
+    color: '#A8A29E',
+  },
+  showAllButton: {
+    alignSelf: 'center',
+    marginTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: TERRA,
+  },
+  showAllButtonText: {
+    fontFamily: 'DMSans-Medium',
+    fontSize: 13,
+    color: TERRA,
   },
   // Map placeholder
   mapPlaceholder: {
