@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { FavoriteRestaurant, FavoriteDish } from '../types';
 
 const RED = '#E9323D';
@@ -42,8 +43,16 @@ export const RestaurantCard: React.FC<Props> = ({
         </View>
       </View>
 
-      {/* Address */}
-      <Text style={styles.address} numberOfLines={1}>{parseAddress(restaurant.vicinity)}</Text>
+      {/* Address with location icon */}
+      <View style={styles.addressRow}>
+        <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
+          <Path
+            d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"
+            fill="#D1D5DB"
+          />
+        </Svg>
+        <Text style={styles.address} numberOfLines={1}>{parseAddress(restaurant.vicinity)}</Text>
+      </View>
 
       {/* Dishes */}
       {dishes.length > 0 && (
@@ -120,10 +129,12 @@ const styles = StyleSheet.create({
   },
   name: {
     fontFamily: 'IBMPlexMono-SemiBold',
-    fontSize: 17,
+    fontSize: 16,
     color: '#111827',
     flex: 1,
-    letterSpacing: -0.5,
+    letterSpacing: 0.5,
+    lineHeight: 20,
+    textTransform: 'uppercase',
   },
   cuisineBadge: {
     backgroundColor: '#F9FAFB',
@@ -141,10 +152,17 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   // Address
+  addressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
   address: {
     fontFamily: 'DMSans-Regular',
-    fontSize: 14,
+    fontSize: 12,
     color: '#9CA3AF',
+    flex: 1,
   },
   // Dishes
   dishesSection: {

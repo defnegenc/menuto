@@ -1,15 +1,14 @@
-import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MyRestaurants } from './MyRestaurants';
 import { ChooseDishLanding } from './ChooseDishLanding';
 import { ProfileScreen } from './ProfileScreen';
-import { Image, View } from 'react-native';
-
+import { ProfileIcon } from '../components/ProfileIcon';
+import { useStore } from '../store/useStore';
 import { FavoriteRestaurant } from '../types';
-import { theme } from '../theme';
 
-const Tab = createBottomTabNavigator();
+const RED = '#E9323D';
 
 interface Props {
   onSelectRestaurant: (restaurant: FavoriteRestaurant) => void;
@@ -23,90 +22,131 @@ interface Props {
   }) => void;
 }
 
-export function MainTabScreen({ onSelectRestaurant, onAddRestaurant, onSignOut, onTestOnboarding, onNavigateToDishRecommendations }: Props) {
-  // Create wrapper components to pass props
-  const MyRestaurantsScreen = () => (
-    <MyRestaurants onSelectRestaurant={onSelectRestaurant} onAddRestaurant={onAddRestaurant} />
-  );
+type Tab = 'spots' | 'choose' | 'profile';
 
-  const ChooseDishScreen = () => (
-    <ChooseDishLanding 
-      onSelectRestaurant={onSelectRestaurant} 
-      onNavigateToRecommendations={onNavigateToDishRecommendations}
-    />
-  );
+export function MainTabScreen({
+  onSelectRestaurant,
+  onAddRestaurant,
+  onSignOut,
+  onTestOnboarding,
+  onNavigateToDishRecommendations,
+}: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>('spots');
+  const { user } = useStore();
+  const insets = useSafeAreaInsets();
 
-  const ProfileScreenWrapper = () => (
-    <ProfileScreen onSelectRestaurant={onSelectRestaurant} onSignOut={onSignOut} onTestOnboarding={onTestOnboarding} />
-  );
+  // If profile tab is active, render full screen (no bottom bar)
+  if (activeTab === 'profile') {
+    return (
+      <ProfileScreen
+        onSelectRestaurant={onSelectRestaurant}
+        onSignOut={onSignOut}
+        onTestOnboarding={onTestOnboarding}
+        onBackToTabs={() => setActiveTab('spots')}
+      />
+    );
+  }
+
   return (
-    <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={{
-          headerShown: false,
-          tabBarStyle: {
-            backgroundColor: '#FFFFFF',
-            borderTopColor: '#E1E8ED',
-            borderTopWidth: 1,
-          },
-          tabBarActiveTintColor: theme.colors.primary, // Changed from '#000000' to theme.colors.primary
-          tabBarInactiveTintColor: '#000000',
-          tabBarLabelStyle: {
-            fontSize: 12,
-            fontWeight: '500',
-            fontFamily: theme.typography.fontFamilies.medium,
-          },
-        }}
-      >
-        <Tab.Screen 
-          name="My Restaurants" 
-          component={MyRestaurantsScreen}
-          options={{
-            tabBarLabel: 'My Restaurants',
-            tabBarIcon: ({ focused, color }) => (
-              <View style={{ width: 24, height: 24 }}>
-                <Image 
-                  source={focused ? require('../assets/myrestaurants.png') : require('../assets/myrestaurants-d.png')} 
-                  style={{ width: 24, height: 24 }}
-                  resizeMode="contain"
-                />
-              </View>
-            ),
-          }}
+    <View style={styles.container}>
+      {/* Profile icon — top right, floating */}
+      <View style={[styles.profileIconContainer, { top: insets.top + 8 }]}>
+        <ProfileIcon
+          onPress={() => setActiveTab('profile')}
+          profilePhoto={user?.profile_photo}
+          name={user?.name}
+          size={38}
         />
-        <Tab.Screen 
-          name="Choose Dish" 
-          component={ChooseDishScreen}
-          options={{
-            tabBarLabel: 'Choose Dish',
-            tabBarIcon: ({ focused, color }) => (
-              <View style={{ width: 24, height: 24 }}>
-                <Image 
-                  source={focused ? require('../assets/choosedish.png') : require('../assets/choosedish-d.png')} 
-                  style={{ width: 24, height: 24 }}
-                  resizeMode="contain"
-                />
-              </View>
-            ),
-          }}
-        />
-        <Tab.Screen 
-          name="Profile" 
-          component={ProfileScreenWrapper}
-          options={{
-            tabBarLabel: 'Profile',
-            tabBarIcon: ({ focused, color }) => (
-              <View style={{ width: 24, height: 24 }}>
-                <Image 
-                  source={focused ? require('../assets/profile.png') : require('../assets/profile-d.png')} 
-                  style={{ width: 24, height: 24 }}
-                  resizeMode="contain"
-                />
-              </View>
-            ),
-          }}
-        />
-      </Tab.Navigator>
-    </NavigationContainer>
+      </View>
+
+      {/* Active screen */}
+      <View style={styles.screenContainer}>
+        {activeTab === 'spots' && (
+          <MyRestaurants
+            onSelectRestaurant={onSelectRestaurant}
+            onAddRestaurant={onAddRestaurant}
+          />
+        )}
+        {activeTab === 'choose' && (
+          <ChooseDishLanding
+            onSelectRestaurant={onSelectRestaurant}
+            onNavigateToRecommendations={onNavigateToDishRecommendations}
+          />
+        )}
+      </View>
+
+      {/* Bottom tab bar */}
+      <View style={[styles.tabBar, { paddingBottom: insets.bottom + 8 }]}>
+        <TouchableOpacity
+          style={styles.tab}
+          onPress={() => setActiveTab('spots')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.tabIndicator, activeTab === 'spots' && styles.tabIndicatorActive]} />
+          <Text style={[styles.tabLabel, activeTab === 'spots' && styles.tabLabelActive]}>
+            My List
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.tab}
+          onPress={() => setActiveTab('choose')}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.tabIndicator, activeTab === 'choose' && styles.tabIndicatorActive]} />
+          <Text style={[styles.tabLabel, activeTab === 'choose' && styles.tabLabelActive]}>
+            Choose Dish
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  screenContainer: {
+    flex: 1,
+  },
+  // Profile icon
+  profileIconContainer: {
+    position: 'absolute',
+    right: 24,
+    zIndex: 100,
+  },
+  // Tab bar
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    paddingTop: 12,
+    paddingHorizontal: 48,
+  },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+  },
+  tabIndicator: {
+    width: 20,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: 'transparent',
+  },
+  tabIndicatorActive: {
+    backgroundColor: RED,
+  },
+  tabLabel: {
+    fontFamily: 'DMSans-SemiBold',
+    fontSize: 13,
+    color: '#D1D5DB',
+    letterSpacing: 0.3,
+  },
+  tabLabelActive: {
+    color: '#111827',
+  },
+});

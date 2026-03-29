@@ -26,9 +26,10 @@ interface Props {
   onSelectRestaurant: (restaurant: FavoriteRestaurant) => void;
   onSignOut?: () => void;
   onTestOnboarding?: () => void;
+  onBackToTabs?: () => void;
 }
 
-export function ProfileScreen({ onSelectRestaurant, onSignOut, onTestOnboarding }: Props) {
+export function ProfileScreen({ onSelectRestaurant, onSignOut, onTestOnboarding, onBackToTabs }: Props) {
   const insets = useSafeAreaInsets();
   const { user, setUser, userId } = useStore();
 
@@ -378,7 +379,14 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut, onTestOnboarding 
     <View style={styles.container}>
       <View style={[styles.screenHeader, { paddingTop: insets.top }]}>
         <View style={styles.headerRow}>
-          <Text style={styles.screenTitle}>My profile</Text>
+          <View style={styles.headerLeft}>
+            {onBackToTabs && (
+              <TouchableOpacity style={styles.backButton} onPress={onBackToTabs}>
+                <Text style={styles.backArrow}>←</Text>
+              </TouchableOpacity>
+            )}
+            <Text style={styles.screenTitle}>My profile</Text>
+          </View>
           {onTestOnboarding && (
             <TouchableOpacity style={styles.testButton} onPress={onTestOnboarding}>
               <Text style={styles.testButtonText}>Preview Onboarding</Text>
@@ -485,6 +493,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F9FAFB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  backArrow: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 20,
+    color: '#6B7280',
   },
   screenTitle: {
     fontFamily: 'DMSans-Bold',

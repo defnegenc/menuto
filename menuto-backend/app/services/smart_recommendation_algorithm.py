@@ -390,6 +390,7 @@ RIGHT NOW:
 - Adventure level: {adventure}
 - Dining: {occasion} (party of {party})
 - Meal: {meal_period or 'not specified'}
+{f'- In their own words: "{context.restaurant_specific_signals.get("free_text_mood")}"' if context.restaurant_specific_signals.get("free_text_mood") else ''}
 
 HISTORY AT THIS RESTAURANT:
 - Loved: {', '.join(loved) if loved else 'first visit or no ratings'}

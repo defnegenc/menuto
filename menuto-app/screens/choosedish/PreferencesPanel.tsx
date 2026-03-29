@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  TextInput,
 } from 'react-native';
 
 const TERRA = '#CE3E25';
@@ -13,10 +14,12 @@ interface PreferencesPanelProps {
   preferenceLevel: number;
   selectedCravings: string[];
   diningOccasion: string;
+  freeTextMood: string;
   onSetHungerLevel: (level: number) => void;
   onSetPreferenceLevel: (level: number) => void;
   onToggleCraving: (craving: string) => void;
   onSetDiningOccasion: (occasion: string) => void;
+  onSetFreeTextMood: (text: string) => void;
   onContinue: () => void;
 }
 
@@ -86,10 +89,12 @@ export function PreferencesPanel({
   preferenceLevel,
   selectedCravings,
   diningOccasion,
+  freeTextMood,
   onSetHungerLevel,
   onSetPreferenceLevel,
   onToggleCraving,
   onSetDiningOccasion,
+  onSetFreeTextMood,
   onContinue,
 }: PreferencesPanelProps) {
   return (
@@ -185,13 +190,28 @@ export function PreferencesPanel({
         </View>
       </View>
 
+      {/* Free-text mood — goes straight to the agent */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>Anything else?</Text>
+        <TextInput
+          style={styles.moodInput}
+          value={freeTextMood}
+          onChangeText={onSetFreeTextMood}
+          placeholder="I'm feeling adventurous... celebrating tonight... want something cozy..."
+          placeholderTextColor="#A8A29E"
+          multiline
+          numberOfLines={2}
+          textAlignVertical="top"
+        />
+      </View>
+
       {/* Continue Button */}
       <TouchableOpacity
         style={styles.continueButton}
         onPress={onContinue}
         activeOpacity={0.8}
       >
-        <Text style={styles.continueButtonText}>Continue</Text>
+        <Text style={styles.continueButtonText}>Find my dishes</Text>
       </TouchableOpacity>
     </View>
   );
@@ -328,6 +348,20 @@ const styles = StyleSheet.create({
   chipTextSelected: {
     color: '#FFFFFF',
     fontFamily: 'DMSans-Bold',
+  },
+
+  // Free-text mood
+  moodInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F5F5F4',
+    padding: 14,
+    fontSize: 15,
+    color: '#1C1917',
+    fontFamily: 'DMSans-Regular',
+    minHeight: 56,
+    lineHeight: 22,
   },
 
   // Continue button

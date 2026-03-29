@@ -26,6 +26,7 @@ interface DishRecommendationsProps {
     preferenceLevel: number;
     selectedCravings: string[];
     diningOccasion?: string; // 'solo', 'date', 'friends', 'family', 'business'
+    freeTextMood?: string; // "I'm feeling adventurous", "celebrating tonight", etc.
   };
   onContinue: (dishes: Recommendation[]) => void;
   onBack: () => void;
@@ -210,6 +211,7 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
           selectedCravings: userPreferences.selectedCravings,
           spiceTolerance: user?.spice_tolerance || 3,
           diningOccasion: userPreferences.diningOccasion,
+          freeTextMood: userPreferences.freeTextMood,
         },
         [] // friendSelections - empty for now
       );

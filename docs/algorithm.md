@@ -1,102 +1,132 @@
 # Recommendation Algorithm
 
-The active engine is `SmartRecommendationAlgorithm` in `menuto-backend/app/services/smart_recommendation_algorithm.py`.
+Agent-first architecture. A Gemini agent sees all raw signals about the user and menu, then reasons about what to recommend and why. No rigid scoring formulas.
 
 ## Pipeline
 
 ```
-Menu Items → Candidate Generation → Scoring & Ranking → Diversification → Explanations → Top N
+Menu → Dietary filter → Enrich with signals → Agent picks 5 → User feedback → Agent learns
 ```
 
-### Stage 1: Candidate Generation
+## Stage 1: Data Gathering
 
-Filters the full menu down to ~40 candidates:
+Before the agent sees anything, we assemble context from 8 sources:
 
-- **Dietary filtering** — Hard filter based on user constraints (vegetarian, vegan). Keyword matching against dish name + description.
-- **Dessert suppression** — Penalized (-0.18) unless user craves "sweet"/"dessert".
-- **Drink suppression** — Penalized (-0.10) unless user craves "cocktail"/"drinks".
-- **Seed scoring** — `0.6 * personal_taste + 0.4 * sentiment`, top 40 kept.
+| Source | What it provides | Cost |
+|--------|-----------------|------|
+| `parsed_dishes` (Supabase) | Menu items with name, description, course, ingredients | Free (cached) |
+| Google Places reviews | 5 reviews per restaurant → dish mentions + sentiment | Free (1,000/mo, 14-day cache) |
+| Review mention frequency | Which dishes appear in most reviews = popularity proxy | Free (derived from cached reviews) |
+| `dish_orders` (Supabase) | Cross-user order counts per dish | Free (app data) |
+| `dish_ratings` (Supabase) | User's past ratings, cross-restaurant | Free (app data) |
+| Behavioral signals | Views, orders, favorites per dish per user | Free (app data) |
+| `taste_signals` (Supabase) | Gemini-extracted keywords from past feedback text | Cached on write |
+| Gemini embeddings | Taste profile → dish cosine similarity | 2 API calls per request |
 
-### Stage 2: Scoring & Ranking
+## Stage 2: Taste Profile (Gemini)
 
-Each candidate gets a weighted composite score from **8 components**:
-
-| Component | Weight | What it measures |
-|-----------|--------|-----------------|
-| `personal_taste` | 0.30 | Match to user's cuisine prefs, flavor profile, dish types |
-| `sentiment` | 0.20 | Review sentiment from Google reviews (default 0.65 if no data) |
-| `craving` | 0.15 | Keyword match against user's current craving tags |
-| `rating_history` | 0.10 | User's past ratings of similar dishes (4-5★ = boost, 1-2★ = suppress) |
-| `spice` | 0.10 | Alignment between dish spice level and user tolerance |
-| `hunger` | 0.05 | Course appropriateness for hunger level (light/normal/starving) |
-| `friend` | 0.05 | Boost if a friend selected this item |
-| `restaurant` | 0.05 | Bonus if dish matches user's general flavor profile keywords |
-
-**Weights sum to ~1.0.** All component scores are clamped to [0, 1].
-
-### Stage 3: Diversification
-
-- Buckets items by `(course, protein)` tuple
-- Max 2 items per bucket
-- Backfills with remaining items if needed
-
-### Stage 4: Explanations
-
-Human-readable bullets (max 3 per dish), priority order:
-1. Craving match → "Perfect for your pasta craving"
-2. Hunger fit → "Perfect lighter option"
-3. Rating history → "You've rated similar dishes highly"
-4. Sentiment → "Highly praised by other diners"
-5. Taste match → "Matches your love for Italian cuisine"
-6. Spice alignment
-7. Friend boost
-8. Fallback → "Great choice based on your preferences"
-
-## Review-Based Sentiment Pipeline
-
-Reviews from Google Places API enrich the `sentiment` scoring component.
-
-```
-Recommendation request → get_dish_sentiment_scores(place_id)
-  → Check Supabase review_cache (14-day TTL)
-  → Cache miss? Fetch 5 reviews from Google Places API (1,000 free calls/month)
-  → Single Gemini batch call extracts dish mentions + sentiment
-  → Cache in Supabase → Return {dish_name: score} mapping
-  → Fuzzy-match to menu items → Override default 0.65 sentiment_score
+User's favorite dishes + recently 4-5★ rated dishes → Gemini returns:
+```json
+{
+  "cuisine_preferences": ["Italian", "Japanese"],
+  "flavor_profile": "rich, umami, slightly spicy",
+  "dish_types": ["pasta", "ramen", "grilled"],
+  "spice_tolerance": "medium"
+}
 ```
 
-- **Cache table:** `review_cache` (place_id TEXT PK, reviews JSONB, fetched_at TIMESTAMPTZ)
-- **Sentiment blend:** `0.6 * (rating/5) + 0.4 * ((llm_sentiment + 1) / 2)`
-- **API:** `GET /reviews/{place_id}/reviews`, `GET /reviews/{place_id}/dish-sentiments`
+Profile refreshes automatically as user rates more dishes.
 
-## Rating History Component
+## Stage 3: Dietary Filter (Rigid — Safety)
 
-User's past dish ratings (from `dish_ratings` table) feed into recommendations:
+The only rigid step. Filters candidates using:
+1. **LLM-generated dietary flags** (best): `is_vegetarian`, `is_vegan`, `is_gluten_free`, `contains_nuts`, `contains_dairy`, `contains_alcohol` — generated at menu parse time with instructions to catch hidden ingredients (anchovy in Caesar, fish sauce in Pad Thai)
+2. **Keyword fallback** (for old menus): 30+ meat keywords, 13+ dairy keywords
 
-- Fetched via Supabase FK join: `dish_ratings → parsed_dishes(name)`
-- Fuzzy substring matching between rated dish names and menu items
-- Rating mapping: 5★ → 1.0, 4★ → 0.8, 3★ → 0.5, 2★ → 0.2, 1★ → 0.1
-- No match → 0.5 (neutral, doesn't penalize or boost)
-- Explanation: "You've rated similar dishes highly" or "Similar dishes didn't match your taste before"
+## Stage 4: Signal Enrichment
 
-## Key Types (`recommendation_types.py`)
+Each surviving candidate gets raw signals attached (NOT scores — just facts):
 
-- `ItemFeatures` — Dish features (name, price, cuisine, spice, protein, course, sentiment)
-- `UserTasteProfile` — User's preferences (cuisines, flavor profile, dish types, spice)
-- `RecommendationContext` — Session context (hunger, cravings, budget, friend picks, **user_dish_ratings**)
-- `ScoredItem` — Output (item + component scores + explanations + reasoning)
-- `HungerLevel` — Enum: LIGHT / NORMAL / STARVING
+```
+3. Cavatelli — truffle sabayon, sweet corn (course: Pasta)
+   [MATCHES YOUR TASTE, MATCHES CRAVING, POPULAR (60%), WELL-REVIEWED]
+```
 
-## Known Limitations
+Signals include:
+- `MATCHES YOUR TASTE` — embedding cosine similarity ≥ 0.6
+- `POPULAR (N%)` — ordered by N% of users or mentioned in N% of reviews
+- `WELL-REVIEWED` — review sentiment ≥ 0.7
+- `MATCHES CRAVING` — craving keyword found in dish text
+- `YOU LOVED THIS (N★)` / `YOU DIDN'T LIKE THIS (N★)` — past rating
+- `YOUR FAVORITE` / `REORDERED` / `TRIED BEFORE` — behavioral signals
+- `LOOKED AT BUT NEVER ORDERED` — implicit negative (viewed, rejected)
+- `HAS FLAVORS YOU LIKE: creamy, rich` — from past feedback analysis
+- `⚠️ HAS THINGS YOU DISLIKED: too spicy` — from past feedback analysis
 
-- Dietary filtering is keyword-based (e.g., Caesar salad with anchovy isn't caught for vegetarian)
-- Spice level often `None`, defaults to neutral 0.5
-- Google Places returns max 5 reviews per restaurant
-- Dish name matching is fuzzy substring — may miss non-obvious matches
-- Rating history only matches dishes the user rated at the SAME restaurant chain — cross-restaurant learning not yet implemented
+## Stage 5: Agent Selection (Gemini)
 
-## Top 3 Algorithm Improvements
+The agent receives:
+1. **Who they are** — taste profile, spice tolerance, learned flavor preferences
+2. **Right now** — hunger level, cravings, adventure slider (1=explore, 5=safe), dining occasion (solo/date/friends/family/business), free-text mood ("celebrating tonight")
+3. **History** — loved/tried/disliked dishes at this restaurant
+4. **What's popular** — cross-user order counts
+5. **Enriched menu** — all candidates with signal flags
 
-1. **LLM dietary classification** — At menu parse time, use Gemini to tag each dish's dietary compatibility instead of keyword matching
-2. **Learned per-user weights** — Replace hand-tuned 0.30/0.20/0.15/... with weights learned from each user's rating patterns
-3. **Cross-restaurant dish similarity** — If user rated "Margherita Pizza" 5★ at restaurant A, boost similar pizzas at restaurant B
+The agent reasons about meal composition, honors cravings, respects adventure level, and writes personal explanations ("You're craving something rich, and this Polenta is...").
+
+Includes 1 discovery pick — something outside the user's usual picks that has strong signals.
+
+**Fallback:** If Gemini fails, simple sort by `0.5 × taste_similarity + 0.3 × popularity + 0.2 × sentiment`.
+
+## Stage 6: Feedback Loop
+
+```
+User rates dish → Quick tags (positive/negative) → "Would order again?" → Free-text notes
+  → Stored in dish_ratings
+  → Gemini extracts taste_signals (liked/disliked keywords, spice/portion feedback)
+  → Thompson Sampling weight priors updated (for future learning)
+  → Next recommendation uses learned preferences
+```
+
+The feedback text is semantically analyzed: "loved the cream sauce" → next visit, dishes with "cream" or "creamy" get the signal `HAS FLAVORS YOU LIKE: cream`.
+
+## Cold Start Strategy
+
+New users (no ratings, no behavioral data, no favorites):
+- Agent leans on **popularity** and **review sentiment** (crowd wisdom)
+- Embedding similarity still works from onboarding cuisine preferences
+- Free-text mood input gives the agent rich context even for first-time users
+
+## What Improves with More Data
+
+| Data milestone | What unlocks |
+|----------------|-------------|
+| First rating | Rating-based signals appear on similar dishes |
+| 3+ ratings | Taste profile refreshes from actual preferences |
+| 5+ ratings | Thompson Sampling priors start learning per-user signal importance |
+| 10+ ratings | Learned flavor preferences (feedback keywords) become reliable |
+| Friends feature | Friend favorites priority, social signals |
+| 100+ users | Collaborative filtering becomes viable |
+
+## Future Improvements (When New Features Roll In)
+
+### Friends Feature
+- Friend favorites surface as `FRIEND'S FAVORITE` signal
+- Agent prioritizes friend-approved dishes over generic popularity
+- Group dining: aggregate preferences of N diners into one recommendation set
+- "Your friend Sarah loved the Carbonara here" as explanation text
+
+### Collaborative Filtering (100+ Users)
+- Cluster users by rating patterns (the `user_weight_priors` table has the infrastructure)
+- "People with similar taste to you ordered..." signal
+- Cold-start users get bootstrapped from their nearest cluster
+
+### Menu Intelligence
+- Track which dishes get ordered most after recommendations → learn which recommendations "convert"
+- Detect seasonal menu changes (parsed menu dish count drops → likely menu refresh)
+- Auto-re-parse stale menus (currently flags `menu_stale` but doesn't auto-refresh)
+
+### Richer Context
+- Weather-aware: soup on cold days, salad on hot days
+- Previous visit awareness: "Last time you had pasta — try something different?"
+- Photo-based mood: user takes a photo of the restaurant ambiance → agent infers formality level

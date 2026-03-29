@@ -66,6 +66,7 @@ export function ChooseDishLanding({
   const [preferenceLevel, setPreferenceLevel] = useState(3);
   const [selectedCravings, setSelectedCravings] = useState<string[]>([]);
   const [diningOccasion, setDiningOccasion] = useState<string>('solo');
+  const [freeTextMood, setFreeTextMood] = useState('');
 
   // Feedback flow states
   const [showDishRecommendations, setShowDishRecommendations] = useState(false);
@@ -286,7 +287,7 @@ export function ChooseDishLanding({
     return (
       <DishRecommendations
         restaurant={selectedRestaurant}
-        userPreferences={{ hungerLevel, preferenceLevel, selectedCravings, diningOccasion }}
+        userPreferences={{ hungerLevel, preferenceLevel, selectedCravings, diningOccasion, freeTextMood }}
         onContinue={handleDishRecommendationContinue}
         onBack={handleBackToChooseDishLanding}
       />
@@ -408,10 +409,12 @@ export function ChooseDishLanding({
                   preferenceLevel={preferenceLevel}
                   selectedCravings={selectedCravings}
                   diningOccasion={diningOccasion}
+                  freeTextMood={freeTextMood}
                   onSetHungerLevel={setHungerLevel}
                   onSetPreferenceLevel={setPreferenceLevel}
                   onToggleCraving={toggleCraving}
                   onSetDiningOccasion={setDiningOccasion}
+                  onSetFreeTextMood={setFreeTextMood}
                   onContinue={handleContinue}
                 />
               )}
