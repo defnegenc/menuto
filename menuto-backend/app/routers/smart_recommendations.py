@@ -48,6 +48,7 @@ async def generate_smart_recommendations(
 
         hunger_raw = context_weights.get("hungerLevel")
         spice_raw = context_weights.get("spiceTolerance")
+        preference_level = context_weights.get("preferenceLevel")  # 1=adventurous, 5=fan favorites
 
         # Time-aware hunger adjustment: if user didn't specify hunger level,
         # infer from time of day
@@ -186,6 +187,7 @@ async def generate_smart_recommendations(
             restaurant_specific_signals={
                 "name": restaurant_name,
                 "meal_period": meal_period,
+                "preference_level": preference_level,
             },
             user_dish_ratings=user_ratings_map,
             user_behavioral_signals=behavioral_signals,

@@ -482,7 +482,7 @@ class SmartRecommendationAlgorithm:
         return explained
 
     # ------------------------------------------------------------------
-    # LLM reranker (RecAI pattern: traditional scoring → LLM rerank)
+    # Agent-style recommendation reasoning
     # ------------------------------------------------------------------
 
     def _llm_rerank(
@@ -492,13 +492,14 @@ class SmartRecommendationAlgorithm:
         context: RecommendationContext,
         limit: int,
     ) -> List[ScoredItem] | None:
-        """Use Gemini to rerank the top candidates considering meal composition.
+        """Agent-style reasoning about what to recommend.
 
-        Returns reranked ScoredItems with LLM-generated explanations, or None
-        if the LLM call fails (caller falls back to template explanations).
+        Instead of "pick 5 from these scores," the agent receives a full
+        narrative about the user — their history, mood, adventurousness
+        level, what they've tried before — and reasons about what they
+        should eat and why.
 
-        Ref: Microsoft RecAI (ACM Web Conference 2024) — "LLM-as-brain,
-        traditional-models-as-tools" pattern.
+        Falls back to template-based scoring if the LLM call fails.
         """
         try:
             from google import genai
@@ -509,53 +510,113 @@ class SmartRecommendationAlgorithm:
 
             client = genai.Client(api_key=api_key)
 
-            # Build candidate summaries for the prompt
+            # --- Build the user narrative ---
+            meal_period = context.restaurant_specific_signals.get("meal_period", "")
+            cravings = ", ".join(context.craving_tags) if context.craving_tags else "nothing specific"
+            hunger = context.hunger_level.value
+            preference_level = context.restaurant_specific_signals.get("preference_level")
+
+            # Adventurousness interpretation
+            # 1 = "All me" (personal prefs), 5 = "Fan favorites" (popular/safe)
+            if preference_level is not None:
+                if preference_level <= 2:
+                    adventurousness = "highly adventurous — wants to explore new flavors and try things they wouldn't normally pick"
+                elif preference_level >= 4:
+                    adventurousness = "playing it safe — wants crowd favorites and proven popular dishes"
+                else:
+                    adventurousness = "balanced — open to new things but also wants some reliable picks"
+            else:
+                adventurousness = "not specified — use your judgment"
+
+            # What they've tried before at this restaurant
+            tried_dishes = []
+            loved_dishes = []
+            disliked_dishes = []
+            for dish_name, data in context.user_behavioral_signals.items():
+                if data.get("orders", 0) >= 1:
+                    rating = context.user_dish_ratings.get(dish_name)
+                    if rating and rating >= 4:
+                        loved_dishes.append(f"{dish_name} ({rating}★)")
+                    elif rating and rating <= 2:
+                        disliked_dishes.append(f"{dish_name} ({rating}★)")
+                    else:
+                        tried_dishes.append(dish_name)
+
+            # What's popular at this restaurant
+            popular = sorted(
+                context.dish_popularity.items(), key=lambda x: x[1], reverse=True
+            )[:5]
+            popular_text = ", ".join(f"{name} ({int(score*100)}%)" for name, score in popular) if popular else "no data yet"
+
+            # Build candidate list with rich context
             dish_lines = []
             for i, s in enumerate(candidates[:15]):
+                flags = []
+                beh = s.components.get("behavioral", 0.5)
+                if beh >= 0.85:
+                    flags.append("REORDER-FAVORITE")
+                elif beh <= 0.30:
+                    flags.append("VIEWED-NOT-ORDERED")
+                if s.components.get("popularity", 0) >= 0.7:
+                    flags.append("POPULAR")
+                if s.components.get("sentiment", 0) >= 0.7:
+                    flags.append("WELL-REVIEWED")
+
+                flag_str = f" [{', '.join(flags)}]" if flags else ""
                 dish_lines.append(
-                    f"{i+1}. {s.item.name} — {s.item.description[:80]} "
-                    f"(category: {s.item.course or 'unknown'}, score: {s.score:.2f})"
+                    f"{i+1}. {s.item.name} — {s.item.description[:100]} "
+                    f"(course: {s.item.course or '?'}, score: {s.score:.2f}{flag_str})"
                 )
 
-            meal_period = context.restaurant_specific_signals.get("meal_period", "")
-            cravings = ", ".join(context.craving_tags) if context.craving_tags else "none specified"
-            hunger = context.hunger_level.value
+            # --- The agent prompt ---
+            prompt = f"""You are this person's personal food advisor. You know them well. Think step by step about what they should order.
 
-            prompt = f"""You are a personal dining advisor. Given these scored menu candidates and the diner's profile, pick the best {limit} dishes that form a well-balanced meal.
+WHO THEY ARE:
+- Favorite cuisines: {', '.join(taste_profile.cuisine_preferences) or 'still discovering'}
+- Flavor profile: {taste_profile.flavor_profile or 'no strong preference yet'}
+- Usual dish types: {', '.join(taste_profile.dish_types) or 'varied'}
+- Spice tolerance: {taste_profile.spice_tolerance_label}
 
-DINER PROFILE:
-- Favorite cuisines: {', '.join(taste_profile.cuisine_preferences) or 'varied'}
-- Flavor preference: {taste_profile.flavor_profile or 'varied'}
-- Current craving: {cravings}
-- Hunger level: {hunger}
+THEIR MOOD RIGHT NOW:
+- Hunger: {hunger}
+- Craving: {cravings}
+- Adventurousness: {adventurousness}
 - Meal: {meal_period or 'not specified'}
 
-CANDIDATES (pre-scored by algorithm):
+THEIR HISTORY AT THIS RESTAURANT:
+- Dishes they loved: {', '.join(loved_dishes) if loved_dishes else 'first visit or no ratings yet'}
+- Dishes they tried but didn't rate: {', '.join(tried_dishes) if tried_dishes else 'none'}
+- Dishes they didn't enjoy: {', '.join(disliked_dishes) if disliked_dishes else 'none'}
+
+WHAT'S POPULAR HERE (ordered by other diners):
+{popular_text}
+
+MENU CANDIDATES (pre-scored, best first):
 {chr(10).join(dish_lines)}
 
-Pick the best {limit} dishes considering:
-1. Meal balance — variety of textures, weights, and flavors (not all heavy or all light)
-2. Course variety — mix starters/mains/sides when possible, don't pick 3 of the same category
-3. Honor the craving — at least one dish should match if a craving was specified
-4. Respect the scores — prefer higher-scored dishes but override when meal balance demands it
-5. This is a single restaurant menu — all dishes are the same cuisine. Focus on variety of dish types, proteins, and preparation styles rather than cuisine diversity.
+THINK ABOUT:
+- If they want to be adventurous, push them toward something they haven't tried — maybe a different protein, preparation style, or course than usual. Don't just pick the highest scores.
+- If they want fan favorites, lean heavily on POPULAR and WELL-REVIEWED items.
+- If they've ordered something before and loved it, it's OK to suggest it again — but not ALL repeats.
+- If they viewed a dish multiple times without ordering (VIEWED-NOT-ORDERED), they probably decided against it — don't recommend it.
+- Consider meal composition: starter + main, or a few shared plates, depending on hunger level. Don't pick 3 pasta dishes.
+- This is a SINGLE restaurant — all dishes share a cuisine. Focus on variety of dish types, proteins, and preparation within that cuisine.
 
-Return JSON array of exactly {limit} objects:
+Pick exactly {limit} dishes. For each, write a personal explanation as if you're talking to them directly ("You love rich flavors, and this..." not "This dish features...").
+
+Return JSON:
 [
-  {{"rank": 1, "candidate_number": 3, "explanation": "One compelling sentence about why this dish is perfect for this diner right now"}},
+  {{"rank": 1, "candidate_number": 3, "explanation": "Personal, specific reason", "reasoning": "Brief internal reasoning for this pick"}},
   ...
 ]
 
-Rules:
-- candidate_number matches the numbered list above (1-indexed)
-- explanation should be personal and specific, not generic
-- Return ONLY the JSON array"""
+candidate_number is 1-indexed from the list above. Return ONLY the JSON array."""
 
             response = client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=prompt,
                 config=genai.types.GenerateContentConfig(
-                    temperature=0.3,  # slightly creative for explanations
+                    temperature=0.4,  # creative for personal explanations
                     response_mime_type="application/json",
                 ),
             )
@@ -564,32 +625,33 @@ Rules:
             if not isinstance(picks, list) or len(picks) == 0:
                 return None
 
-            # Map LLM picks back to ScoredItems
+            # Map agent picks back to ScoredItems
             reranked: List[ScoredItem] = []
             for pick in picks[:limit]:
-                idx = pick.get("candidate_number", 0) - 1  # 1-indexed → 0-indexed
+                idx = pick.get("candidate_number", 0) - 1
                 if 0 <= idx < len(candidates):
                     original = candidates[idx]
                     explanation = pick.get("explanation", "")
+                    reasoning = pick.get("reasoning", "")
                     reranked.append(
                         ScoredItem(
                             item=original.item,
                             components=original.components,
                             score=original.score,
                             explanations=[explanation] if explanation else original.explanations,
-                            reasoning=original.reasoning,
+                            reasoning=reasoning or original.reasoning,
                             is_discovery=original.is_discovery,
                         )
                     )
 
             if len(reranked) >= max(limit - 1, 1):
-                logger.info("LLM reranker selected %d dishes", len(reranked))
+                logger.info("Agent selected %d dishes (adventurousness=%s)", len(reranked), adventurousness[:20])
                 return reranked
 
-            return None  # not enough valid picks, fall back
+            return None
 
         except Exception as e:
-            logger.warning("LLM reranker failed, using template explanations: %s", e)
+            logger.warning("Agent reasoning failed, using template explanations: %s", e)
             return None
 
     # ------------------------------------------------------------------
