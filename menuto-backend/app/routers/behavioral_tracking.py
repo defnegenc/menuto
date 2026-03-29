@@ -50,6 +50,7 @@ class TrackRatingRequest(BaseModel):
     feedback_text: Optional[str] = None
     would_order_again: Optional[bool] = None
     hunger_level_when_ordered: Optional[int] = None
+    recommendation_scores: Optional[dict] = None  # Component score breakdown from when dish was recommended
 
 
 class TrackFavoriteRequest(BaseModel):
@@ -137,6 +138,13 @@ async def track_dish_rating(
     """
     Track user rating after eating.
     Call this in your PostMealFeedback screen.
+
+    If feedback_text is provided, Gemini extracts taste signals (liked/disliked
+    keywords, spice/portion feedback) and stores them for future recommendations.
+
+    If recommendation_scores is provided (the component breakdown from when the
+    dish was recommended), Thompson Sampling weight priors are updated so the
+    algorithm learns which components predicted satisfaction for this user.
     """
     if not 1 <= request.rating <= 5:
         raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
@@ -161,15 +169,94 @@ async def track_dish_rating(
         row["would_order_again"] = request.would_order_again
     if request.hunger_level_when_ordered is not None:
         row["hunger_level_when_ordered"] = request.hunger_level_when_ordered
+    if request.recommendation_scores is not None:
+        row["recommendation_scores"] = json.dumps(request.recommendation_scores)
 
     try:
-        supabase.table("dish_ratings").insert(row).execute()
+        result = supabase.table("dish_ratings").insert(row).execute()
+        rating_id = result.data[0]["id"] if result.data else None
     except Exception as e:
         logger.error("Failed to track rating: %s", e)
         raise HTTPException(status_code=500, detail="Failed to track rating")
 
     logger.info("Tracked rating: user=%s, dish=%s, rating=%s", user_id, request.dish_id, request.rating)
-    return {"status": "tracked", "type": "rating"}
+
+    # ---- Semantic feedback analysis with Gemini ----
+    taste_signals = None
+    if request.feedback_text and request.feedback_text.strip() and rating_id:
+        try:
+            # Look up dish name for the prompt
+            dish_name = request.dish_id  # fallback
+            try:
+                dish_result = supabase.table("parsed_dishes").select("name").eq("id", dish_id_int).maybe_single().execute()
+                if dish_result.data and dish_result.data.get("name"):
+                    dish_name = dish_result.data["name"]
+            except Exception:
+                pass
+
+            api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
+            if api_key:
+                from google import genai
+
+                client = genai.Client(api_key=api_key)
+                prompt = f"""Analyze this restaurant dish feedback and extract taste signals.
+
+Dish: {dish_name}
+Rating: {request.rating}/5
+Feedback: "{request.feedback_text}"
+
+Return JSON:
+{{
+    "liked": ["specific things they liked, e.g. creamy texture, fresh basil"],
+    "disliked": ["specific things they disliked, e.g. too salty, overcooked"],
+    "spice_feedback": "perfect" | "too_mild" | "too_hot" | null,
+    "portion_feedback": "too_small" | "just_right" | "too_large" | null,
+    "flavor_keywords": ["rich", "tangy", "smoky"],
+    "would_recommend_to": ["spice_lovers", "comfort_food_fans"]
+}}
+
+Only include fields with actual information from the feedback. Return ONLY JSON."""
+
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=prompt,
+                    config=genai.types.GenerateContentConfig(
+                        temperature=0.1,
+                        response_mime_type="application/json",
+                    ),
+                )
+                taste_signals = json.loads(response.text)
+
+                # Update the rating record with analyzed signals
+                supabase.table("dish_ratings").update({
+                    "taste_signals": json.dumps(taste_signals),
+                }).eq("id", rating_id).execute()
+
+                logger.info("Analyzed feedback for dish %s: %s", dish_name, taste_signals)
+        except Exception as e:
+            logger.warning("Feedback analysis failed (non-blocking): %s", e)
+
+    # ---- Thompson Sampling weight update ----
+    if request.recommendation_scores and user_id:
+        try:
+            from app.services.smart_recommendation_algorithm import SmartRecommendationAlgorithm
+
+            outcome = "positive" if request.rating >= 4 else "negative"
+            SmartRecommendationAlgorithm.update_weight_priors(
+                user_id, request.recommendation_scores, outcome,
+            )
+            logger.info(
+                "Updated Thompson Sampling priors: user=%s, outcome=%s, components=%d",
+                user_id, outcome, len(request.recommendation_scores),
+            )
+        except Exception as e:
+            logger.warning("Thompson Sampling update failed (non-blocking): %s", e)
+
+    return {
+        "status": "tracked",
+        "type": "rating",
+        "taste_signals_extracted": taste_signals is not None,
+    }
 
 
 @router.post("/track/favorite")

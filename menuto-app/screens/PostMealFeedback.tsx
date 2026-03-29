@@ -1,14 +1,36 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import React, { useState, useRef, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Animated,
+  Keyboard,
+  Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '../theme';
-import { UnifiedHeader } from '../components/UnifiedHeader';
-import { SearchBar } from '../components/SearchBar';
-import { MenuItemCard } from '../components/MenuItemCard';
 import { useStore } from '../store/useStore';
 import { api } from '../services/api';
-import { ParsedDish } from '../types';
 
+// ─── Design tokens (v3) ───────────────────────────────────────────────
+const TERRA = '#CE3E25';
+const BG = '#FFFFFF';
+const DARK = '#1C1917';
+const MEDIUM = '#44403C';
+const MUTED = '#78716C';
+const LIGHT = '#A8A29E';
+const STONE_50 = '#FAFAF9';
+const STONE_100 = '#F5F5F4';
+const STONE_200 = '#E7E5E4';
+const SHADOW = { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 16 };
+const FONT = Platform.OS === 'ios' ? 'DM Sans' : 'DMSans-Regular';
+const FONT_MEDIUM = Platform.OS === 'ios' ? 'DM Sans' : 'DMSans-Medium';
+const FONT_BOLD = Platform.OS === 'ios' ? 'DM Sans' : 'DMSans-Bold';
+const FONT_SEMIBOLD = Platform.OS === 'ios' ? 'DM Sans' : 'DMSans-SemiBold';
+
+// ─── Types ────────────────────────────────────────────────────────────
 interface PostMealFeedbackProps {
   dish: {
     id: number;
@@ -16,505 +38,690 @@ interface PostMealFeedbackProps {
     description: string;
     restaurant: string;
     restaurantPlaceId?: string;
+    scoreBreakdown?: Record<string, number>;
   };
   onComplete: (rating: number, feedback: string) => void;
   onBack: () => void;
 }
 
+// ─── Quick tag sets ───────────────────────────────────────────────────
+const POSITIVE_TAGS = [
+  'Great flavor',
+  'Perfect portion',
+  'Would order again',
+  'Best dish here',
+  'Great value',
+];
+
+const NEGATIVE_TAGS = [
+  'Too spicy',
+  'Too bland',
+  'Too salty',
+  'Overcooked',
+  'Small portion',
+  'Not as described',
+  'Too expensive',
+];
+
+// ─── Rating labels ────────────────────────────────────────────────────
+const RATING_LABELS: Record<number, string> = {
+  1: 'Not for me',
+  2: 'Meh',
+  3: 'Decent',
+  4: 'Really good',
+  5: 'Outstanding!',
+};
+
+// ─── Component ────────────────────────────────────────────────────────
 export const PostMealFeedback: React.FC<PostMealFeedbackProps> = ({
   dish,
   onComplete,
-  onBack
+  onBack,
 }) => {
   const { user, setUser, userId } = useStore();
+
   const [rating, setRating] = useState<number>(0);
-  const [feedback, setFeedback] = useState<string>('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [wouldOrderAgain, setWouldOrderAgain] = useState<boolean | null>(null);
+  const [notesExpanded, setNotesExpanded] = useState(false);
+  const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Search functionality states
-  const [searchText, setSearchText] = useState<string>('');
-  const [menuDishes, setMenuDishes] = useState<ParsedDish[]>([]);
-  const [filteredDishes, setFilteredDishes] = useState<ParsedDish[]>([]);
-  const [isLoadingMenu, setIsLoadingMenu] = useState<boolean>(false);
-  const [showSearchResults, setShowSearchResults] = useState<boolean>(false);
-  const [selectedDish, setSelectedDish] = useState(dish);
 
-  // Load restaurant menu when component mounts
-  useEffect(() => {
-    if (dish.restaurantPlaceId) {
-      loadRestaurantMenu();
-    }
-  }, [dish.restaurantPlaceId]);
+  // Scale animations for each star
+  const scaleAnims = useRef([1, 2, 3, 4, 5].map(() => new Animated.Value(1))).current;
 
-  const loadRestaurantMenu = async () => {
-    if (!dish.restaurantPlaceId) {
-      console.log('❌ No restaurantPlaceId provided for menu loading');
-      return;
-    }
-    
-    console.log(`🔄 Loading menu for ${dish.restaurant} (${dish.restaurantPlaceId})`);
-    setIsLoadingMenu(true);
-    try {
-      const response = await api.getRestaurantMenu(dish.restaurant, dish.restaurantPlaceId);
-      console.log(`📋 Menu response:`, response);
-      
-      if (response.dishes && Array.isArray(response.dishes)) {
-        console.log(`✅ Loaded ${response.dishes.length} dishes:`, response.dishes.map((d: any) => d.name));
-        setMenuDishes(response.dishes);
-      } else if (response.success === false) {
-        console.log('❌ No menu found or API error:', response.message);
-        setMenuDishes([]);
-      } else {
-        console.log('❌ Unexpected response format:', response);
-        setMenuDishes([]);
+  // ── Star tap handler ──────────────────────────────────────────────
+  const handleStarPress = useCallback(
+    (star: number) => {
+      setRating(star);
+      // Reset tags when rating bucket changes (positive <-> negative)
+      const wasPositive = rating >= 4;
+      const isPositive = star >= 4;
+      if (wasPositive !== isPositive) {
+        setSelectedTags([]);
       }
-    } catch (error) {
-      console.error(`❌ Error loading menu for ${dish.restaurant}:`, error);
-      setMenuDishes([]);
-    } finally {
-      setIsLoadingMenu(false);
-    }
-  };
+      // Bounce animation
+      Animated.sequence([
+        Animated.timing(scaleAnims[star - 1], {
+          toValue: 1.3,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnims[star - 1], {
+          toValue: 1,
+          friction: 3,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    },
+    [rating, scaleAnims],
+  );
 
-  const handleSearchMenu = (text: string) => {
-    console.log(`🔍 Search text: "${text}", Menu dishes count: ${menuDishes.length}`);
-    setSearchText(text);
-    if (text.trim()) {
-      setShowSearchResults(true);
-      const filtered = menuDishes.filter(dish => 
-        dish.name.toLowerCase().includes(text.toLowerCase()) ||
-        (dish.description && dish.description.toLowerCase().includes(text.toLowerCase()))
-      );
-      console.log(`🔍 Filtered dishes:`, filtered.map(d => d.name));
-      setFilteredDishes(filtered);
-    } else {
-      setShowSearchResults(false);
-      setFilteredDishes([]);
-    }
-  };
-
-  const handleDishSelect = (selectedDishItem: ParsedDish) => {
-    setSelectedDish({
-      id: typeof selectedDishItem.id === 'number' ? selectedDishItem.id : Math.random(),
-      name: selectedDishItem.name,
-      description: selectedDishItem.description || '',
-      restaurant: dish.restaurant,
-      restaurantPlaceId: dish.restaurantPlaceId
-    });
-    setSearchText('');
-    setShowSearchResults(false);
-    setRating(0); // Reset rating when selecting a new dish
-    setFeedback(''); // Reset feedback when selecting a new dish
-  };
-
-  const handleSubmit = async () => {
-    if (rating === 0) {
-      Alert.alert('Please rate the dish', 'Select a star rating before continuing.');
-      return;
-    }
-
-    // Ask if user wants to add dish and restaurant to favorites
-    Alert.alert(
-      'Add to Favorites?',
-      `Would you like to add "${selectedDish.name}" and "${selectedDish.restaurant}" to your favorites?`,
-      [
-        {
-          text: 'No Thanks',
-          style: 'cancel',
-          onPress: () => {
-            // Just complete the feedback without adding to favorites
-            submitFeedback();
-          }
-        },
-        {
-          text: 'Yes, Add Both!',
-          onPress: () => {
-            // Add both dish and restaurant to favorites, then complete feedback
-            addDishAndRestaurantToFavorites();
-          }
-        }
-      ]
+  // ── Tag toggle ────────────────────────────────────────────────────
+  const toggleTag = useCallback((tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
     );
-  };
+  }, []);
 
-  const addDishAndRestaurantToFavorites = async () => {
-    if (!user || !userId) {
-      submitFeedback();
-      return;
-    }
+  // ── Silent favorites for 4-5 star ratings ─────────────────────────
+  const silentlyAddToFavorites = useCallback(() => {
+    if (!user || !userId || rating < 4) return;
 
-    try {
-      // Add dish to favorites
-      const existingFavorites = user.favorite_dishes || [];
-      const isAlreadyFavorite = existingFavorites.some(fav => 
-        fav.dish_name === selectedDish.name && 
-        fav.restaurant_id === selectedDish.restaurant
-      );
+    const existingDishes = user.favorite_dishes || [];
+    const alreadyFav = existingDishes.some(
+      (f) => f.dish_name === dish.name && f.restaurant_id === dish.restaurant,
+    );
 
-      if (!isAlreadyFavorite) {
-        const newFavorite = {
-          dish_name: selectedDish.name,
-          restaurant_id: selectedDish.restaurantPlaceId || selectedDish.restaurant,
-          rating: rating
-        };
-
-        const updatedFavorites = [...existingFavorites, newFavorite];
-        const updatedUser = { ...user, favorite_dishes: updatedFavorites };
-        
-        console.log('🍽️ Adding dish and restaurant to favorites:', {
-          dishName: selectedDish.name,
-          restaurant: selectedDish.restaurant,
-          rating: rating
-        });
-        
-        setUser(updatedUser, userId);
-      }
-
-      // Add restaurant to favorites (if not already there)
-      const existingRestaurants = user.favorite_restaurants || [];
-      const isRestaurantAlreadyFavorite = existingRestaurants.some(rest => 
-        rest.name === selectedDish.restaurant
-      );
-
-      if (!isRestaurantAlreadyFavorite) {
-        const newRestaurant = {
-          place_id: selectedDish.restaurantPlaceId || `temp_${selectedDish.restaurant.replace(/\s+/g, '_').toLowerCase()}`,
-          name: selectedDish.restaurant,
-          vicinity: 'Location not available',
-          cuisine_type: 'Restaurant'
-        };
-
-        const updatedRestaurants = [...existingRestaurants, newRestaurant];
-        const finalUpdatedUser = { ...user, favorite_dishes: user.favorite_dishes || [], favorite_restaurants: updatedRestaurants };
-        
-        console.log('🍽️ Adding restaurant to favorites:', {
-          restaurantName: selectedDish.restaurant,
-          placeId: newRestaurant.place_id
-        });
-        
-        setUser(finalUpdatedUser, userId);
-      }
-
-      // Complete the feedback
-      submitFeedback();
-      
-    } catch (error) {
-      console.error('Error adding to favorites:', error);
-      // Still complete feedback even if favorites addition fails
-      submitFeedback();
-    }
-  };
-
-  const submitFeedback = async () => {
-    setIsSubmitting(true);
-    try {
-      // Track rating for recommendations
-      if (selectedDish.restaurantPlaceId && selectedDish.id) {
-        const wouldOrderAgain = rating >= 4; // Assume if rating 4+ they'd order again
-        await api.trackDishRating(
-          String(selectedDish.id),
-          selectedDish.restaurantPlaceId,
+    if (!alreadyFav) {
+      const updatedDishes = [
+        ...existingDishes,
+        {
+          dish_name: dish.name,
+          restaurant_id: dish.restaurantPlaceId || dish.restaurant,
           rating,
-          wouldOrderAgain,
-          feedback || undefined
-        ).catch(err => console.warn('Failed to track rating:', err));
+        },
+      ];
+      setUser({ ...user, favorite_dishes: updatedDishes }, userId);
+    }
+
+    const existingRests = user.favorite_restaurants || [];
+    const restAlreadyFav = existingRests.some((r) => r.name === dish.restaurant);
+
+    if (!restAlreadyFav) {
+      const updatedRests = [
+        ...existingRests,
+        {
+          place_id:
+            dish.restaurantPlaceId ||
+            `temp_${dish.restaurant.replace(/\s+/g, '_').toLowerCase()}`,
+          name: dish.restaurant,
+          vicinity: 'Location not available',
+          cuisine_type: 'Restaurant',
+        },
+      ];
+      setUser({ ...user, favorite_restaurants: updatedRests }, userId);
+    }
+  }, [user, userId, rating, dish, setUser]);
+
+  // ── Submit ────────────────────────────────────────────────────────
+  const handleSubmit = useCallback(async () => {
+    if (rating === 0 || isSubmitting) return;
+
+    Keyboard.dismiss();
+    setIsSubmitting(true);
+
+    try {
+      // Build combined feedback text
+      const parts: string[] = [];
+      if (selectedTags.length > 0) parts.push(selectedTags.join(', '));
+      if (notes.trim()) parts.push(notes.trim());
+      const feedbackText = parts.join(' | ');
+
+      // 1. Track dish rating
+      if (dish.restaurantPlaceId && dish.id) {
+        await api
+          .trackDishRating(
+            String(dish.id),
+            dish.restaurantPlaceId,
+            rating,
+            wouldOrderAgain ?? rating >= 4,
+            feedbackText || undefined,
+          )
+          .catch((err) => console.warn('Failed to track rating:', err));
       }
-      
-      await onComplete(rating, feedback);
+
+      // 2. Send Thompson Sampling feedback if we have component scores
+      if (dish.scoreBreakdown && dish.restaurantPlaceId) {
+        try {
+          const token = await (async () => {
+            // reuse the same getAuthToken pattern from api.ts
+            const { supabase } = require('../services/supabase');
+            const {
+              data: { session },
+            } = await supabase.auth.getSession();
+            return session?.access_token ?? null;
+          })();
+
+          const API_BASE =
+            process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8080';
+
+          const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+          };
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+
+          await fetch(`${API_BASE}/smart-recommendations/feedback`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              dish_id: String(dish.id),
+              restaurant_place_id: dish.restaurantPlaceId,
+              rating,
+              score_breakdown: dish.scoreBreakdown,
+            }),
+          });
+        } catch (err) {
+          console.warn('Failed to send Thompson Sampling feedback:', err);
+        }
+      }
+
+      // 3. Silently add to favorites for high ratings
+      silentlyAddToFavorites();
+
+      // 4. Complete
+      await onComplete(rating, feedbackText);
     } catch (error) {
       console.error('Error submitting feedback:', error);
-      Alert.alert('Error', 'Failed to submit feedback. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [
+    rating,
+    isSubmitting,
+    selectedTags,
+    notes,
+    dish,
+    wouldOrderAgain,
+    silentlyAddToFavorites,
+    onComplete,
+  ]);
 
-  const renderStars = () => {
-    return (
-      <View style={styles.starsContainer}>
-        {[1, 2, 3, 4, 5].map((star) => (
-          <TouchableOpacity
-            key={star}
-            style={styles.starButton}
-            onPress={() => setRating(star)}
-          >
-            <Text style={[
-              styles.star,
-              star <= rating ? styles.starFilled : styles.starEmpty
-            ]}>
-              ★
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    );
-  };
+  // ── Derived state ─────────────────────────────────────────────────
+  const tags = rating >= 4 ? POSITIVE_TAGS : NEGATIVE_TAGS;
+  const showTags = rating > 0;
+  const canSubmit = rating > 0 && !isSubmitting;
 
-  const getRatingText = (rating: number) => {
-    switch (rating) {
-      case 1: return 'Not good';
-      case 2: return 'Below average';
-      case 3: return 'Average';
-      case 4: return 'Good';
-      case 5: return 'Excellent';
-      default: return 'Rate this dish';
-    }
-  };
-
+  // ── Render ────────────────────────────────────────────────────────
   return (
-    <View style={styles.container}>
-      <UnifiedHeader 
-        title="Tell us how it was" 
-        showBackButton={true}
-        onBack={onBack}
-      />
-      
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.dishCardContainer}>
-          <MenuItemCard
-            dish={{
-              id: String(selectedDish.id),
-              name: selectedDish.name,
-              description: selectedDish.description || '',
-              category: 'main',
-              ingredients: [],
-              dietary_tags: [],
-              is_user_added: false,
-              score: 0,
-              explanation: '',
-              restaurant_id: selectedDish.restaurantPlaceId || ''
-            }}
-            isSelected={false}
-            onPress={() => {}}
-            showScore={false}
-          />
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={onBack}
+            style={styles.backButton}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Text style={styles.backArrow}>{'\u2190'}</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>How was it?</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
-        <View style={styles.ratingSection}>
-          <Text style={styles.sectionTitle}>How would you rate this dish?</Text>
-          {renderStars()}
-          <Text style={styles.ratingText}>{getRatingText(rating)}</Text>
-        </View>
-
-        <View style={styles.feedbackSection}>
-          <Text style={styles.sectionTitle}>Tell us more (optional)</Text>
-          <Text style={styles.sectionSubtitle}>
-            What did you like or dislike? This helps us improve your recommendations.
-          </Text>
-          <TextInput
-            style={styles.feedbackInput}
-            value={feedback}
-            onChangeText={setFeedback}
-            placeholder="e.g., 'Too spicy for me' or 'Perfect texture and flavor'"
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
-        </View>
-
-        <View style={styles.helpSection}>
-          <Text style={styles.helpTitle}>Did you end up ordering something else?</Text>
-          <Text style={styles.helpText}>
-            If you ordered a different dish, you can search for it and rate that instead.
-          </Text>
-          
-          {/* Search Bar */}
-          <View style={styles.searchContainer}>
-            <SearchBar
-              value={searchText}
-              onChangeText={handleSearchMenu}
-              placeholder="Search for a different dish..."
-            />
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* ── Dish Card ────────────────────────────────────────── */}
+          <View style={styles.dishCard}>
+            <Text style={styles.restaurantName}>{dish.restaurant}</Text>
+            <Text style={styles.dishName}>{dish.name}</Text>
+            {dish.description ? (
+              <Text style={styles.dishDescription}>{dish.description}</Text>
+            ) : null}
           </View>
-        </View>
 
-        {/* Search Results */}
-        {showSearchResults && (
-          <View style={styles.searchResultsSection}>
-            <Text style={styles.searchResultsTitle}>Search Results</Text>
-            {isLoadingMenu ? (
-              <Text style={styles.loadingText}>Loading menu...</Text>
-            ) : filteredDishes.length > 0 ? (
-              filteredDishes.map((dishItem, index) => (
-                <View key={`search-dish-${index}-${dishItem.id ?? dishItem.name}`} style={styles.searchResultItem}>
-                  <MenuItemCard
-                    dish={dishItem}
-                    onPress={() => handleDishSelect(dishItem)}
-                    isSelected={selectedDish.name === dishItem.name}
-                  />
-                </View>
-              ))
-            ) : (
-              <Text style={styles.noResultsText}>No dishes found matching "{searchText}"</Text>
+          {/* ── Star Rating ──────────────────────────────────────── */}
+          <View style={styles.ratingSection}>
+            <View style={styles.starsRow}>
+              {[1, 2, 3, 4, 5].map((star) => {
+                const filled = star <= rating;
+                return (
+                  <TouchableOpacity
+                    key={star}
+                    activeOpacity={0.7}
+                    onPress={() => handleStarPress(star)}
+                    style={styles.starTouchable}
+                  >
+                    <Animated.View
+                      style={[
+                        styles.starCircle,
+                        filled ? styles.starCircleFilled : styles.starCircleEmpty,
+                        { transform: [{ scale: scaleAnims[star - 1] }] },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.starIcon,
+                          filled
+                            ? styles.starIconFilled
+                            : styles.starIconEmpty,
+                        ]}
+                      >
+                        {'\u2605'}
+                      </Text>
+                    </Animated.View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {rating > 0 && (
+              <Text style={styles.ratingLabel}>{RATING_LABELS[rating]}</Text>
             )}
           </View>
-        )}
 
-        {/* Add to Favorites Section */}
-      </ScrollView>
+          {/* ── Quick Tags ───────────────────────────────────────── */}
+          {showTags && (
+            <View style={styles.tagsSection}>
+              <View style={styles.tagsWrap}>
+                {tags.map((tag) => {
+                  const active = selectedTags.includes(tag);
+                  return (
+                    <TouchableOpacity
+                      key={tag}
+                      onPress={() => toggleTag(tag)}
+                      activeOpacity={0.7}
+                      style={[
+                        styles.tag,
+                        active ? styles.tagActive : styles.tagInactive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.tagText,
+                          active ? styles.tagTextActive : styles.tagTextInactive,
+                        ]}
+                      >
+                        {tag}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
 
-      {/* Submit Button */}
-      <View style={styles.submitSection}>
-        <TouchableOpacity 
-          style={[
-            styles.submitButton,
-            rating === 0 && styles.submitButtonDisabled
-          ]}
-          onPress={handleSubmit}
-          disabled={rating === 0 || isSubmitting}
-        >
-          <Text style={[
-            styles.submitButtonText,
-            rating === 0 && styles.submitButtonTextDisabled
-          ]}>
-            {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
-          </Text>
-        </TouchableOpacity>
+          {/* ── Would Order Again ────────────────────────────────── */}
+          {rating > 0 && (
+            <View style={styles.orderAgainSection}>
+              <Text style={styles.orderAgainLabel}>
+                Would you order this again?
+              </Text>
+              <View style={styles.orderAgainRow}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setWouldOrderAgain(true)}
+                  style={[
+                    styles.orderAgainBtn,
+                    wouldOrderAgain === true
+                      ? styles.orderAgainBtnActive
+                      : styles.orderAgainBtnInactive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.orderAgainBtnText,
+                      wouldOrderAgain === true
+                        ? styles.orderAgainBtnTextActive
+                        : styles.orderAgainBtnTextInactive,
+                    ]}
+                  >
+                    Yes
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setWouldOrderAgain(false)}
+                  style={[
+                    styles.orderAgainBtn,
+                    wouldOrderAgain === false
+                      ? styles.orderAgainBtnActive
+                      : styles.orderAgainBtnInactive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.orderAgainBtnText,
+                      wouldOrderAgain === false
+                        ? styles.orderAgainBtnTextActive
+                        : styles.orderAgainBtnTextInactive,
+                    ]}
+                  >
+                    No
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* ── Notes (expandable) ───────────────────────────────── */}
+          {rating > 0 && (
+            <View style={styles.notesSection}>
+              {!notesExpanded ? (
+                <TouchableOpacity
+                  onPress={() => setNotesExpanded(true)}
+                  activeOpacity={0.7}
+                  style={styles.addNoteBtn}
+                >
+                  <Text style={styles.addNoteBtnText}>+ Add a note</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.notesCard}>
+                  <TextInput
+                    style={styles.notesInput}
+                    value={notes}
+                    onChangeText={setNotes}
+                    placeholder="Any other thoughts? This helps us learn your taste..."
+                    placeholderTextColor={LIGHT}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                    autoFocus
+                  />
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Bottom spacer for fixed button */}
+          <View style={{ height: 100 }} />
+        </ScrollView>
+
+        {/* ── Submit Button (fixed) ──────────────────────────────── */}
+        <View style={styles.submitWrapper}>
+          <TouchableOpacity
+            activeOpacity={canSubmit ? 0.8 : 1}
+            onPress={handleSubmit}
+            disabled={!canSubmit}
+            style={[styles.submitBtn, !canSubmit && styles.submitBtnDisabled]}
+          >
+            <Text style={styles.submitBtnText}>
+              {isSubmitting ? 'Saving...' : 'Done'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
+// ─── Styles ─────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: BG,
+  },
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: BG,
   },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: STONE_50,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backArrow: {
+    fontSize: 22,
+    color: DARK,
+    marginTop: -2,
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 28,
+    fontFamily: FONT_BOLD,
+    fontWeight: '700',
+    color: DARK,
+  },
+  headerSpacer: {
+    width: 40,
+  },
+
+  // Scroll
   scrollView: {
     flex: 1,
-    paddingHorizontal: theme.spacing.lg,
   },
-  dishCardContainer: {
-    marginTop: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
   },
+
+  // Dish card
+  dishCard: {
+    backgroundColor: STONE_50,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: STONE_100,
+    padding: 20,
+    marginBottom: 28,
+    ...SHADOW,
+  },
+  restaurantName: {
+    fontSize: 13,
+    fontFamily: FONT,
+    fontStyle: 'italic',
+    color: LIGHT,
+    marginBottom: 6,
+  },
+  dishName: {
+    fontSize: 24,
+    fontFamily: FONT_BOLD,
+    fontWeight: '700',
+    color: DARK,
+    marginBottom: 6,
+  },
+  dishDescription: {
+    fontSize: 14,
+    fontFamily: FONT,
+    color: MUTED,
+    lineHeight: 20,
+  },
+
+  // Star rating
   ratingSection: {
-    marginBottom: theme.spacing.xl,
     alignItems: 'center',
+    marginBottom: 28,
   },
-  sectionTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.lg,
-    textAlign: 'center',
-  },
-  starsContainer: {
+  starsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: theme.spacing.md,
+    gap: 12,
+    marginBottom: 12,
   },
-  starButton: {
-    padding: theme.spacing.sm,
+  starTouchable: {
+    padding: 2,
   },
-  star: {
-    fontSize: 32,
-    color: theme.colors.border,
+  starCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  starFilled: {
-    color: theme.colors.warning,
+  starCircleEmpty: {
+    backgroundColor: STONE_50,
+    borderWidth: 1.5,
+    borderColor: STONE_200,
   },
-  starEmpty: {
-    color: theme.colors.border,
+  starCircleFilled: {
+    backgroundColor: TERRA,
+    borderWidth: 0,
   },
-  ratingText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.primary,
+  starIcon: {
+    fontSize: 24,
+    marginTop: Platform.OS === 'ios' ? 1 : 0,
+  },
+  starIconEmpty: {
+    color: STONE_200,
+  },
+  starIconFilled: {
+    color: '#FFFFFF',
+  },
+  ratingLabel: {
+    fontSize: 16,
+    fontFamily: FONT_SEMIBOLD,
+    fontWeight: '600',
+    color: TERRA,
+  },
+
+  // Quick tags
+  tagsSection: {
+    marginBottom: 28,
+  },
+  tagsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  tag: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 100,
+  },
+  tagActive: {
+    backgroundColor: TERRA,
+  },
+  tagInactive: {
+    backgroundColor: STONE_50,
+    borderWidth: 1,
+    borderColor: STONE_200,
+  },
+  tagText: {
+    fontSize: 14,
+    fontFamily: FONT_MEDIUM,
     fontWeight: '500',
   },
-  feedbackSection: {
-    marginBottom: theme.spacing.xl,
+  tagTextActive: {
+    color: '#FFFFFF',
   },
-  sectionSubtitle: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.md,
+  tagTextInactive: {
+    color: MUTED,
   },
-  feedbackInput: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.primary,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    minHeight: 100,
+
+  // Would order again
+  orderAgainSection: {
+    marginBottom: 28,
   },
-  helpSection: {
-    backgroundColor: theme.colors.info + '15',
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
-  },
-  helpTitle: {
-    fontSize: theme.typography.sizes.md,
+  orderAgainLabel: {
+    fontSize: 16,
+    fontFamily: FONT_SEMIBOLD,
     fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
-  },
-  helpText: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.text.secondary,
-    lineHeight: 20,
-    marginBottom: theme.spacing.md,
-  },
-  searchContainer: {
-    marginTop: theme.spacing.md,
-  },
-  searchResultsSection: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
-    ...theme.shadows.sm,
-  },
-  searchResultsTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.md,
-  },
-  searchResultItem: {
-    marginBottom: theme.spacing.sm,
-  },
-  loadingText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
+    color: DARK,
+    marginBottom: 12,
     textAlign: 'center',
-    fontStyle: 'italic',
-    padding: theme.spacing.lg,
   },
-  noResultsText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-    fontStyle: 'italic',
-    padding: theme.spacing.lg,
+  orderAgainRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
   },
-  submitSection: {
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.background,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-  },
-  submitButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.lg,
+  orderAgainBtn: {
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 100,
+    minWidth: 100,
     alignItems: 'center',
-    ...theme.shadows.sm,
   },
-  submitButtonDisabled: {
-    backgroundColor: theme.colors.border,
-    opacity: 0.6,
+  orderAgainBtnActive: {
+    backgroundColor: TERRA,
   },
-  submitButtonText: {
-    color: theme.colors.text.light,
-    fontSize: theme.typography.sizes.lg,
+  orderAgainBtnInactive: {
+    backgroundColor: STONE_50,
+    borderWidth: 1,
+    borderColor: STONE_200,
+  },
+  orderAgainBtnText: {
+    fontSize: 15,
+    fontFamily: FONT_SEMIBOLD,
     fontWeight: '600',
   },
-  submitButtonTextDisabled: {
-    color: theme.colors.text.secondary,
+  orderAgainBtnTextActive: {
+    color: '#FFFFFF',
+  },
+  orderAgainBtnTextInactive: {
+    color: MUTED,
+  },
+
+  // Notes
+  notesSection: {
+    marginBottom: 28,
+  },
+  addNoteBtn: {
+    alignSelf: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  addNoteBtnText: {
+    fontSize: 15,
+    fontFamily: FONT_MEDIUM,
+    fontWeight: '500',
+    color: MUTED,
+  },
+  notesCard: {
+    backgroundColor: STONE_50,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: STONE_100,
+    padding: 16,
+  },
+  notesInput: {
+    fontSize: 15,
+    fontFamily: FONT,
+    color: DARK,
+    minHeight: 80,
+    lineHeight: 22,
+  },
+
+  // Submit button
+  submitWrapper: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? 8 : 20,
+    paddingTop: 12,
+    backgroundColor: BG,
+  },
+  submitBtn: {
+    backgroundColor: DARK,
+    borderRadius: 100,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOW,
+  },
+  submitBtnDisabled: {
+    opacity: 0.4,
+  },
+  submitBtnText: {
+    fontSize: 17,
+    fontFamily: FONT_SEMIBOLD,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
-

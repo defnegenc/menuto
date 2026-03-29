@@ -202,6 +202,41 @@ async def generate_smart_recommendations(
         except Exception as e:
             logger.warning("Failed to fetch dish popularity: %s", e)
 
+        # Extract taste signals from past feedback (Gemini-analyzed)
+        feedback_liked: list[str] = []
+        feedback_disliked: list[str] = []
+        if user_id and sb:
+            try:
+                signals_result = sb.table("dish_ratings").select(
+                    "taste_signals"
+                ).eq("user_id", user_id).not_.is_("taste_signals", "null").execute()
+
+                for r in (signals_result.data or []):
+                    signals = r.get("taste_signals")
+                    if isinstance(signals, str):
+                        import json as _json
+                        try:
+                            signals = _json.loads(signals)
+                        except Exception:
+                            continue
+                    if not isinstance(signals, dict):
+                        continue
+                    feedback_liked.extend(signals.get("liked", []))
+                    feedback_liked.extend(signals.get("flavor_keywords", []))
+                    feedback_disliked.extend(signals.get("disliked", []))
+
+                # Deduplicate
+                feedback_liked = list(set(feedback_liked))
+                feedback_disliked = list(set(feedback_disliked))
+
+                if feedback_liked or feedback_disliked:
+                    logger.info(
+                        "Loaded feedback signals: %d liked, %d disliked keywords",
+                        len(feedback_liked), len(feedback_disliked),
+                    )
+            except Exception as e:
+                logger.warning("Failed to fetch feedback signals: %s", e)
+
         dining_occasion = context_weights.get("diningOccasion")
         party_size = context_weights.get("partySize", 1)
 
@@ -221,6 +256,8 @@ async def generate_smart_recommendations(
             user_id=user_id,
             dining_occasion=dining_occasion,
             party_size=party_size,
+            feedback_liked_keywords=feedback_liked,
+            feedback_disliked_keywords=feedback_disliked,
         )
 
         legacy_engine = RecommendationEngine()

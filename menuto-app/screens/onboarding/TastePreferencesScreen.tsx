@@ -20,12 +20,11 @@ import {
   SPICE_LABELS,
 } from '../../constants';
 
-const TERRA = '#E9323D';
-const TERRA_LIGHT = '#FDECED';
-const CREAM = '#FFFFFF';
-const DARK = '#2C2421';
-const MEDIUM = '#5A4D48';
-const LIGHT_TEXT = '#8C7E77';
+const RED = '#E9323D';
+const RED_LIGHT = '#FFF5F5';
+const DARK = '#111111';
+const MEDIUM = '#6B7280';
+const LIGHT_TEXT = '#9CA3AF';
 
 const NEIGHBORHOODS: Record<string, string[]> = {
   'New York': [
@@ -427,7 +426,7 @@ export function TastePreferencesScreen({ onComplete, onBack }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: CREAM,
+    backgroundColor: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
@@ -450,42 +449,51 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   progressDotActive: {
-    backgroundColor: TERRA,
+    backgroundColor: RED,
   },
   progressDotInactive: {
-    backgroundColor: `${TERRA}30`,
+    backgroundColor: `${RED}30`,
   },
   // Step content
   stepContent: {
     gap: 0,
   },
   stepLabel: {
-    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  stepLabelLine: {
+    width: 32,
+    height: 2,
+    backgroundColor: RED,
   },
   stepLabelText: {
     fontFamily: 'DMSans-Bold',
-    fontSize: 13,
-    color: TERRA,
+    fontSize: 10,
+    color: RED,
     letterSpacing: 3,
     textTransform: 'uppercase',
   },
   headline: {
     fontFamily: 'DMSans-Bold',
     fontSize: 44,
-    lineHeight: 48,
+    lineHeight: 46,
     letterSpacing: -1.5,
-    color: DARK,
+    color: '#111827',
     marginBottom: 16,
   },
   headlineAccent: {
-    color: TERRA,
+    color: RED,
+    fontStyle: 'italic',
   },
   subline: {
     fontFamily: 'DMSans-Regular',
-    fontSize: 18,
+    fontSize: 17,
     lineHeight: 26,
-    color: MEDIUM,
-    maxWidth: 310,
+    color: '#6B7280',
+    maxWidth: '90%',
     marginBottom: 32,
   },
   // Pills
@@ -504,13 +512,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   pillSelected: {
-    backgroundColor: TERRA_LIGHT,
+    backgroundColor: RED_LIGHT,
     borderWidth: 2,
-    borderColor: TERRA,
+    borderColor: RED,
   },
   pillUnselected: {
     borderWidth: 1,
-    borderColor: `${TERRA}40`,
+    borderColor: `${RED}40`,
     backgroundColor: 'transparent',
   },
   pillText: {
@@ -522,7 +530,7 @@ const styles = StyleSheet.create({
   },
   pillTextSelected: {
     fontFamily: 'DMSans-Bold',
-    color: TERRA,
+    color: RED,
   },
   pillTextUnselected: {
     color: DARK,
@@ -559,7 +567,7 @@ const styles = StyleSheet.create({
   },
   spiceFill: {
     height: 3,
-    backgroundColor: TERRA,
+    backgroundColor: RED,
     borderRadius: 1.5,
   },
   spiceDotsRow: {
@@ -581,8 +589,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   spiceDotActive: {
-    backgroundColor: TERRA,
-    borderColor: TERRA,
+    backgroundColor: RED,
+    borderColor: RED,
   },
   spiceLabelRow: {
     flexDirection: 'row',
@@ -603,7 +611,7 @@ const styles = StyleSheet.create({
   spiceLabel: {
     fontFamily: 'DMSans-Medium',
     fontSize: 13,
-    color: TERRA,
+    color: RED,
     fontStyle: 'italic',
     marginTop: 2,
   },
@@ -639,21 +647,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: TERRA,
+    borderColor: RED,
   },
   showAllButtonText: {
     fontFamily: 'DMSans-Medium',
     fontSize: 13,
-    color: TERRA,
+    color: RED,
   },
   // Map placeholder
   mapPlaceholder: {
     width: '100%',
     height: 180,
-    backgroundColor: `${TERRA}08`,
+    backgroundColor: `${RED}08`,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: `${TERRA}15`,
+    borderColor: `${RED}15`,
     marginBottom: 24,
     justifyContent: 'center',
     alignItems: 'center',
@@ -664,13 +672,13 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: `${TERRA}15`,
+    backgroundColor: `${RED}15`,
   },
   mapPing: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: TERRA,
+    backgroundColor: RED,
   },
   mapBadge: {
     position: 'absolute',
@@ -681,12 +689,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: `${TERRA}20`,
+    borderColor: `${RED}20`,
   },
   mapBadgeText: {
     fontFamily: 'DMSans-Bold',
     fontSize: 12,
-    color: TERRA,
+    color: RED,
   },
   // City selector
   cityScroll: {
@@ -706,8 +714,8 @@ const styles = StyleSheet.create({
     borderColor: '#E7E5E4',
   },
   cityChipActive: {
-    backgroundColor: TERRA,
-    borderColor: TERRA,
+    backgroundColor: RED,
+    borderColor: RED,
   },
   cityChipText: {
     fontFamily: 'DMSans-Medium',
@@ -730,14 +738,14 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   primaryButton: {
-    backgroundColor: TERRA,
+    backgroundColor: RED,
     borderRadius: 999,
     paddingVertical: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    shadowColor: TERRA,
+    shadowColor: RED,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
     shadowRadius: 16,

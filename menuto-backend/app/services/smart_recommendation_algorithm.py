@@ -826,7 +826,7 @@ candidate_number is 1-indexed from the list above. Return ONLY the JSON array.""
         context: RecommendationContext,
     ) -> Dict[str, float]:
         return {
-            "personal_taste": self._personal_taste_match(item, taste_profile),
+            "personal_taste": self._personal_taste_match(item, taste_profile, context),
             "sentiment": self._clamp(item.sentiment_score or 0.65),
             "craving": self._craving_match(item, context),
             "hunger": self._hunger_match(item, context),
@@ -855,18 +855,36 @@ candidate_number is 1-indexed from the list above. Return ONLY the JSON array.""
             self.legacy_engine.calculate_dish_similarity(legacy_profile, dish_payload)
         )
 
-    def _personal_taste_match(self, item: ItemFeatures, taste_profile: UserTasteProfile) -> float:
+    def _personal_taste_match(
+        self,
+        item: ItemFeatures,
+        taste_profile: UserTasteProfile,
+        context: Optional[RecommendationContext] = None,
+    ) -> float:
         # Use embedding similarity if available (much more accurate than keywords)
         embedding_score = getattr(self, '_embedding_scores', {}).get(item.item_id)
         if embedding_score is not None:
-            return embedding_score
+            score = embedding_score
+        else:
+            # Fallback to keyword-based matching
+            score = self._personal_taste_seed(item, taste_profile)
+            if item.cuisine and item.cuisine.lower() in [c.lower() for c in taste_profile.cuisine_preferences]:
+                score += 0.1
+            if any(tag.lower() in item.description.lower() for tag in taste_profile.dish_types):
+                score += 0.1
 
-        # Fallback to keyword-based matching
-        score = self._personal_taste_seed(item, taste_profile)
-        if item.cuisine and item.cuisine.lower() in [c.lower() for c in taste_profile.cuisine_preferences]:
-            score += 0.1
-        if any(tag.lower() in item.description.lower() for tag in taste_profile.dish_types):
-            score += 0.1
+        # Feedback-based boost/penalty: if user said "loved the cream sauce" on a
+        # past dish, boost other dishes mentioning "cream" or "creamy". If they
+        # said "too spicy", penalize spicy items.
+        if context:
+            text = f"{item.name} {item.description}".lower()
+            for keyword in context.feedback_liked_keywords:
+                if keyword.lower() in text:
+                    score += 0.1
+            for keyword in context.feedback_disliked_keywords:
+                if keyword.lower() in text:
+                    score -= 0.15
+
         return self._clamp(score)
 
     def _craving_match(self, item: ItemFeatures, context: RecommendationContext) -> float:

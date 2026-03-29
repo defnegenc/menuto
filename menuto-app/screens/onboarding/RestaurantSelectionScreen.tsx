@@ -14,18 +14,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { api } from '../../services/api';
 import { useStore } from '../../store/useStore';
-import { SearchBar } from '../../components/SearchBar';
-import { SearchRestaurantCard } from '../../components/SearchRestaurantCard';
-import { SearchRestaurantSelected } from '../../components/SearchRestaurantSelected';
 import { POPULAR_CITIES, City } from '../../constants';
 
-// Bold Diner design tokens
-const TERRA = '#E9323D';
-const TERRA_LIGHT = '#FDECED';
-const CREAM = '#FFFFFF';
-const DARK = '#2C2421';
-const MEDIUM = '#5A4D48';
-const LIGHT_TEXT_COLOR = '#8C7E77';
+const RED = '#E9323D';
+const RED_LIGHT = '#FFF5F5';
+const DARK = '#111111';
 
 interface Restaurant {
   place_id: string;
@@ -50,562 +43,267 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
   const [locationStatus, setLocationStatus] = useState<'loading' | 'granted' | 'denied' | 'unavailable'>('loading');
   const [selectedRestaurants, setSelectedRestaurants] = useState<Restaurant[]>([]);
   const [isInitializing, setIsInitializing] = useState(true);
-  const [isInteractionComplete, setIsInteractionComplete] = useState(false);
-  
-  // City selection state
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
-  const [citySearchQuery, setCitySearchQuery] = useState('');
-  const [citySearchResults, setCitySearchResults] = useState<City[]>([]);
-  const [isSearchingCities, setIsSearchingCities] = useState(false);
-  const [showCityPicker, setShowCityPicker] = useState(false);
-  
+
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const citySearchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
 
-  // InteractionManager for layout timing
   useEffect(() => {
     const handle = InteractionManager.runAfterInteractions(() => {
-      setIsInteractionComplete(true);
+      requestLocationPermission();
     });
-    
-    return () => handle.cancel();
+    return () => { handle.cancel(); isMountedRef.current = false; };
   }, []);
 
-  // Reset state when component mounts
   useEffect(() => {
-    isMountedRef.current = true;
-    setIsInitializing(true);
-    
-    // Reset all state to initial values
-    setSearchQuery('');
-    setSearchResults([]);
-    setIsSearching(false);
-    setUserLocation(null);
-    setLocationStatus('loading');
-    setSelectedRestaurants([]);
-    setSelectedCity(null);
-    setCitySearchQuery('');
-    setCitySearchResults([]);
-    setIsSearchingCities(false);
-    setShowCityPicker(false);
-    
-    // Clear any existing timeouts
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-    if (citySearchTimeoutRef.current) {
-      clearTimeout(citySearchTimeoutRef.current);
-    }
-    
-    // Initialize location after a brief delay to ensure UI is ready
-    const initTimer = setTimeout(() => {
-      if (isMountedRef.current) {
-        requestLocationPermission();
-      }
-    }, 100);
-    
-    return () => {
-      isMountedRef.current = false;
-      clearTimeout(initTimer);
-    };
-  }, []);
-
-  // Debounced search effect
-  useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-    
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     if (searchQuery.trim().length >= 2) {
-      searchTimeoutRef.current = setTimeout(() => {
-        searchRestaurantsAutocomplete();
-      }, 300); // 300ms debounce
+      searchTimeoutRef.current = setTimeout(() => searchRestaurants(), 300);
     } else if (searchQuery.trim().length === 0) {
       setSearchResults([]);
     }
-    
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
+    return () => { if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current); };
   }, [searchQuery]);
 
-  // Debounced city search effect
-  useEffect(() => {
-    if (citySearchTimeoutRef.current) {
-      clearTimeout(citySearchTimeoutRef.current);
-    }
-    
-    if (citySearchQuery.trim().length >= 2) {
-      citySearchTimeoutRef.current = setTimeout(() => {
-        searchCities();
-      }, 300); // 300ms debounce
-    } else if (citySearchQuery.trim().length === 0) {
-      setCitySearchResults([]);
-    }
-    
-    return () => {
-      if (citySearchTimeoutRef.current) {
-        clearTimeout(citySearchTimeoutRef.current);
-      }
-    };
-  }, [citySearchQuery]);
-
   const requestLocationPermission = async () => {
-    if (!isMountedRef.current) return;
-    
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      
-      if (!isMountedRef.current) return;
-      
       if (status !== 'granted') {
         setLocationStatus('denied');
         setIsInitializing(false);
-        Alert.alert(
-          'Location Permission',
-          'Location access was denied. We\'ll search restaurants in San Francisco instead. You can still search by city name.',
-          [{ text: 'OK' }]
-        );
         return;
       }
-
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      
+      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       if (!isMountedRef.current) return;
-      
-      setUserLocation({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude
-      });
+      setUserLocation({ latitude: location.coords.latitude, longitude: location.coords.longitude });
       setLocationStatus('granted');
       setIsInitializing(false);
-      
-    } catch (error) {
-      console.error('Location error:', error);
+    } catch {
       if (!isMountedRef.current) return;
-      
       setLocationStatus('unavailable');
       setIsInitializing(false);
-      Alert.alert(
-        'Location Unavailable',
-        'Could not get your location. We\'ll search restaurants in San Francisco instead.',
-        [{ text: 'OK' }]
-      );
     }
   };
 
-  const searchCities = async () => {
-    if (!citySearchQuery.trim()) {
-      setCitySearchResults([]);
-      return;
-    }
-
-    if (!isMountedRef.current) return;
-    
-    setIsSearchingCities(true);
-    try {
-      // Filter popular cities based on search query
-      const filteredCities = POPULAR_CITIES.filter(city =>
-        city.name.toLowerCase().includes(citySearchQuery.toLowerCase()) ||
-        (city.country && city.country.toLowerCase().includes(citySearchQuery.toLowerCase()))
-      );
-      
-      if (!isMountedRef.current) return;
-      
-      setCitySearchResults(filteredCities);
-    } catch (error) {
-      console.error('City search error:', error);
-      if (!isMountedRef.current) return;
-      setCitySearchResults([]);
-    } finally {
-      if (isMountedRef.current) {
-        setIsSearchingCities(false);
-      }
-    }
-  };
-
-  const getGroupedCities = () => {
-    const citiesToShow = citySearchQuery.trim() ? citySearchResults : POPULAR_CITIES;
-    
-    // Get user's home base and mark it as local
-    const homeBase = user?.home_base;
-    const citiesWithHomeBase = citiesToShow.map(city => ({
-      ...city,
-      isLocal: city.isLocal || !!(homeBase && city.name === homeBase)
-    }));
-    
-    const localCities = citiesWithHomeBase.filter(city => city.isLocal);
-    const otherCities = citiesWithHomeBase.filter(city => !city.isLocal);
-    
-    return { localCities, otherCities };
-  };
-
-  const searchRestaurantsAutocomplete = async () => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
-    if (!isMountedRef.current) return;
-    
+  const searchRestaurants = async () => {
+    if (!searchQuery.trim()) { setSearchResults([]); return; }
     setIsSearching(true);
     try {
-      // Priority: selected city > home base > user location > fallback to SF
       let locationParam = null;
       if (selectedCity) {
         locationParam = selectedCity.coordinates;
       } else if (user?.home_base) {
-        // Find home base coordinates
         const homeBaseCity = POPULAR_CITIES.find(city => city.name === user.home_base);
-        if (homeBaseCity) {
-          locationParam = homeBaseCity.coordinates;
-        }
+        if (homeBaseCity) locationParam = homeBaseCity.coordinates;
       } else if (userLocation) {
         locationParam = `${userLocation.latitude},${userLocation.longitude}`;
       }
-      
       const results = await api.searchPlaces(searchQuery.trim(), locationParam);
-      
       if (!isMountedRef.current) return;
-      
       setSearchResults(results.restaurants || []);
-    } catch (error) {
-      console.error('Search error:', error);
+    } catch {
       if (!isMountedRef.current) return;
       setSearchResults([]);
     } finally {
-      if (isMountedRef.current) {
-        setIsSearching(false);
-      }
+      if (isMountedRef.current) setIsSearching(false);
     }
   };
 
-  const selectCity = (city: City) => {
-    setSelectedCity(city);
-    setShowCityPicker(false);
-    setCitySearchQuery('');
-    setCitySearchResults([]);
-    
-    // Clear restaurant search results when city changes
-    setSearchResults([]);
-    setSearchQuery('');
-  };
-
-  const clearCitySelection = () => {
-    setSelectedCity(null);
-    setSearchResults([]);
-    setSearchQuery('');
-  };
-
-  const toggleRestaurantSelection = (restaurant: Restaurant) => {
+  const toggleRestaurant = (restaurant: Restaurant) => {
     const isSelected = selectedRestaurants.some(r => r.place_id === restaurant.place_id);
-    
     if (isSelected) {
       setSelectedRestaurants(selectedRestaurants.filter(r => r.place_id !== restaurant.place_id));
-    } else {
+    } else if (selectedRestaurants.length < 5) {
       setSelectedRestaurants([...selectedRestaurants, restaurant]);
     }
   };
 
   const handleComplete = async () => {
     if (selectedRestaurants.length === 0) {
-      Alert.alert('Please select at least one restaurant');
+      Alert.alert('Add a restaurant', 'Select at least one restaurant to continue.');
       return;
     }
+    if (!user || !userId) return;
 
-    console.log('🎯 Selected restaurants:', selectedRestaurants);
+    const newRestaurants = selectedRestaurants.map(r => ({
+      place_id: r.place_id,
+      name: r.name,
+      vicinity: r.vicinity,
+      cuisine_type: r.cuisine_type || 'Restaurant',
+      rating: r.rating || 4.0,
+    }));
 
-    // Save selected restaurants to user preferences
-    if (userId) {
-      console.log('💾 Saving favorite restaurants for user:', userId);
-      const existingRestaurants = user?.favorite_restaurants || [];
-      const newRestaurants = selectedRestaurants.map(restaurant => ({
-        place_id: restaurant.place_id,
-        name: restaurant.name,
-        vicinity: restaurant.vicinity,
-        cuisine_type: restaurant.cuisine_type || 'Restaurant',
-        rating: restaurant.rating || 4.0
-      }));
-      
-      const updatedRestaurants = [...existingRestaurants, ...newRestaurants];
-      const updatedUser = { 
-        ...user, 
-        favorite_restaurants: updatedRestaurants,
-        preferred_cuisines: user?.preferred_cuisines || [],
-        spice_tolerance: user?.spice_tolerance || 3,
-        price_preference: user?.price_preference || 2,
-        dietary_restrictions: user?.dietary_restrictions || [],
-        home_base: user?.home_base || 'New York'
-      };
-      setUser(updatedUser, userId);
-    }
-    
+    const updatedUser = {
+      ...user,
+      favorite_restaurants: [...(user.favorite_restaurants || []), ...newRestaurants],
+    };
+    setUser(updatedUser, userId);
     onComplete();
   };
 
-  const renderRestaurantCard = (restaurant: Restaurant) => {
-    const existingRestaurants = user?.favorite_restaurants || [];
-    const isAlreadyAdded = existingRestaurants.some(r => r.place_id === restaurant.place_id);
-    const isSelected = selectedRestaurants.some(r => r.place_id === restaurant.place_id);
-    
-    // Use SearchRestaurantSelected for selected restaurants
-    if (isSelected) {
-      return (
-        <SearchRestaurantSelected
-          key={restaurant.place_id}
-          restaurant={restaurant}
-          onPress={() => {
-            if (!isAlreadyAdded) {
-              toggleRestaurantSelection(restaurant);
-            }
-          }}
-        />
-      );
-    }
-    
-    // Use SearchRestaurantCard for unselected restaurants
-    return (
-      <SearchRestaurantCard
-        key={restaurant.place_id}
-        restaurant={restaurant}
-        onPress={() => {
-          if (!isAlreadyAdded) {
-            toggleRestaurantSelection(restaurant);
-          }
-        }}
-      />
-    );
-  };
+  const isSelected = (restaurant: Restaurant) =>
+    selectedRestaurants.some(r => r.place_id === restaurant.place_id);
 
-  // Wait for interactions to complete before rendering
-  if (!isInteractionComplete) {
-    return <View style={{ flex: 1, backgroundColor: CREAM }} />;
-  }
+  const cityName = selectedCity?.name || user?.home_base || 'Nearby';
 
-  // Show loading screen while initializing
   if (isInitializing) {
     return (
-      <View style={styles.container}>
-        <View style={styles.headerSection}>
-          <Text style={styles.sectionLabel}>YOUR SPOTS</Text>
-          <Text style={styles.headline}>
-            Add your{'\n'}
-            <Text style={styles.headlineAccent}>restaurants</Text>
-          </Text>
-        </View>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={TERRA} />
-          <Text style={styles.loadingText}>Setting up location services...</Text>
+          <ActivityIndicator size="large" color={RED} />
+          <Text style={styles.loadingText}>Getting your location...</Text>
         </View>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerSection}>
-        <Text style={styles.sectionLabel}>YOUR SPOTS</Text>
-        <Text style={styles.headline}>
-          Add your{'\n'}
-          <Text style={styles.headlineAccent}>restaurants</Text>
-        </Text>
-        <Text style={styles.subtitle}>Search for places you love dining at</Text>
-      </View>
-
-      {/* Search Bar */}
-      <View style={styles.searchSection}>
-        <SearchBar
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search restaurants..."
-        />
-        
-        <View style={styles.statusRow}>
-          <Text style={styles.selectedCount}>
-            Selected: {selectedRestaurants.length}/3
-          </Text>
-          
-          {/* City picker hidden — uses home_base from onboarding silently */}
-        </View>
-      </View>
-
-      {/* City Picker */}
-      {showCityPicker && (
-        <View style={styles.cityPickerContainer}>
-          <View style={styles.cityPickerHeader}>
-            <Text style={styles.cityPickerTitle}>Choose a City</Text>
-            <TouchableOpacity onPress={() => setShowCityPicker(false)}>
-              <Text style={styles.closeButton}>✕</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <TextInput
-            style={styles.citySearchInput}
-            value={citySearchQuery}
-            onChangeText={setCitySearchQuery}
-            placeholder="Search cities..."
-            placeholderTextColor="#8C7E77"
-          />
-          
-          <ScrollView style={styles.cityList} showsVerticalScrollIndicator={false}>
-            {(() => {
-              const { localCities, otherCities } = getGroupedCities();
-              
-              return (
-                <>
-                  {/* Local Cities Section */}
-                  {localCities.length > 0 && (
-                    <>
-                      <View style={styles.citySectionHeader}>
-                        <Text style={styles.citySectionTitle}>📍 Local Area</Text>
-                      </View>
-                      {localCities.map((city) => (
-                        <TouchableOpacity
-                          key={`${city.name}-${city.coordinates}`}
-                          style={[
-                            styles.cityItem,
-                            styles.localCityItem,
-                            selectedCity?.coordinates === city.coordinates && styles.cityItemSelected
-                          ]}
-                          onPress={() => selectCity(city)}
-                        >
-                          <View style={styles.cityInfo}>
-                            <View style={styles.cityNameRow}>
-                              <Text style={styles.cityName}>{city.name}</Text>
-                              <Text style={styles.localBadge}>📍</Text>
-                            </View>
-                            {city.country && (
-                              <Text style={styles.cityCountry}>{city.country}</Text>
-                            )}
-                          </View>
-                          {selectedCity?.coordinates === city.coordinates && (
-                            <Text style={styles.selectedIcon}>✓</Text>
-                          )}
-                        </TouchableOpacity>
-                      ))}
-                    </>
-                  )}
-                  
-                  {/* Other Cities Section */}
-                  {otherCities.length > 0 && (
-                    <>
-                      <View style={styles.citySectionHeader}>
-                        <Text style={styles.citySectionTitle}>🌍 Other Cities</Text>
-                      </View>
-                      {otherCities.map((city) => (
-                        <TouchableOpacity
-                          key={`${city.name}-${city.coordinates}`}
-                          style={[
-                            styles.cityItem,
-                            selectedCity?.coordinates === city.coordinates && styles.cityItemSelected
-                          ]}
-                          onPress={() => selectCity(city)}
-                        >
-                          <View style={styles.cityInfo}>
-                            <Text style={styles.cityName}>{city.name}</Text>
-                            {city.country && (
-                              <Text style={styles.cityCountry}>{city.country}</Text>
-                            )}
-                          </View>
-                          {selectedCity?.coordinates === city.coordinates && (
-                            <Text style={styles.selectedIcon}>✓</Text>
-                          )}
-                        </TouchableOpacity>
-                      ))}
-                    </>
-                  )}
-                  
-                  {citySearchQuery.trim() && localCities.length === 0 && otherCities.length === 0 && !isSearchingCities && (
-                    <View style={styles.emptyCityState}>
-                      <Text style={styles.emptyCityText}>No cities found</Text>
-                    </View>
-                  )}
-                </>
-              );
-            })()}
-          </ScrollView>
-        </View>
-      )}
-
-      <ScrollView 
-        style={styles.scrollView} 
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 50}]}
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Selected Restaurants - Show when no search */}
-        {!searchQuery && selectedRestaurants.length > 0 && (
-          <>
-            <Text style={styles.sectionTitle}>Selected Restaurants</Text>
-            <View style={styles.restaurantList}>
-              {selectedRestaurants.map(renderRestaurantCard)}
-            </View>
-          </>
-        )}
-        
-        {/* Search Results */}
-        {searchQuery && searchResults.length > 0 && (
-          <>
-            <Text style={styles.sectionTitle}>Search Results</Text>
-            <View style={styles.restaurantList}>
-              {searchResults.map(renderRestaurantCard)}
-            </View>
-          </>
-        )}
-        
-        {/* Loading State */}
-        {searchQuery && isSearching && (
-          <View style={styles.loadingState}>
-            <ActivityIndicator size="small" color="#E9323D" />
-            <Text style={styles.loadingText}>Searching restaurants...</Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.eyebrowRow}>
+            <View style={styles.eyebrowLine} />
+            <Text style={styles.eyebrowText}>Onboarding</Text>
           </View>
-        )}
-        
-        {/* No Results */}
-        {searchQuery && !isSearching && searchResults.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateTitle}>No results</Text>
-            <Text style={styles.emptyStateText}>
-              No restaurants found for "{searchQuery}". Try a different search term.
+          <Text style={styles.headline}>
+            Add your{'\n'}
+            <Text style={styles.headlineAccent}>restaurants</Text>
+          </Text>
+          <Text style={styles.subtitle}>
+            Search for places you love dining at to build your personalized list.
+          </Text>
+        </View>
+
+        {/* Search */}
+        <View style={styles.searchContainer}>
+          <Text style={styles.searchIcon}>⌕</Text>
+          <TextInput
+            style={styles.searchInput}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search restaurants..."
+            placeholderTextColor="#9CA3AF"
+            autoCorrect={false}
+          />
+        </View>
+
+        {/* Selection counter + city */}
+        <View style={styles.metaRow}>
+          <View>
+            <Text style={styles.metaLabel}>SELECTION</Text>
+            <Text style={styles.metaCount}>
+              <Text style={{ color: RED }}>{selectedRestaurants.length}</Text>
+              <Text style={{ color: '#D1D5DB' }}> / </Text>
+              <Text style={{ color: '#6B7280' }}>5</Text>
             </Text>
           </View>
+          <View style={styles.cityBadge}>
+            <Text style={styles.cityBadgePin}>📍</Text>
+            <Text style={styles.cityBadgeText}>{cityName}</Text>
+          </View>
+        </View>
+
+        <View style={styles.metaDivider} />
+
+        {/* Results */}
+        {searchQuery.trim().length >= 2 && (
+          <Text style={styles.resultsLabel}>
+            Results for "{searchQuery}"
+          </Text>
         )}
 
-        {/* Initial State */}
+        {isSearching && (
+          <View style={styles.searchingRow}>
+            <ActivityIndicator size="small" color={RED} />
+            <Text style={styles.searchingText}>Searching...</Text>
+          </View>
+        )}
+
+        <View style={styles.resultsList}>
+          {searchResults.map(restaurant => {
+            const selected = isSelected(restaurant);
+            return (
+              <TouchableOpacity
+                key={restaurant.place_id}
+                style={[styles.resultCard, selected && styles.resultCardSelected]}
+                onPress={() => toggleRestaurant(restaurant)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.resultInfo}>
+                  <Text style={[styles.resultName, selected && styles.resultNameSelected]}>
+                    {restaurant.name}
+                  </Text>
+                  <Text style={[styles.resultAddress, selected && styles.resultAddressSelected]}>
+                    {restaurant.vicinity}
+                  </Text>
+                </View>
+                <View style={[styles.radio, selected && styles.radioSelected]}>
+                  {selected && <View style={styles.radioDot} />}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Selected restaurants */}
+        {selectedRestaurants.length > 0 && !searchQuery && (
+          <>
+            <Text style={styles.resultsLabel}>Your picks</Text>
+            <View style={styles.resultsList}>
+              {selectedRestaurants.map(restaurant => (
+                <TouchableOpacity
+                  key={restaurant.place_id}
+                  style={[styles.resultCard, styles.resultCardSelected]}
+                  onPress={() => toggleRestaurant(restaurant)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.resultInfo}>
+                    <Text style={[styles.resultName, styles.resultNameSelected]}>{restaurant.name}</Text>
+                    <Text style={[styles.resultAddress, styles.resultAddressSelected]}>{restaurant.vicinity}</Text>
+                  </View>
+                  <View style={[styles.radio, styles.radioSelected]}>
+                    <View style={styles.radioDot} />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
+
+        {/* Empty state */}
         {!searchQuery && selectedRestaurants.length === 0 && (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateTitle}>Find your favorites</Text>
-            <Text style={styles.emptyStateText}>
-              Search for restaurants you love. You can add favorite dishes and menus later.
+            <Text style={styles.emptyTitle}>Find your favorites</Text>
+            <Text style={styles.emptySubtext}>
+              Search above to find restaurants you love.
             </Text>
           </View>
         )}
       </ScrollView>
 
-      {/* Fixed Footer Continue Button - Show when restaurants are selected */}
-      {selectedRestaurants.length > 0 && (
-        <View style={styles.footer}>
-          <TouchableOpacity 
-            style={[
-              styles.footerContinueButton,
-              selectedRestaurants.length < 3 && styles.footerContinueButtonDisabled
-            ]}
-            onPress={handleComplete}
-            disabled={selectedRestaurants.length < 3}
-          >
-            <Text style={[
-              styles.footerContinueButtonText,
-              selectedRestaurants.length < 3 && styles.footerContinueButtonTextDisabled
-            ]}>
-              Continue ({selectedRestaurants.length}/3)
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      {/* Fixed CTA */}
+      <View style={[styles.ctaContainer, { paddingBottom: insets.bottom + 16 }]}>
+        <TouchableOpacity
+          style={[styles.ctaButton, selectedRestaurants.length === 0 && styles.ctaButtonDisabled]}
+          onPress={handleComplete}
+          activeOpacity={0.9}
+          disabled={selectedRestaurants.length === 0}
+        >
+          <Text style={styles.ctaText}>Continue</Text>
+          {selectedRestaurants.length > 0 && (
+            <View style={styles.ctaBadge}>
+              <Text style={styles.ctaBadgeText}>{selectedRestaurants.length}/5</Text>
+            </View>
+          )}
+          <Text style={styles.ctaArrow}>→</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -613,282 +311,294 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: CREAM,
-  },
-  headerSection: {
-    paddingHorizontal: 32,
-    paddingTop: 56,
-    paddingBottom: 8,
-    backgroundColor: CREAM,
-  },
-  sectionLabel: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 13,
-    letterSpacing: 3,
-    color: TERRA,
-    textTransform: 'uppercase',
-    marginBottom: 8,
-  },
-  headline: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 44,
-    letterSpacing: -1.5,
-    lineHeight: 48,
-    color: DARK,
-  },
-  headlineAccent: {
-    color: TERRA,
-  },
-  subtitle: {
-    fontFamily: 'DMSans-Regular',
-    fontSize: 18,
-    color: MEDIUM,
-    marginTop: 8,
-  },
-  searchSection: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    paddingBottom: 4,
-    backgroundColor: CREAM,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: CREAM,
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 24,
-    borderTopWidth: 1,
-    borderTopColor: '#F5F5F4',
-  },
-  footerContinueButton: {
-    backgroundColor: TERRA,
-    borderRadius: 999,
-    paddingVertical: 18,
-    alignItems: 'center',
-    shadowColor: TERRA,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  footerContinueButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontFamily: 'DMSans-Bold',
-  },
-  footerContinueButtonDisabled: {
-    backgroundColor: '#E7E5E4',
-    shadowOpacity: 0,
-  },
-  footerContinueButtonTextDisabled: {
-    color: LIGHT_TEXT_COLOR,
-  },
-  sectionTitle: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 13,
-    letterSpacing: 3,
-    color: TERRA,
-    textTransform: 'uppercase',
-    marginHorizontal: 24,
-    marginVertical: 14,
-  },
-  loadingState: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 20,
-    gap: 10,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: MEDIUM,
-    fontFamily: 'DMSans-Regular',
+    backgroundColor: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
-  },
-  restaurantList: {
     paddingHorizontal: 24,
-    paddingTop: 8,
-    gap: 12,
+    paddingBottom: 140,
   },
-  selectedCount: {
-    fontSize: 14,
-    color: MEDIUM,
-    fontFamily: 'DMSans-Bold',
-  },
-  locationStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  locationIcon: {
-    fontSize: 13,
-  },
-  locationText: {
-    fontSize: 13,
-    color: LIGHT_TEXT_COLOR,
-    fontFamily: 'DMSans-Regular',
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-    paddingVertical: 80,
-  },
-  emptyStateTitle: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 20,
-    color: DARK,
-    marginBottom: 8,
-    letterSpacing: -0.5,
-  },
-  emptyStateText: {
-    fontFamily: 'DMSans-Regular',
-    fontSize: 15,
-    color: LIGHT_TEXT_COLOR,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 0,
-    fontFamily: 'DMSans-Regular',
-  },
-  clearButtonContainer: {
-    padding: 6,
-    marginLeft: 4,
-  },
-  clearButton: {
-    color: LIGHT_TEXT_COLOR,
-    fontSize: 12,
-    fontFamily: 'DMSans-Bold',
-  },
-  cityPickerContainer: {
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#F5F5F4',
-    maxHeight: 300,
-  },
-  cityPickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F4',
-  },
-  cityPickerTitle: {
-    fontSize: 18,
-    fontFamily: 'DMSans-Bold',
-    color: DARK,
-  },
-  closeButton: {
-    fontSize: 18,
-    color: LIGHT_TEXT_COLOR,
-    padding: 6,
-  },
-  citySearchInput: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 15,
-    marginHorizontal: 24,
-    marginVertical: 12,
-    borderWidth: 1,
-    borderColor: '#E7E5E4',
-    color: DARK,
-    fontFamily: 'DMSans-Regular',
-  },
-  cityList: {
-    maxHeight: 200,
-    paddingHorizontal: 24,
-  },
-  cityItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    marginBottom: 6,
-  },
-  cityItemSelected: {
-    backgroundColor: TERRA_LIGHT,
-    borderWidth: 2,
-    borderColor: TERRA,
-  },
-  localCityItem: {
-    backgroundColor: TERRA_LIGHT,
-    borderLeftWidth: 3,
-    borderLeftColor: TERRA,
-  },
-  cityInfo: {
-    flex: 1,
-  },
-  cityNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  cityName: {
-    fontSize: 15,
-    fontFamily: 'DMSans-Bold',
-    color: DARK,
-    flex: 1,
-  },
-  localBadge: {
-    fontSize: 12,
-    marginLeft: 6,
-  },
-  cityCountry: {
-    fontSize: 13,
-    color: LIGHT_TEXT_COLOR,
-    fontFamily: 'DMSans-Regular',
-    marginTop: 2,
-  },
-  selectedIcon: {
-    fontSize: 16,
-    color: TERRA,
-    fontFamily: 'DMSans-Bold',
-  },
-  citySectionHeader: {
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    marginTop: 8,
-  },
-  citySectionTitle: {
-    fontSize: 13,
-    fontFamily: 'DMSans-Bold',
-    color: TERRA,
-    textTransform: 'uppercase',
-    letterSpacing: 3,
-  },
-  emptyCityState: {
-    padding: 24,
-    alignItems: 'center',
-  },
-  emptyCityText: {
-    fontSize: 14,
-    color: LIGHT_TEXT_COLOR,
-    fontFamily: 'DMSans-Regular',
-  },
+  // Loading
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 15,
+    color: '#9CA3AF',
+  },
+  // Header
+  header: {
+    paddingTop: 16,
+    marginBottom: 28,
+  },
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  eyebrowLine: {
+    width: 32,
+    height: 2,
+    backgroundColor: RED,
+  },
+  eyebrowText: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 10,
+    letterSpacing: 3,
+    color: RED,
+    textTransform: 'uppercase',
+  },
+  headline: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 44,
+    lineHeight: 46,
+    letterSpacing: -1.5,
+    color: '#111827',
+  },
+  headlineAccent: {
+    color: RED,
+    fontStyle: 'italic',
+  },
+  subtitle: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 17,
+    lineHeight: 26,
+    color: '#6B7280',
+    marginTop: 16,
+    maxWidth: '90%',
+  },
+  // Search
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  searchIcon: {
+    fontSize: 20,
+    color: '#9CA3AF',
+    marginRight: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: 'DMSans-Regular',
+    fontSize: 17,
+    color: '#111827',
+  },
+  // Meta row
+  metaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginBottom: 16,
+  },
+  metaLabel: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 10,
+    letterSpacing: 2,
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  metaCount: {
+    fontFamily: 'DMSans-SemiBold',
+    fontSize: 15,
+  },
+  cityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  cityBadgePin: {
+    fontSize: 12,
+  },
+  cityBadgeText: {
+    fontFamily: 'DMSans-Medium',
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  metaDivider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginBottom: 20,
+  },
+  // Results
+  resultsLabel: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 10,
+    letterSpacing: 2,
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    marginBottom: 14,
+    paddingLeft: 4,
+  },
+  searchingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 24,
+  },
+  searchingText: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 14,
+    color: '#9CA3AF',
+  },
+  resultsList: {
+    gap: 10,
+    marginBottom: 24,
+  },
+  resultCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    gap: 16,
+  },
+  resultCardSelected: {
+    borderWidth: 2,
+    borderColor: RED,
+    backgroundColor: RED_LIGHT,
+    shadowColor: RED,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  resultInfo: {
+    flex: 1,
+  },
+  resultName: {
+    fontFamily: 'DMSans-Medium',
+    fontSize: 17,
+    color: '#1F2937',
+  },
+  resultNameSelected: {
+    fontFamily: 'DMSans-SemiBold',
+    color: '#111827',
+  },
+  resultAddress: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 13,
+    color: '#9CA3AF',
+    marginTop: 4,
+  },
+  resultAddressSelected: {
+    color: '#6B7280',
+  },
+  // Radio
+  radio: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioSelected: {
+    borderColor: RED,
+    backgroundColor: RED,
+  },
+  radioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FFFFFF',
+  },
+  // Empty
+  emptyState: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 32,
+  },
+  emptyTitle: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 20,
+    color: '#111827',
+    marginBottom: 8,
+    letterSpacing: -0.5,
+  },
+  emptySubtext: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 15,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  // CTA
+  ctaContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     paddingHorizontal: 24,
+    paddingTop: 32,
+  },
+  ctaButton: {
+    backgroundColor: DARK,
+    borderRadius: 999,
+    paddingVertical: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  ctaButtonDisabled: {
+    backgroundColor: '#D1D5DB',
+    shadowOpacity: 0,
+  },
+  ctaText: {
+    fontFamily: 'DMSans-SemiBold',
+    fontSize: 17,
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  ctaBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 4,
+  },
+  ctaBadgeText: {
+    fontFamily: 'DMSans-Medium',
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
+  ctaArrow: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 17,
+    color: '#FFFFFF',
+    marginLeft: 4,
   },
 });

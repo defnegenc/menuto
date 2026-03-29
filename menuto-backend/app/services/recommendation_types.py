@@ -36,6 +36,10 @@ class RecommendationContext:
     user_id: Optional[str] = None
     dining_occasion: Optional[str] = None  # "date", "business", "family", "friends", "solo"
     party_size: int = 1
+    feedback_liked_keywords: List[str] = field(default_factory=list)
+    # e.g. ["creamy", "rich", "fresh basil"] — extracted from past feedback via Gemini
+    feedback_disliked_keywords: List[str] = field(default_factory=list)
+    # e.g. ["too spicy", "overcooked"] — extracted from past feedback via Gemini
 
 
 @dataclass
