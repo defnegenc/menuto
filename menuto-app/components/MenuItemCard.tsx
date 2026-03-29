@@ -1,18 +1,14 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { theme } from '../theme';
 import { ParsedDish } from '../types';
 
-// Utility function to properly capitalize text
+const RED = '#E9323D';
+
 const capitalizeText = (text: string): string => {
   if (!text) return text;
-  
-  // If text is all caps, convert to title case
   if (text === text.toUpperCase() && text.length > 1) {
     return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
   }
-  
-  // Otherwise, just capitalize first letter
   return text.charAt(0).toUpperCase() + text.slice(1);
 };
 
@@ -35,124 +31,150 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({
   isSelected = false,
   showScore = false,
   isFeatured = false,
-  onScorePress
+  onScorePress,
 }) => {
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[
-        styles.card, 
-        isFavorite && styles.lightPinkCard,
+        styles.card,
+        isFavorite && styles.favoriteCard,
         isSelected && styles.selectedCard,
-        isFeatured && styles.featuredCard
+        isFeatured && styles.featuredCard,
       ]}
       onPress={onPress}
       disabled={!onPress}
+      activeOpacity={0.7}
     >
-      <View style={styles.content}>
-        <View style={styles.dishInfo}>
+      <View style={styles.topRow}>
+        <View style={styles.nameRow}>
           <Text style={styles.dishName}>{capitalizeText(dish.name)}</Text>
-          {dish.description ? (
-            <Text style={[styles.dishDescription, isFavorite && styles.dishDescriptionFavorited]}>{capitalizeText(dish.description)}</Text>
-          ) : null}
-          {showScore && dish.score && (
+          {showScore && dish.score > 0 && (
             <TouchableOpacity onPress={onScorePress} disabled={!onScorePress}>
-              <Text style={styles.scoreText}>Score: {dish.score.toFixed(2)}</Text>
+              <View style={styles.scoreBadge}>
+                <Text style={styles.scoreText}>
+                  {dish.score > 1 ? Math.round(dish.score) : Math.round(dish.score * 100)}%
+                </Text>
+              </View>
             </TouchableOpacity>
           )}
         </View>
-
         {onAddToFavorites && (
           <TouchableOpacity
             style={[styles.addButton, isFavorite && styles.addButtonActive]}
             onPress={() => onAddToFavorites(dish)}
           >
-            <Text style={[styles.addButtonText, isFavorite && styles.addButtonTextActive]}>
-              {isFavorite ? 'Remove' : '+ Add'}
+            <Text style={styles.addButtonText}>
+              {isFavorite ? '✓' : '+'}
             </Text>
           </TouchableOpacity>
         )}
       </View>
+
+      {dish.description ? (
+        <Text style={styles.description} numberOfLines={2}>
+          {capitalizeText(dish.description)}
+        </Text>
+      ) : null}
+
+      {dish.price ? (
+        <Text style={styles.price}>${dish.price}</Text>
+      ) : null}
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'transparent',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: theme.colors.primary,
+    borderColor: '#E5E7EB',
+    padding: 18,
+    gap: 6,
   },
-  lightPinkCard: { 
-    backgroundColor: 'transparent',
-    borderColor: theme.colors.primary,
-  },
-  content: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'space-between' 
-  },
-  dishInfo: { 
-    flex: 1, 
-    marginRight: 12 
-  },
-  dishName: { 
-    fontSize: 13, 
-    fontWeight: theme.typography.weights.normal, 
-    color: '#000000', 
-    marginBottom: 4,
-    fontFamily: theme.typography.fontFamilies.regular,
-  },
-  dishDescription: { 
-    fontSize: 12, 
-    color: 'rgba(0, 0, 0, 0.5)',
-    lineHeight: 18,
-    fontFamily: theme.typography.fontFamilies.regularItalic,
-  },
-  dishDescriptionFavorited: {
-    color: '#666666', // Darker grey for favorited dishes
-  },
-
-  addButton: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 4,
-    justifyContent: 'center', 
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.colors.primary,
-  },
-  addButtonActive: {
-    backgroundColor: theme.colors.primary, 
-    borderColor: theme.colors.primary,
-  },
-  addButtonText: { 
-    fontSize: 11, 
-    fontWeight: '600', 
-    color: '#FFFFFF',
-    fontFamily: theme.typography.fontFamilies.semibold,
-  },
-  addButtonTextActive: { 
-    fontSize: 11,
-    color: '#FFFFFF',
-    fontFamily: theme.typography.fontFamilies.semibold,
-  },
-  scoreText: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.primary,
-    fontWeight: '600',
-    marginTop: theme.spacing.xs,
+  favoriteCard: {
+    borderColor: RED,
+    backgroundColor: '#FFF5F5',
   },
   selectedCard: {
-    borderColor: theme.colors.primary,
-    borderWidth: 1,
+    borderWidth: 2,
+    borderColor: RED,
+    backgroundColor: '#FFF5F5',
   },
   featuredCard: {
-    backgroundColor: 'transparent',
-    borderColor: theme.colors.primary,
+    borderColor: RED,
     borderWidth: 1,
+    backgroundColor: '#FFF5F5',
+  },
+  // Top row: name + score + add button
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  nameRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  dishName: {
+    fontFamily: 'IBMPlexMono-SemiBold',
+    fontSize: 15,
+    color: '#111827',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+    lineHeight: 20,
+  },
+  scoreBadge: {
+    backgroundColor: '#FFF5F5',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  scoreText: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 10,
+    color: RED,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  // Description
+  description: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 13,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+    lineHeight: 18,
+  },
+  // Price
+  price: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 16,
+    color: '#374151',
+    marginTop: 2,
+  },
+  // Add button — circular
+  addButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  addButtonActive: {
+    backgroundColor: RED,
+    borderColor: RED,
+  },
+  addButtonText: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 18,
+    color: RED,
   },
 });

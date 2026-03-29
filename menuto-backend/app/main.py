@@ -43,16 +43,21 @@ async def startup_event():
     logger.info("Binding to host 0.0.0.0 on port %s", port)
     logger.info("=" * 50)
 
-ALLOWED_ORIGINS = [
-    "http://localhost:19006",  # Expo web/dev
-    "http://localhost:8081",   # Metro
-    "http://localhost:8080",   # Local backend (if calling from a web client)
-    "http://127.0.0.1:8080",   # Local backend (loopback)
-    "exp://localhost",         # Expo
-    "http://localhost:3000",   # web dev (if any)
-    "https://*.onrender.com",  # during bring-up
-    "https://api.yourdomain.com",  # later custom domain
+_DEFAULT_ORIGINS = [
+    "http://localhost:19006",
+    "http://localhost:8081",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "exp://localhost",
+    "http://localhost:3000",
 ]
+_env_origins = os.getenv("ALLOWED_ORIGINS", "")
+ALLOWED_ORIGINS = [o.strip() for o in _env_origins.split(",") if o.strip()] if _env_origins else _DEFAULT_ORIGINS
+
+# React Native mobile apps don't send an Origin header, so we need
+# allow_origins=["*"] for mobile. But in production, ALLOWED_ORIGINS
+# from env restricts web/browser access.
+_is_dev = api_env == "dev"
 
 @app.get("/health")
 def health():
@@ -60,7 +65,7 @@ def health():
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # tighten later to your domain(s)
+    allow_origins=["*"] if _is_dev else ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

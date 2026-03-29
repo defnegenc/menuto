@@ -404,21 +404,23 @@ MENU (with signals — read these carefully):
 {chr(10).join(dish_lines)}
 
 YOUR JOB:
-Pick exactly {limit} dishes that make a great meal for this person right now. Think about:
+Pick exactly {limit} dishes that make a great meal for this person right now.
 
-1. SIGNALS MATTER: Items marked MATCHES YOUR TASTE, POPULAR, WELL-REVIEWED are strong picks. Items marked LOOKED AT BUT NEVER ORDERED were probably rejected — usually skip unless there's a good reason. Items they DIDN'T LIKE should be avoided.
-2. ADVENTURE: If they want adventure, push dishes they haven't tried with different proteins/preparations. If safe, lean on POPULAR and their past favorites.
-3. MEAL BALANCE: Mix courses. Don't pick 3 heavy mains or 3 of the same protein. Consider hunger level.
-4. CRAVINGS: Honor their craving — at least 1 dish should match.
-5. DISCOVERY: Include 1 dish that's outside their usual picks but has strong signals (popular + well-reviewed). Something they wouldn't pick themselves.
-6. BE PERSONAL: Write explanations as if talking to them directly. Say WHY this dish is right for THEM specifically, not generic descriptions.
+RULES:
+1. MEAL STRUCTURE: Think about what they'll actually order as a meal. Typically: 1 starter or shared plate + 2-3 mains + maybe 1 side. DON'T mix a pasta main and a dessert as if they're the same course — dessert is separate. If you include dessert, make it clear it's "for after." DON'T recommend 3 pasta dishes.
+2. SIGNALS: Items marked MATCHES YOUR TASTE, POPULAR, WELL-REVIEWED are strong picks. LOOKED AT BUT NEVER ORDERED = probably rejected. DIDN'T LIKE = avoid.
+3. ADVENTURE: If adventurous, push new proteins/preparations/courses. If safe, lean on POPULAR + past favorites.
+4. CRAVINGS: At least 1 dish should match their craving.
+5. DISCOVERY: Include 1 dish outside their usual picks with strong signals. Something they'd never pick themselves but would love.
+6. EXPLANATIONS — THIS IS CRITICAL: Each explanation must be specific to THIS person and THIS dish. Bad: "A great dish that matches your preferences." Good: "You mentioned you're craving something rich — this truffle pasta has that indulgent depth, and it's the most reordered dish here." Reference their specific craving, taste profile, history, or the signal flags. Talk to them like a friend who knows what they like.
 
 Return JSON array:
 [
-  {{"rank": 1, "number": 3, "explanation": "Personal reason", "is_discovery": false}},
+  {{"rank": 1, "number": 3, "explanation": "Specific, personal reason referencing their context", "is_discovery": false, "course_role": "starter"}},
   ...
 ]
 
+course_role = how this fits in the meal: "starter", "main", "side", "dessert_for_after", "shared_plate"
 number = dish number from the list (1-indexed). Return ONLY the JSON array."""
 
             response = client.models.generate_content(

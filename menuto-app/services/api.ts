@@ -364,19 +364,24 @@ class MenutoAPI {
   ): Promise<any> {
     try {
       console.log('🤖 Requesting new smart recommendations for:', restaurantName);
-      
+
+      const token = await getAuthToken();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(`${API_BASE}/smart-recommendations/generate`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           restaurant_place_id: restaurantPlaceId,
           restaurant_name: restaurantName,
           user_favorite_dishes: userFavoriteDishes,
           user_dietary_constraints: userDietaryConstraints,
           context_weights: contextWeights,
-          friend_selections: friendSelections
+          friend_selections: friendSelections,
+          user_id: authUser?.id || null,
         }),
       });
       

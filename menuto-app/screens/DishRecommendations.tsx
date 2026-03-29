@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '../theme';
-import { UnifiedHeader } from '../components/UnifiedHeader';
 import { LoadingScreen } from '../components/LoadingScreen';
 import { MenuItemCard } from '../components/MenuItemCard';
 import { SearchBar } from '../components/SearchBar';
@@ -392,11 +390,14 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <UnifiedHeader 
-          title="Choose Dish" 
-          showBackButton={true}
-          onBack={onBack}
-        />
+        <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={onBack}>
+              <Text style={styles.backButtonText}>←</Text>
+            </TouchableOpacity>
+            <Text style={styles.headerTitle} numberOfLines={1}>{restaurant.name}</Text>
+          </View>
+        </SafeAreaView>
         <LoadingScreen
           restaurantName={restaurant.name}
           cravings={userPreferences.selectedCravings}
@@ -407,11 +408,14 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
 
   return (
     <View style={styles.container}>
-      <UnifiedHeader 
-        title="Choose Dish" 
-        showBackButton={true}
-        onBack={onBack}
-      />
+      <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={onBack}>
+            <Text style={styles.backButtonText}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle} numberOfLines={1}>{restaurant.name}</Text>
+        </View>
+      </SafeAreaView>
       
       {/* Search Bar */}
       <View style={styles.searchSection}>
@@ -478,15 +482,12 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
                         }}
                       />
                       
-                      {/* Why was this recommended */}
-                      <View style={styles.reasoningSection}>
-                        <Text style={styles.reasoningTitle}>Why was this recommended?</Text>
-                        {formatRecommendationReason(dish).map((reason, idx) => (
-                          <Text key={idx} style={styles.reasoningText}>
-                            • {reason}
-                          </Text>
-                        ))}
-                      </View>
+                      {/* Recommendation reason — compact */}
+                      {formatRecommendationReason(dish).length > 0 && (
+                        <Text style={styles.reasoningText} numberOfLines={1}>
+                          {formatRecommendationReason(dish)[0]}
+                        </Text>
+                      )}
                     </View>
                   );
                 })}
@@ -599,149 +600,183 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#FFFFFF',
+  },
+  headerSafeArea: {
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F9FAFB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backButtonText: {
+    fontSize: 18,
+    color: '#111827',
+  },
+  headerTitle: {
+    fontFamily: 'IBMPlexMono-SemiBold',
+    fontSize: 16,
+    color: '#111827',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginLeft: 12,
+    flexShrink: 1,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: theme.spacing.lg,
+    paddingHorizontal: 16,
   },
   recommendationSection: {
-    marginTop: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
+    marginTop: 16,
+    marginBottom: 20,
   },
   recommendationTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.md,
+    fontFamily: 'IBMPlexMono-SemiBold',
+    fontSize: 16,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    color: '#111827',
+    marginBottom: 12,
   },
   featuredCard: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: 16,
   },
   recommendationCard: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: 12,
+    gap: 8,
   },
   courseLabel: {
-    fontSize: 15,
-    fontWeight: theme.typography.weights.normal,
-    color: '#000000',
-    marginBottom: theme.spacing.sm,
-    fontFamily: theme.typography.fontFamilies.regular,
-  },
-  reasoningSection: {
-    marginBottom: theme.spacing.lg,
-  },
-  reasoningTitle: {
-    fontSize: theme.typography.sizes.md,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
+    fontFamily: 'DMSans-Bold',
+    fontSize: 10,
+    letterSpacing: 2,
+    color: '#D1D5DB',
+    textTransform: 'uppercase',
   },
   reasoningText: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.text.secondary,
+    fontFamily: 'DMSans-Regular',
+    fontSize: 12,
+    color: '#D1D5DB',
+    paddingLeft: 4,
     lineHeight: 20,
   },
   newRecommendationButton: {
     alignSelf: 'flex-start',
-    marginTop: theme.spacing.md,
+    marginTop: 12,
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    borderColor: '#E5E7EB',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
   newRecommendationText: {
+    fontFamily: 'DMSans-SemiBold',
     fontSize: 12,
-    color: '#000000',
-    fontWeight: theme.typography.weights.medium,
-    fontFamily: theme.typography.fontFamilies.medium,
+    color: '#6B7280',
   },
   allRecommendationsSection: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.md,
+    fontFamily: 'DMSans-Bold',
+    fontSize: 10,
+    letterSpacing: 2,
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    marginBottom: 12,
   },
   continueSection: {
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.background,
+    padding: 16,
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
+    borderTopColor: '#E5E7EB',
   },
   continueButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.lg,
+    backgroundColor: '#111111',
+    borderRadius: 999,
+    paddingVertical: 18,
     alignItems: 'center',
-    ...theme.shadows.sm,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   continueButtonText: {
-    color: theme.colors.text.light,
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: '600',
+    fontFamily: 'DMSans-SemiBold',
+    fontSize: 17,
+    color: '#FFFFFF',
   },
   continueButtonDisabled: {
-    backgroundColor: theme.colors.border,
+    backgroundColor: '#E5E7EB',
     opacity: 0.6,
   },
   continueButtonTextDisabled: {
-    color: theme.colors.text.secondary,
+    color: '#6B7280',
   },
   searchSection: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.background,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
   },
   noResultsSection: {
-    padding: theme.spacing.xl,
+    padding: 20,
     alignItems: 'center',
   },
   noResultsText: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
+    fontFamily: 'DMSans-Regular',
+    fontSize: 14,
+    color: '#6B7280',
     textAlign: 'center',
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: '#E5E7EB',
   },
   modalCancelButton: {
-    fontSize: theme.typography.sizes.md,
-    color: '#000000',
-    fontWeight: theme.typography.weights.medium,
-    fontFamily: theme.typography.fontFamilies.medium,
+    fontFamily: 'DMSans-SemiBold',
+    fontSize: 14,
+    color: '#E9323D',
   },
   modalTitle: {
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: theme.typography.weights.semibold,
-    color: '#000000',
-    fontFamily: theme.typography.fontFamilies.semibold,
+    fontFamily: 'IBMPlexMono-SemiBold',
+    fontSize: 16,
+    color: '#111827',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   modalContent: {
     flex: 1,
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.lg,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   rationaleText: {
-    fontSize: theme.typography.sizes.md,
-    color: '#000000',
+    fontFamily: 'DMSans-Regular',
+    fontSize: 14,
+    color: '#111827',
     lineHeight: 24,
-    fontFamily: theme.typography.fontFamilies.regular,
   },
 });
