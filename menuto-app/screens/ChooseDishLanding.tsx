@@ -65,7 +65,7 @@ export function ChooseDishLanding({
   const [hungerLevel, setHungerLevel] = useState(3);
   const [preferenceLevel, setPreferenceLevel] = useState(3);
   const [selectedCravings, setSelectedCravings] = useState<string[]>([]);
-  const [mealStructure, setMealStructure] = useState<string>('main');
+  const [diningOccasion, setDiningOccasion] = useState<string>('solo');
 
   // Feedback flow states
   const [showDishRecommendations, setShowDishRecommendations] = useState(false);
@@ -286,7 +286,7 @@ export function ChooseDishLanding({
     return (
       <DishRecommendations
         restaurant={selectedRestaurant}
-        userPreferences={{ hungerLevel, preferenceLevel, selectedCravings, mealStructure }}
+        userPreferences={{ hungerLevel, preferenceLevel, selectedCravings, diningOccasion }}
         onContinue={handleDishRecommendationContinue}
         onBack={handleBackToChooseDishLanding}
       />
@@ -407,11 +407,11 @@ export function ChooseDishLanding({
                   hungerLevel={hungerLevel}
                   preferenceLevel={preferenceLevel}
                   selectedCravings={selectedCravings}
-                  mealStructure={mealStructure}
+                  diningOccasion={diningOccasion}
                   onSetHungerLevel={setHungerLevel}
                   onSetPreferenceLevel={setPreferenceLevel}
                   onToggleCraving={toggleCraving}
-                  onSetMealStructure={setMealStructure}
+                  onSetDiningOccasion={setDiningOccasion}
                   onContinue={handleContinue}
                 />
               )}

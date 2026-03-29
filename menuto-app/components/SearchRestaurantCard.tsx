@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { theme } from '../theme';
 
 interface Props {
   restaurant: {
@@ -13,67 +12,54 @@ interface Props {
   onPress: () => void;
 }
 
-export const SearchRestaurantCard: React.FC<Props> = ({
-  restaurant,
-  onPress
-}) => {
-  // Parse address to show street, city, and state (exclude zip and country)
-  const parseAddress = (vicinity: string) => {
-    const parts = vicinity.split(',').map(part => part.trim());
-    return parts.slice(0, 3).join(', ');
-  };
+export const SearchRestaurantCard: React.FC<Props> = ({ restaurant, onPress }) => {
+  const parseAddress = (vicinity: string) =>
+    vicinity.split(',').map(p => p.trim()).slice(0, 3).join(', ');
 
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={onPress}
-    >
-      <View style={styles.restaurantInfo}>
-        <Text style={styles.restaurantName}>{restaurant.name}</Text>
-        <Text style={styles.restaurantVicinity}>{parseAddress(restaurant.vicinity)}</Text>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+      <View style={styles.info}>
+        <Text style={styles.name} numberOfLines={1}>{restaurant.name}</Text>
+        <Text style={styles.address} numberOfLines={1}>{parseAddress(restaurant.vicinity)}</Text>
       </View>
-      <View style={styles.selectionIndicator}>
-        <View style={styles.radioButton} />
-      </View>
+      <View style={styles.radio} />
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'transparent',
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: theme.colors.primary,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    gap: 16,
+    marginBottom: 10,
   },
-  restaurantInfo: {
+  info: {
     flex: 1,
   },
-  restaurantName: {
-    fontSize: 15,
-    fontWeight: theme.typography.weights.medium,
-    color: '#000000',
-    marginBottom: theme.spacing.xs,
-    fontFamily: theme.typography.fontFamilies.medium,
+  name: {
+    fontFamily: 'DMSans-Medium',
+    fontSize: 17,
+    color: '#1F2937',
   },
-  restaurantVicinity: {
-    fontSize: 12,
-    color: 'rgba(0, 0, 0, 0.5)',
-    fontFamily: theme.typography.fontFamilies.regularItalic,
+  address: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 13,
+    color: '#9CA3AF',
+    marginTop: 4,
   },
-  selectionIndicator: {
-    marginLeft: theme.spacing.md,
-  },
-  radioButton: {
+  radio: {
     width: 24,
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: theme.colors.secondary,
-    backgroundColor: 'transparent',
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
   },
 });

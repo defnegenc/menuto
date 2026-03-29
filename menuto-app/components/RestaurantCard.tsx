@@ -1,15 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { FavoriteRestaurant, FavoriteDish } from '../types';
-import { theme } from '../theme';
-import { Chip } from './Chip';
+
+const RED = '#E9323D';
 
 interface Props {
   restaurant: FavoriteRestaurant;
   dishes: FavoriteDish[];
   onSelectRestaurant: (restaurant: FavoriteRestaurant) => void;
   onRemoveRestaurant: (restaurantId: string) => void;
-  rank?: number; // Optional rank for top restaurants (1-3)
+  rank?: number;
 }
 
 export const RestaurantCard: React.FC<Props> = ({
@@ -19,190 +19,190 @@ export const RestaurantCard: React.FC<Props> = ({
   onRemoveRestaurant,
   rank,
 }: Props) => {
-  // Parse address to show street, city, and state (exclude zip and country)
   const parseAddress = (vicinity: string) => {
-    // Split by comma and take first 3 parts (street, city, state)
     const parts = vicinity.split(',').map(part => part.trim());
-    // Remove zip code and country, keep street, city, state
     return parts.slice(0, 3).join(', ');
   };
 
   return (
-    <View style={styles.restaurantCard}>
-      {rank === undefined && (
-        <TouchableOpacity
-          style={styles.removeButton}
-          onPress={() => onRemoveRestaurant(restaurant.place_id)}
-        >
-          <Text style={styles.removeButtonText}>✕</Text>
-        </TouchableOpacity>
-      )}
-      
-      <View style={styles.restaurantContent}>
-        <TouchableOpacity 
-          style={styles.restaurantInfo}
-          onPress={() => onSelectRestaurant(restaurant)}
-        >
-          <View style={styles.restaurantHeaderRow}>
-            {rank !== undefined && (
-              <View style={styles.restaurantRank}>
-                <Text style={styles.rankText}>#{rank}</Text>
-              </View>
-            )}
-            <View style={styles.restaurantHeader}>
-              <Text style={[styles.restaurantName]}>{restaurant.name}</Text>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => onSelectRestaurant(restaurant)}
+      activeOpacity={0.7}
+    >
+      {/* Top row: name + cuisine badge + remove */}
+      <View style={styles.topRow}>
+        <View style={styles.nameColumn}>
+          {rank !== undefined && (
+            <View style={styles.rankBadge}>
+              <Text style={styles.rankText}>#{rank}</Text>
             </View>
-          </View>
-          <Text style={[
-            styles.vicinity, 
-            dishes.length === 0 && styles.vicinityNoDishes,
-            rank !== undefined && styles.vicinityWithRank
-          ]}>{parseAddress(restaurant.vicinity)}</Text>
-        </TouchableOpacity>
-        
-        {/* Favorite Dishes Section */}
-        {dishes.length > 0 && (
-          <View style={styles.favoriteDishesSection}>
-            <Text style={styles.favoriteDishesTitle}>Your Favorite Dishes:</Text>
-            <View style={styles.dishesContainer}>
-              {dishes.map((dish, index) => (
-                <Chip
-                  key={`${dish.dish_name}-${index}`}
-                  text={dish.dish_name}
-                  size="small"
-                  variant="light"
-                />
-              ))}
-            </View>
+          )}
+          <Text style={styles.name} numberOfLines={1}>{restaurant.name}</Text>
+        </View>
+        {restaurant.cuisine_type && (
+          <View style={styles.cuisineBadge}>
+            <Text style={styles.cuisineText}>{restaurant.cuisine_type}</Text>
           </View>
         )}
-        
-        {/* Add Button */}
-        <TouchableOpacity 
-          style={styles.modernAddButton}
-          onPress={() => onSelectRestaurant(restaurant)}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.addButtonText}>
-            + {dishes.length > 0 ? 'Add Another Favorite' : 'Add Favorite Dish'}
-          </Text>
-        </TouchableOpacity>
       </View>
-    </View>
+
+      {/* Address */}
+      <Text style={styles.address} numberOfLines={1}>{parseAddress(restaurant.vicinity)}</Text>
+
+      {/* Dishes */}
+      {dishes.length > 0 && (
+        <View style={styles.dishesSection}>
+          <Text style={styles.dishesLabel}>FAVORITES</Text>
+          <View style={styles.dishesRow}>
+            {dishes.map((dish, index) => (
+              <View key={`${dish.dish_name}-${index}`} style={styles.dishChip}>
+                <Text style={styles.dishChipText}>{dish.dish_name}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Bottom: CTA + remove */}
+      <View style={styles.bottomRow}>
+        <View style={styles.ctaRow}>
+          <Text style={styles.ctaText}>
+            {dishes.length > 0 ? 'View menu →' : '+ Add favorite dishes'}
+          </Text>
+        </View>
+        {rank === undefined && (
+          <TouchableOpacity
+            style={styles.removeButton}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              onRemoveRestaurant(restaurant.place_id);
+            }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.removeText}>Remove</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  restaurantCard: {
-    backgroundColor: 'transparent',
-    borderRadius: theme.borderRadius.lg,
-    marginBottom: theme.spacing.sm,
-    position: 'relative',
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: theme.colors.primary,
+    borderColor: '#E5E7EB',
+    padding: 20,
+    gap: 8,
   },
-  restaurantContent: {
+  // Top row
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  nameColumn: {
     flex: 1,
-    padding: 16,
-    paddingHorizontal: 16,
-    alignItems: 'flex-start',
-    justifyContent: 'flex-start',
-  },
-  restaurantInfo: {
-    marginBottom: theme.spacing.lg,
-    width: '100%',
-  },
-  restaurantHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 0,
+    gap: 8,
   },
-  restaurantRank: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: theme.colors.primary,
+  rankBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: RED,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: theme.spacing.sm,
   },
   rankText: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontFamily: 'DMSans-Bold',
+    fontSize: 12,
     color: '#FFFFFF',
-    fontFamily: theme.typography.fontFamilies.bold,
   },
-  restaurantHeader: {
+  name: {
+    fontFamily: 'DMSans-SemiBold',
+    fontSize: 19,
+    color: '#111827',
     flex: 1,
-    marginBottom: 0,
   },
-  restaurantName: {
-    fontSize: 15,
-    fontWeight: theme.typography.weights.medium,
-    color: '#000000',
-    marginBottom: theme.spacing.xs,
-    fontFamily: theme.typography.fontFamilies.medium,
+  cuisineBadge: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
-  vicinity: {
-    fontSize: 12,
-    color: 'rgba(0, 0, 0, 0.5)',
-    fontFamily: theme.typography.fontFamilies.regularItalic,
-    marginBottom: 0,
+  cuisineText: {
+    fontFamily: 'DMSans-Medium',
+    fontSize: 11,
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  vicinityNoDishes: {
-    marginBottom: theme.spacing.md,
+  // Address
+  address: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 14,
+    color: '#9CA3AF',
   },
-  vicinityWithRank: {
-    marginTop: theme.spacing.sm,
+  // Dishes
+  dishesSection: {
+    marginTop: 8,
+    gap: 8,
   },
-  favoriteDishesSection: {
-    marginBottom: theme.spacing.md,
+  dishesLabel: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 10,
+    letterSpacing: 2,
+    color: '#D1D5DB',
+    textTransform: 'uppercase',
   },
-  favoriteDishesTitle: {
-    fontSize: 12,
-    fontWeight: '400',
-    color: '#000000',
-    marginBottom: theme.spacing.xs,
-    fontFamily: theme.typography.fontFamilies.regular,
-  },
-  dishesContainer: {
+  dishesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.xs,
-    marginBottom: theme.spacing.md,
+    gap: 6,
   },
-  modernAddButton: {
-    backgroundColor: theme.colors.primary, // Dark green
-    borderRadius: 5,
+  dishChip: {
+    backgroundColor: '#FFF5F5',
+    borderRadius: 999,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: `${RED}20`,
   },
-  addButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    fontFamily: theme.typography.fontFamilies.semibold,
+  dishChipText: {
+    fontFamily: 'DMSans-Medium',
+    fontSize: 13,
+    color: RED,
+  },
+  // Bottom
+  bottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  ctaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ctaText: {
+    fontFamily: 'DMSans-SemiBold',
+    fontSize: 14,
+    color: RED,
   },
   removeButton: {
-    position: 'absolute',
-    top: theme.spacing.sm,
-    right: theme.spacing.sm,
-    padding: theme.spacing.sm,
-    zIndex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 20,
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
-  removeButtonText: {
-    fontSize: theme.typography.sizes.xl,
-    color: theme.colors.primary,
-    fontWeight: 600,
-    fontFamily: theme.typography.fontFamilies.semibold,
+  removeText: {
+    fontFamily: 'DMSans-Medium',
+    fontSize: 13,
+    color: '#D1D5DB',
   },
 });

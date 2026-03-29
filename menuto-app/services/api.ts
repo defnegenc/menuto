@@ -357,6 +357,7 @@ class MenutoAPI {
       preferenceLevel: number;
       selectedCravings: string[];
       spiceTolerance?: number;
+      diningOccasion?: string;
     },
     friendSelections: any[] = []
   ): Promise<any> {

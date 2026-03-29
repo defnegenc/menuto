@@ -126,7 +126,13 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Your spots</Text>
+        <View style={styles.eyebrowRow}>
+          <View style={styles.eyebrowLine} />
+          <Text style={styles.eyebrowText}>My Spots</Text>
+        </View>
+        <Text style={styles.headerTitle}>
+          Your{'\n'}<Text style={styles.headerAccent}>restaurants</Text>
+        </Text>
       </View>
 
       {/* Search */}
@@ -257,13 +263,36 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 24,
     paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 16,
+  },
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  eyebrowLine: {
+    width: 32,
+    height: 2,
+    backgroundColor: TERRA,
+  },
+  eyebrowText: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 10,
+    letterSpacing: 3,
+    color: TERRA,
+    textTransform: 'uppercase',
   },
   headerTitle: {
     fontFamily: 'DMSans-Bold',
-    fontSize: 36,
-    color: DARK,
-    letterSpacing: -2,
+    fontSize: 44,
+    lineHeight: 46,
+    letterSpacing: -1.5,
+    color: '#111827',
+  },
+  headerAccent: {
+    color: TERRA,
+    fontStyle: 'italic',
   },
   // Search
   searchSection: {

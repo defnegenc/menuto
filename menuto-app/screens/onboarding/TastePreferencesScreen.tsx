@@ -14,8 +14,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../../store/useStore';
 import { UserPreferences } from '../../types';
 import {
-  POPULAR_CUISINES,
-  ALL_CUISINES,
   DIETARY_RESTRICTIONS,
   SPICE_LABELS,
 } from '../../constants';
@@ -280,11 +278,7 @@ export function TastePreferencesScreen({ onComplete, onBack }: Props) {
   );
 
   // ─── Step 2: Cuisines ─────────────────────────────────────────────────────
-  const filteredCuisines = showAllCuisines
-    ? (cuisineSearch.trim()
-        ? ALL_CUISINES.filter(c => c.toLowerCase().includes(cuisineSearch.toLowerCase()))
-        : ALL_CUISINES)
-    : POPULAR_CUISINES;
+  const currentRegionCuisines = CUISINE_REGIONS[cuisineRegion] || [];
 
   const renderCuisines = () => (
     <View style={styles.stepContent}>
@@ -297,30 +291,33 @@ export function TastePreferencesScreen({ onComplete, onBack }: Props) {
       </Text>
       <Text style={styles.subline}>Select all that make you happy.</Text>
 
-      {showAllCuisines && (
-        <View style={styles.cuisineSearchContainer}>
-          <TextInput
-            style={styles.cuisineSearchInput}
-            value={cuisineSearch}
-            onChangeText={setCuisineSearch}
-            placeholder="Search cuisines..."
-            placeholderTextColor="#A8A29E"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          {cuisineSearch.length > 0 && (
-            <TouchableOpacity
-              style={styles.cuisineSearchClear}
-              onPress={() => setCuisineSearch('')}
-            >
-              <Text style={styles.cuisineSearchClearText}>✕</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+      {/* Selected count */}
+      {selectedCuisines.length > 0 && (
+        <Text style={styles.selectedCount}>
+          {selectedCuisines.length} selected
+        </Text>
       )}
 
+      {/* Region tabs */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.regionScroll}>
+        <View style={styles.regionRow}>
+          {REGION_TABS.map(region => (
+            <TouchableOpacity
+              key={region}
+              style={[styles.regionTab, cuisineRegion === region && styles.regionTabActive]}
+              onPress={() => setCuisineRegion(region)}
+            >
+              <Text style={[styles.regionTabText, cuisineRegion === region && styles.regionTabTextActive]}>
+                {region}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+
+      {/* Cuisine pills for current region */}
       <View style={styles.pillGrid}>
-        {(filteredCuisines as readonly string[]).map(cuisine =>
+        {currentRegionCuisines.map(cuisine =>
           renderPill(
             cuisine,
             selectedCuisines.includes(cuisine),
@@ -329,18 +326,6 @@ export function TastePreferencesScreen({ onComplete, onBack }: Props) {
           )
         )}
       </View>
-
-      <TouchableOpacity
-        style={styles.showAllButton}
-        onPress={() => {
-          setShowAllCuisines(!showAllCuisines);
-          setCuisineSearch('');
-        }}
-      >
-        <Text style={styles.showAllButtonText}>
-          {showAllCuisines ? 'Show popular only' : `Show all ${ALL_CUISINES.length} cuisines`}
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 
@@ -533,6 +518,44 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     maxWidth: '90%',
     marginBottom: 32,
+  },
+  // Selected count
+  selectedCount: {
+    fontFamily: 'DMSans-SemiBold',
+    fontSize: 13,
+    color: RED,
+    marginBottom: 16,
+  },
+  // Region tabs
+  regionScroll: {
+    marginBottom: 20,
+    marginHorizontal: -32,
+    paddingHorizontal: 32,
+  },
+  regionRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  regionTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  regionTabActive: {
+    backgroundColor: RED,
+    borderColor: RED,
+  },
+  regionTabText: {
+    fontFamily: 'DMSans-Medium',
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  regionTabTextActive: {
+    fontFamily: 'DMSans-Bold',
+    color: '#FFFFFF',
   },
   // Pills
   pillGrid: {

@@ -25,7 +25,7 @@ interface DishRecommendationsProps {
     hungerLevel: number;
     preferenceLevel: number;
     selectedCravings: string[];
-    mealStructure?: string; // 'starter', 'main', 'main+starter', 'share'
+    diningOccasion?: string; // 'solo', 'date', 'friends', 'family', 'business'
   };
   onContinue: (dishes: Recommendation[]) => void;
   onBack: () => void;
@@ -208,7 +208,8 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
           hungerLevel: userPreferences.hungerLevel,
           preferenceLevel: userPreferences.preferenceLevel,
           selectedCravings: userPreferences.selectedCravings,
-          spiceTolerance: user?.spice_tolerance || 3
+          spiceTolerance: user?.spice_tolerance || 3,
+          diningOccasion: userPreferences.diningOccasion,
         },
         [] // friendSelections - empty for now
       );
@@ -271,14 +272,12 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
       // Store all recommendations for "Other recommendations" section
       setRecommendations(newRecommendations);
       
-      // Filter to show top recommendation(s) per course based on meal structure
-      const mealStructurePref = userPreferences.mealStructure || 'main';
-      const filteredByMealStructure = filterRecommendationsByMealStructure(newRecommendations, mealStructurePref);
-      setFilteredRecommendations(filteredByMealStructure);
-      
+      // Agent already handles meal composition — show all recommendations
+      setFilteredRecommendations(newRecommendations);
+
       // Auto-select the top recommendation (skip dishes user has already had)
-      if (filteredByMealStructure.length > 0) {
-        const topRecommendation = getTopRecommendation(filteredByMealStructure);
+      if (newRecommendations.length > 0) {
+        const topRecommendation = getTopRecommendation(newRecommendations);
         if (topRecommendation) {
           setSelectedDish(topRecommendation);
           console.log('🎯 Selected top recommendation:', topRecommendation.name, 'User had before:', hasUserHadDish(topRecommendation.name));

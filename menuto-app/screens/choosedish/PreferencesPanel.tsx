@@ -12,11 +12,11 @@ interface PreferencesPanelProps {
   hungerLevel: number;
   preferenceLevel: number;
   selectedCravings: string[];
-  mealStructure: string;
+  diningOccasion: string;
   onSetHungerLevel: (level: number) => void;
   onSetPreferenceLevel: (level: number) => void;
   onToggleCraving: (craving: string) => void;
-  onSetMealStructure: (structure: string) => void;
+  onSetDiningOccasion: (occasion: string) => void;
   onContinue: () => void;
 }
 
@@ -85,11 +85,11 @@ export function PreferencesPanel({
   hungerLevel,
   preferenceLevel,
   selectedCravings,
-  mealStructure,
+  diningOccasion,
   onSetHungerLevel,
   onSetPreferenceLevel,
   onToggleCraving,
-  onSetMealStructure,
+  onSetDiningOccasion,
   onContinue,
 }: PreferencesPanelProps) {
   return (
@@ -149,16 +149,18 @@ export function PreferencesPanel({
         </View>
       </View>
 
-      {/* Meal Structure Selection */}
+      {/* Dining Context */}
       <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>What do you want to order?</Text>
+        <Text style={styles.sectionTitle}>What's the vibe?</Text>
         <View style={styles.chipsContainer}>
           {[
-            { key: 'main', label: 'Just a main' },
-            { key: 'main+starter', label: 'Main + starter' },
-            { key: 'share', label: 'Something to share' },
+            { key: 'solo', label: '🙋 Just me' },
+            { key: 'date', label: '❤️ Date night' },
+            { key: 'friends', label: '👯 With friends' },
+            { key: 'family', label: '👨‍👩‍👧 Family' },
+            { key: 'business', label: '💼 Business' },
           ].map(({ key, label }) => {
-            const isSelected = mealStructure === key;
+            const isSelected = diningOccasion === key;
             return (
               <TouchableOpacity
                 key={key}
@@ -166,7 +168,7 @@ export function PreferencesPanel({
                   styles.chip,
                   isSelected && styles.chipSelected,
                 ]}
-                onPress={() => onSetMealStructure(key)}
+                onPress={() => onSetDiningOccasion(key)}
                 activeOpacity={0.7}
               >
                 <Text
