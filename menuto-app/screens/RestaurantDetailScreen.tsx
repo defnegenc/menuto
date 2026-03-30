@@ -733,10 +733,6 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
           <Text style={styles.backArrow}>{'←'}</Text>
           <Text style={styles.backLabel}>BACK</Text>
         </TouchableOpacity>
-        <View style={styles.eyebrowRow}>
-          <View style={styles.eyebrowLine} />
-          <Text style={styles.eyebrowText}>Restaurant</Text>
-        </View>
         <Text style={styles.restaurantName} numberOfLines={2}>{restaurant.name}</Text>
         <Text style={styles.cuisineLine}>
           {(restaurant.cuisine_type || 'DINING').toUpperCase()}{restaurant.rating ? ` · ${restaurant.rating}\u2605` : ''}
@@ -1179,16 +1175,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FAFAF9',
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E5E5',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 8,
+    borderColor: '#F5F5F4',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 10,
   },
   searchIcon: {
-    fontSize: 16,
-    color: '#999999',
+    fontSize: 18,
+    color: '#8C7E77',
     transform: [{ scaleX: -1 }],
   },
   searchTextInput: {
