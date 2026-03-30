@@ -40,10 +40,10 @@ const styles = StyleSheet.create({
     gap: 0,
   },
   title: {
-    fontFamily: 'DMSans-Bold',
+    fontFamily: 'PlayfairDisplay-Italic',
     fontSize: 36,
     lineHeight: 40,
-    letterSpacing: -1.5,
+    letterSpacing: -1,
     color: '#1A1A1A',
   },
   accent: {
