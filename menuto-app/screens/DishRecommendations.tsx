@@ -677,7 +677,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: '#E7E5E4',
-    borderRadius: 999,
+    borderRadius: 0,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
@@ -705,7 +705,7 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     backgroundColor: '#1C1917',
-    borderRadius: 999,
+    borderRadius: 0,
     paddingVertical: 18,
     alignItems: 'center',
     shadowColor: '#000',

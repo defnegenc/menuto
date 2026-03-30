@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 4,
     backgroundColor: '#F5F5F4',
-    borderRadius: 999,
+    borderRadius: 4,
   },
   sliderDotsRow: {
     position: 'absolute',
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   },
   chip: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 999,
+    borderRadius: 4,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderWidth: 1,
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
   // Continue button
   continueButton: {
     backgroundColor: '#1C1917',
-    borderRadius: 999,
+    borderRadius: 0,
     paddingVertical: 18,
     alignItems: 'center',
     justifyContent: 'center',

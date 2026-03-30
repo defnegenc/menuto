@@ -360,7 +360,7 @@ export function ChooseDishLanding({
                 )}
               </View>
               {selectedRestaurant && (
-                <TouchableOpacity onPress={() => { setSelectedRestaurant(null); setSearchText(''); setMenuDishes([]); setMenuFound(false); }}>
+                <TouchableOpacity onPress={() => { setSelectedRestaurant(null); setSearchText(''); setMenuDishes([]); }}>
                   <Text style={styles.changeLink}>Change</Text>
                 </TouchableOpacity>
               )}
@@ -621,17 +621,38 @@ const PARSING_MESSAGES = [
 
 function ParsingScreen({ restaurantName }: { restaurantName?: string }) {
   const [messageIndex, setMessageIndex] = useState(0);
-  const opacity = useRef(new Animated.Value(1)).current;
+  const messageOpacity = useRef(new Animated.Value(1)).current;
+  const lineOpacity = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    // Pulsing line animation: opacity 0.3 -> 1.0 looping
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(lineOpacity, {
+          toValue: 1.0,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(lineOpacity, {
+          toValue: 0.3,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [lineOpacity]);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      Animated.timing(opacity, {
+      Animated.timing(messageOpacity, {
         toValue: 0,
         duration: 250,
         useNativeDriver: true,
       }).start(() => {
         setMessageIndex((prev) => (prev < PARSING_MESSAGES.length - 1 ? prev + 1 : prev));
-        Animated.timing(opacity, {
+        Animated.timing(messageOpacity, {
           toValue: 1,
           duration: 250,
           useNativeDriver: true,
@@ -639,19 +660,15 @@ function ParsingScreen({ restaurantName }: { restaurantName?: string }) {
       });
     }, 2800);
     return () => clearInterval(interval);
-  }, [opacity]);
+  }, [messageOpacity]);
 
   return (
     <View style={styles.parsingContainer}>
+      <Animated.View style={[styles.parsingLine, { opacity: lineOpacity }]} />
       {restaurantName && (
         <Text style={styles.parsingRestaurantName}>{restaurantName}</Text>
       )}
-      <View style={styles.parsingDotsRow}>
-        <View style={[styles.parsingDot, { opacity: 0.3 }]} />
-        <View style={[styles.parsingDot, { opacity: 0.6 }]} />
-        <View style={styles.parsingDot} />
-      </View>
-      <Animated.Text style={[styles.parsingText, { opacity }]}>
+      <Animated.Text style={[styles.parsingText, { opacity: messageOpacity }]}>
         {PARSING_MESSAGES[messageIndex]}
       </Animated.Text>
       <Text style={styles.parsingSubtext}>This may take a few moments</Text>
@@ -700,6 +717,66 @@ const styles = StyleSheet.create({
     fontFamily: 'PlayfairDisplay-Italic',
     color: RED,
     fontWeight: '500',
+  },
+  // Steps
+  stepBlock: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  stepHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  stepNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepNumberDone: {
+    backgroundColor: '#E9323D',
+  },
+  stepNumberText: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 14,
+    color: '#9CA3AF',
+  },
+  stepNumberTextDone: {
+    color: '#FFFFFF',
+  },
+  stepMeta: {
+    flex: 1,
+    gap: 2,
+  },
+  stepTitle: {
+    fontFamily: 'DMSans-SemiBold',
+    fontSize: 17,
+    color: '#1A1A1A',
+  },
+  stepSubtitle: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 13,
+    color: '#9CA3AF',
+  },
+  changeLink: {
+    fontFamily: 'DMSans-SemiBold',
+    fontSize: 14,
+    color: '#E9323D',
+  },
+  stepContent: {
+    marginTop: 16,
+  },
+  noResultsText: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    paddingVertical: 20,
   },
   searchSection: {
     paddingHorizontal: 16,
@@ -781,37 +858,32 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 40,
+  },
+  parsingLine: {
+    width: 48,
+    height: 1,
+    backgroundColor: TERRA,
+    marginBottom: 24,
   },
   parsingRestaurantName: {
     fontSize: 28,
     fontFamily: 'PlayfairDisplay-Italic',
     color: '#1C1917',
     letterSpacing: -0.5,
-    marginBottom: 32,
+    marginBottom: 16,
     textAlign: 'center',
   },
-  parsingDotsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 20,
-  },
-  parsingDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: TERRA,
-  },
   parsingText: {
-    fontSize: 18,
-    fontFamily: 'DMSans-Bold',
+    fontSize: 14,
+    fontFamily: 'DMSans-Regular',
     color: '#444444',
     textAlign: 'center',
   },
   parsingSubtext: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#666666',
-    marginTop: 8,
+    marginTop: 6,
     textAlign: 'center',
     fontFamily: 'DMSans-Regular',
   },
@@ -893,7 +965,7 @@ const styles = StyleSheet.create({
   addUrlButton: {
     marginTop: 16,
     paddingVertical: 12,
-    borderRadius: 999,
+    borderRadius: 0,
     borderWidth: 1,
     borderColor: '#F5F5F4',
     alignItems: 'center',
@@ -908,7 +980,7 @@ const styles = StyleSheet.create({
   removeUrlButton: {
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 999,
+    borderRadius: 0,
     backgroundColor: '#FAFAF9',
     borderWidth: 1,
     borderColor: '#F5F5F4',

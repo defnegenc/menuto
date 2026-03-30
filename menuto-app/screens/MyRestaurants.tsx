@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
   },
   footerButton: {
     backgroundColor: '#1A1A1A',
-    borderRadius: 999,
+    borderRadius: 0,
     paddingVertical: 18,
     alignItems: 'center',
     shadowColor: '#1A1A1A',

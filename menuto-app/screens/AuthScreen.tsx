@@ -624,7 +624,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
     paddingHorizontal: 18,
     paddingVertical: 8,
-    borderRadius: 999,
+    borderRadius: 4,
     backgroundColor: TERRA_LIGHT,
   },
   lastAuthBadgeText: {
@@ -658,7 +658,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
     borderColor: '#E7E5E4',
-    borderRadius: 999,
+    borderRadius: 0,
     paddingVertical: 16,
     marginBottom: 0,
   },
@@ -693,14 +693,14 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: '#F0EEEA',
-    borderRadius: 999,
+    borderRadius: 4,
     padding: 4,
     marginBottom: 28,
   },
   tab: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 999,
+    borderRadius: 4,
     alignItems: 'center',
   },
   tabActive: {
@@ -740,7 +740,7 @@ const styles = StyleSheet.create({
   },
   authButton: {
     backgroundColor: TERRA,
-    borderRadius: 999,
+    borderRadius: 0,
     paddingVertical: 18,
     alignItems: 'center',
     marginTop: 10,

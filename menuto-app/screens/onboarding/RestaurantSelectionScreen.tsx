@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     backgroundColor: '#F9FAFB',
-    borderRadius: 999,
+    borderRadius: 4,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1,
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
   },
   ctaButton: {
     backgroundColor: DARK,
-    borderRadius: 999,
+    borderRadius: 0,
     paddingVertical: 18,
     flexDirection: 'row',
     alignItems: 'center',
@@ -586,7 +586,7 @@ const styles = StyleSheet.create({
   },
   ctaBadge: {
     backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 999,
+    borderRadius: 4,
     paddingHorizontal: 8,
     paddingVertical: 2,
     marginLeft: 4,

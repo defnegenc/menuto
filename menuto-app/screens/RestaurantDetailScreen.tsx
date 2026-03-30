@@ -1485,7 +1485,7 @@ const styles = StyleSheet.create({
   removeUrlButton: {
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 999,
+    borderRadius: 0,
     backgroundColor: '#E9323D',
   },
   removeUrlButtonText: {

@@ -540,7 +540,7 @@ const styles = StyleSheet.create({
   regionTab: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 999,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: '#E7E5E4',
     backgroundColor: '#FFFFFF',
@@ -565,7 +565,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   pill: {
-    borderRadius: 999,
+    borderRadius: 4,
     paddingHorizontal: 20,
     paddingVertical: 10,
   },
@@ -801,7 +801,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: DARK,
-    borderRadius: 999,
+    borderRadius: 0,
     paddingVertical: 18,
     flexDirection: 'row',
     alignItems: 'center',
