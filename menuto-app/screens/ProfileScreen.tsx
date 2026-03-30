@@ -385,8 +385,8 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut, onTestOnboarding,
             </TouchableOpacity>
           )}
           <View style={{ flex: 1 }} />
-          <TouchableOpacity onPress={handleStartEditingPreferences}>
-            <Text style={styles.editLink}>Edit</Text>
+          <TouchableOpacity onPress={isEditingPreferences ? handleSavePreferences : handleStartEditingPreferences}>
+            <Text style={styles.editLink}>{isEditingPreferences ? 'Done' : 'Edit'}</Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -19,8 +19,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { useStore } from '../store/useStore';
 import { api } from '../services/api';
 import { FavoriteRestaurant, ParsedDish } from '../types';
-import { MenuItemCard } from '../components/MenuItemCard';
-import { DishChip } from '../components/DishChip';
 import { NoMenuState } from '../components/NoMenuState';
 
 interface Props {
@@ -729,16 +727,20 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Editorial header — matches MyRestaurants style */}
+      {/* Editorial journal header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backArrow}>←</Text>
+          <Text style={styles.backArrow}>{'←'}</Text>
+          <Text style={styles.backLabel}>BACK</Text>
         </TouchableOpacity>
         <View style={styles.eyebrowRow}>
           <View style={styles.eyebrowLine} />
           <Text style={styles.eyebrowText}>Restaurant</Text>
         </View>
         <Text style={styles.restaurantName} numberOfLines={2}>{restaurant.name}</Text>
+        <Text style={styles.cuisineLine}>
+          {(restaurant.cuisine_type || 'DINING').toUpperCase()}{restaurant.rating ? ` · ${restaurant.rating}\u2605` : ''}
+        </Text>
         <Text style={styles.restaurantAddress} numberOfLines={1}>
           {(restaurant.vicinity ?? 'Location unknown').split(',').slice(0, 3).join(', ')}
         </Text>
@@ -770,34 +772,42 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
             />
           ) : (
             <View style={styles.menuContainer}>
-              {/* Fixed Search Bar - Always at the top, never remounts */}
+              {/* Minimal search bar */}
               <View style={styles.searchContainer}>
                 <View style={styles.searchInput}>
                   <Text style={styles.searchIcon}>{'🔍'}</Text>
                   <TextInput
-                    style={styles.searchText}
+                    style={styles.searchTextInput}
                     value={searchText}
                     onChangeText={handleSearchMenu}
-                    placeholder="Search the menu..."
-                    placeholderTextColor="#8C7E77"
+                    placeholder="Search dishes..."
+                    placeholderTextColor="#999999"
                   />
                 </View>
               </View>
 
-              {/* Search Results - Show when searching */}
+              {/* Search Results - inline dish items */}
               {searchText.trim() && (
                 <View style={styles.searchResultsSection}>
                   <Text style={styles.sectionTitle}>
                     Search Results
                   </Text>
-                  
+
                   {filteredDishes.map((dish, index) => (
-                    <MenuItemCard
-                      key={dish.id || `search-dish-${index}`}
-                      dish={dish}
-                      onAddToFavorites={handleAddDishToFavorites}
-                      isFavorite={isDishFavorite(dish)}
-                    />
+                    <View key={dish.id || `search-dish-${index}`}>
+                      <View style={styles.dishRow}>
+                        <View style={styles.dishTextCol}>
+                          <Text style={styles.dishName}>{dish.name}</Text>
+                          {dish.description ? (
+                            <Text style={styles.dishDescription} numberOfLines={2}>{dish.description}</Text>
+                          ) : null}
+                        </View>
+                        <TouchableOpacity onPress={() => handleAddDishToFavorites(dish)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                          <Text style={isDishFavorite(dish) ? styles.heartFilled : styles.heartEmpty}>♥</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <View style={styles.dishDivider} />
+                    </View>
                   ))}
                   {filteredDishes.length === 0 && (
                     <Text style={styles.noResultsText}>No dishes found matching "{searchText}"</Text>
@@ -805,57 +815,33 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                 </View>
               )}
 
-              {/* Your Favorites Section - Only show if user has favorites for this restaurant */}
+              {/* Your Favorites — dashed red border box */}
               {(() => {
                 const favoriteDishes = getFavoriteDishesForRestaurant();
                 return favoriteDishes.length > 0 ? (
-                  <View style={styles.favoritesSection}>
-                    <Text style={styles.sectionTitle}>Your Favorites</Text>
-                    <View style={styles.favoritesCards}>
-                      {favoriteDishes.map((favorite, index) => {
-                        // Find the full dish data from menuDishes
-                        const fullDish = menuDishes.find(dish => 
-                          dish.name === favorite.dish_name
-                        );
-                        
-                        // Always create a proper dish object for consistent display
-                        const displayDish: ParsedDish = fullDish || {
-                          id: `favorite-${index}`,
-                          name: favorite.dish_name,
-                          description: '', // No description available for favorites without full dish data
-                          category: 'favorite',
-                          ingredients: [],
-                          dietary_tags: [],
-                          is_user_added: false,
-                          score: 0,
-                          explanation: '',
-                          restaurant_id: restaurant.place_id
-                        };
-                        
-                        return (
-                          <MenuItemCard
-                            key={`${favorite.dish_name}-${index}`}
-                            dish={displayDish}
-                            onAddToFavorites={handleAddDishToFavorites}
-                            isFavorite={true}
-                          />
-                        );
-                      })}
-                    </View>
+                  <View style={styles.favoritesBox}>
+                    <Text style={styles.favoritesBoxLabel}>YOUR FAVORITES</Text>
+                    <Text style={styles.favoritesBoxList}>
+                      {favoriteDishes.map(f => f.dish_name).join(', ')}
+                    </Text>
                   </View>
                 ) : null;
               })()}
 
+              {/* "THE MENU" label with red underline */}
               <View style={styles.menuHeader}>
                 <View style={styles.menuTitleRow}>
-                  <Text style={styles.sectionTitle}>Menu</Text>
+                  <View style={styles.menuLabelWrap}>
+                    <Text style={styles.menuLabel}>THE MENU</Text>
+                    <View style={styles.menuLabelUnderline} />
+                  </View>
                   {showAddMoreOptions ? (
                     <TouchableOpacity style={styles.addMoreButton} onPress={() => setShowAddMoreOptions(false)}>
                       <Text style={styles.addMoreButtonText}>Cancel</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity style={styles.addMoreButton} onPress={() => setShowAddMoreOptions(true)}>
-                      <Text style={styles.addMoreButtonText}>+ Add More Items</Text>
+                      <Text style={styles.addMoreButtonText}>+ Add More</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -871,90 +857,101 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                 )}
               </View>
 
-              {/* Menu Type Tabs (Lunch/Dinner/etc - top-level selection) */}
+              {/* Menu Type Tabs — simple text tabs */}
               {availableMenuTypes.length > 1 && (
                 <View style={styles.menuTypeTabsContainer}>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.menuTypeTabsScroll}>
                     {availableMenuTypes.map((p) => (
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         key={p}
-                        style={[
-                          styles.menuTypeTab, 
-                          selectedMenuType === p && styles.menuTypeTabActive
-                        ]}
+                        style={styles.menuTypeTab}
                         onPress={() => setSelectedMenuType(p)}
                       >
                         <Text style={[
                           styles.menuTypeTabText,
                           selectedMenuType === p && styles.menuTypeTabTextActive
                         ]}>{p.charAt(0).toUpperCase() + p.slice(1)}</Text>
+                        {selectedMenuType === p && <View style={styles.menuTypeTabActiveLine} />}
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
                 </View>
               )}
 
-              {/* Category Filter Pills (Starter/Main/etc - secondary filter) */}
+              {/* Category filter — text pills, no background when inactive */}
               <View style={styles.categoryFilterSection}>
-                <View style={styles.categoryFilterContainer}>
-                  <TouchableOpacity 
-                    style={[
-                      styles.categoryFilterButton, 
-                      selectedCategory === 'all' && styles.categoryFilterButtonActive
-                    ]}
-                    onPress={() => setSelectedCategory('all')}
-                  >
-                    <Text style={[
-                      styles.categoryFilterText,
-                      selectedCategory === 'all' && styles.categoryFilterTextActive
-                    ]}>All</Text>
-                  </TouchableOpacity>
-
-                  {Object.keys(groupedDishes).map((category) => (
-                    <TouchableOpacity 
-                      key={category}
-                      style={[
-                        styles.categoryFilterButton, 
-                        selectedCategory === category && styles.categoryFilterButtonActive
-                      ]}
-                      onPress={() => setSelectedCategory(category)}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={styles.categoryFilterContainer}>
+                    <TouchableOpacity
+                      style={styles.categoryFilterButton}
+                      onPress={() => setSelectedCategory('all')}
                     >
                       <Text style={[
                         styles.categoryFilterText,
-                        selectedCategory === category && styles.categoryFilterTextActive
-                      ]}>{category.charAt(0).toUpperCase() + category.slice(1)}</Text>
+                        selectedCategory === 'all' && styles.categoryFilterTextActive
+                      ]}>All</Text>
+                      {selectedCategory === 'all' && <View style={styles.categoryUnderline} />}
                     </TouchableOpacity>
-                  ))}
-                </View>
+
+                    {Object.keys(groupedDishes).map((category) => (
+                      <TouchableOpacity
+                        key={category}
+                        style={styles.categoryFilterButton}
+                        onPress={() => setSelectedCategory(category)}
+                      >
+                        <Text style={[
+                          styles.categoryFilterText,
+                          selectedCategory === category && styles.categoryFilterTextActive
+                        ]}>{category.charAt(0).toUpperCase() + category.slice(1)}</Text>
+                        {selectedCategory === category && <View style={styles.categoryUnderline} />}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
               </View>
 
+              {/* Dish items — inline, no cards */}
               {selectedCategory === 'all' ? (
-                // Show all dishes grouped by category
                 Object.entries(groupedDishes).map(([category, dishes]) => (
                   <View key={category} style={styles.categorySection}>
-                    <Text style={styles.categoryTitle}>{category.charAt(0).toUpperCase() + category.slice(1)} ({dishes.length} items)</Text>
+                    <Text style={styles.categoryTitle}>{category.charAt(0).toUpperCase() + category.slice(1)}</Text>
                     {dishes.map((dish, index) => (
-                      <MenuItemCard
-                        key={dish.id || `dish-${index}`}
-                        dish={dish}
-                        onAddToFavorites={handleAddDishToFavorites}
-                        isFavorite={isDishFavorite(dish)}
-                      />
+                      <View key={dish.id || `dish-${index}`}>
+                        <View style={styles.dishRow}>
+                          <View style={styles.dishTextCol}>
+                            <Text style={styles.dishName}>{dish.name}</Text>
+                            {dish.description ? (
+                              <Text style={styles.dishDescription} numberOfLines={2}>{dish.description}</Text>
+                            ) : null}
+                          </View>
+                          <TouchableOpacity onPress={() => handleAddDishToFavorites(dish)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                            <Text style={isDishFavorite(dish) ? styles.heartFilled : styles.heartEmpty}>♥</Text>
+                          </TouchableOpacity>
+                        </View>
+                        <View style={styles.dishDivider} />
+                      </View>
                     ))}
                   </View>
                 ))
               ) : (
-                // Show dishes for selected category only
                 groupedDishes[selectedCategory] && (
                   <View style={styles.categorySection}>
-                    <Text style={styles.categoryTitle}>{selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} ({groupedDishes[selectedCategory].length} items)</Text>
+                    <Text style={styles.categoryTitle}>{selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}</Text>
                     {groupedDishes[selectedCategory].map((dish, index) => (
-                      <MenuItemCard
-                        key={dish.id || `dish-${index}`}
-                        dish={dish}
-                        onAddToFavorites={handleAddDishToFavorites}
-                        isFavorite={isDishFavorite(dish)}
-                      />
+                      <View key={dish.id || `dish-${index}`}>
+                        <View style={styles.dishRow}>
+                          <View style={styles.dishTextCol}>
+                            <Text style={styles.dishName}>{dish.name}</Text>
+                            {dish.description ? (
+                              <Text style={styles.dishDescription} numberOfLines={2}>{dish.description}</Text>
+                            ) : null}
+                          </View>
+                          <TouchableOpacity onPress={() => handleAddDishToFavorites(dish)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                            <Text style={isDishFavorite(dish) ? styles.heartFilled : styles.heartEmpty}>♥</Text>
+                          </TouchableOpacity>
+                        </View>
+                        <View style={styles.dishDivider} />
+                      </View>
                     ))}
                   </View>
                 )
@@ -962,6 +959,16 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
             </View>
           )}
         </ScrollView>
+      )}
+
+      {/* Fixed bottom CTA */}
+      {menuDishes.length > 0 && !isLoading && !isParsing && (
+        <View style={styles.bottomCta}>
+          <View style={styles.ctaRedLine} />
+          <TouchableOpacity onPress={onGetRecommendations}>
+            <Text style={styles.ctaText}>CHOOSE DISH</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Paste Menu Text Modal */}
@@ -1073,24 +1080,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  // Inline header
+
+  /* ── Header ────────────────────────────────── */
   header: {
     paddingHorizontal: 24,
     paddingTop: 8,
-    paddingBottom: 16,
+    paddingBottom: 20,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FAFAF9',
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
+    gap: 4,
+    marginBottom: 16,
+    alignSelf: 'flex-start',
   },
   backArrow: {
-    fontSize: 20,
-    color: '#1C1917',
+    fontSize: 14,
+    color: '#666666',
+  },
+  backLabel: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 10,
+    letterSpacing: 4,
+    color: '#666666',
+    textTransform: 'uppercase',
   },
   eyebrowRow: {
     flexDirection: 'row',
@@ -1112,19 +1125,28 @@ const styles = StyleSheet.create({
   },
   restaurantName: {
     fontFamily: 'DMSans-Bold',
-    fontSize: 36,
-    lineHeight: 40,
-    letterSpacing: -1.5,
-    color: '#1C1917',
+    fontSize: 48,
+    lineHeight: 48 * 0.85,
+    letterSpacing: -2.5,
+    color: '#1A1A1A',
+    marginBottom: 8,
+  },
+  cuisineLine: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 12,
+    letterSpacing: 3,
+    color: '#E9323D',
+    textTransform: 'uppercase',
     marginBottom: 4,
   },
   restaurantAddress: {
     fontFamily: 'DMSans-Regular',
     fontSize: 14,
-    color: '#8C7E77',
+    color: '#666666',
     fontStyle: 'italic',
   },
-  // Loading
+
+  /* ── Loading ───────────────────────────────── */
   loadingContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -1135,72 +1157,68 @@ const styles = StyleSheet.create({
   loadingMessage: {
     fontFamily: 'DMSans-Bold',
     fontSize: 18,
-    color: '#1C1917',
+    color: '#1A1A1A',
     marginTop: 20,
     textAlign: 'center',
   },
   loadingSubMessage: {
     fontFamily: 'DMSans-Regular',
     fontSize: 14,
-    color: '#8C7E77',
+    color: '#666666',
     marginTop: 8,
     textAlign: 'center',
   },
+
+  /* ── Scroll / Menu container ───────────────── */
   scrollView: {
     flex: 1,
   },
   menuContainer: {
-    padding: 20,
-    paddingTop: 12,
-  },
-  searchResultsSection: {
-    marginBottom: 24,
-  },
-  favoritesSection: {
-    marginBottom: 24,
-  },
-  emptyFavoritesText: {
-    fontSize: 14,
-    color: '#5A4D48',
-    fontStyle: 'italic',
-    fontFamily: 'DMSans-Regular',
-  },
-  // Search input — matches MyRestaurants style
-  searchContainer: {
     paddingHorizontal: 24,
-    marginBottom: 16,
+    paddingTop: 8,
+    paddingBottom: 100, // room for fixed bottom CTA
+  },
+
+  /* ── Search ────────────────────────────────── */
+  searchContainer: {
+    marginBottom: 24,
   },
   searchInput: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FAFAF9',
-    borderRadius: 16,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#F5F5F4',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 10,
+    borderColor: '#E5E5E5',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 8,
   },
   searchIcon: {
-    fontSize: 18,
-    color: '#8C7E77',
+    fontSize: 16,
+    color: '#999999',
     transform: [{ scaleX: -1 }],
   },
-  searchText: {
+  searchTextInput: {
     flex: 1,
     fontFamily: 'DMSans-Regular',
     fontSize: 14,
-    color: '#1C1917',
+    color: '#1A1A1A',
+    padding: 0,
+  },
+  searchResultsSection: {
+    marginBottom: 32,
   },
   noResultsText: {
     fontSize: 14,
-    color: '#5A4D48',
+    color: '#666666',
     textAlign: 'center',
     fontStyle: 'italic',
     padding: 20,
     fontFamily: 'DMSans-Regular',
   },
-  // Section titles — dark blue eyebrow pattern
+
+  /* ── Section titles ────────────────────────── */
   sectionTitle: {
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
@@ -1209,87 +1227,214 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: 12,
   },
-  favoritesTitle: {
+
+  /* ── Favorites dashed box ──────────────────── */
+  favoritesBox: {
+    borderWidth: 2,
+    borderColor: '#E9323D',
+    borderStyle: 'dashed',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 32,
+  },
+  favoritesBoxLabel: {
     fontFamily: 'DMSans-Bold',
-    fontSize: 18,
-    color: '#1C1917',
-  },
-  favoritesCards: {
-    marginBottom: 16,
-    gap: 12,
-  },
-  fallbackCard: {
-    backgroundColor: '#FAFAF9',
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#F5F5F4',
-  },
-  fallbackDishName: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 16,
-    color: '#1C1917',
-  },
-  removeButton: {
-    backgroundColor: '#E9323D',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-  },
-  removeButtonText: {
-    color: '#FFFFFF',
     fontSize: 12,
-    fontFamily: 'DMSans-Bold',
+    letterSpacing: 3,
+    color: '#E9323D',
+    textTransform: 'uppercase',
+    fontStyle: 'italic',
+    marginBottom: 4,
   },
+  favoritesBoxList: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 14,
+    color: '#444444',
+    fontStyle: 'italic',
+    lineHeight: 20,
+  },
+
+  /* ── Menu header / THE MENU label ──────────── */
   menuHeader: {
-    marginBottom: 0,
+    marginBottom: 20,
   },
   menuTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+  },
+  menuLabelWrap: {
+    alignSelf: 'flex-start',
+  },
+  menuLabel: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 12,
+    letterSpacing: 3,
+    color: '#E9323D',
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  menuLabelUnderline: {
+    width: 56,
+    height: 4,
+    backgroundColor: '#E9323D',
+    borderRadius: 2,
   },
   addMoreButton: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
+    paddingHorizontal: 0,
+    paddingVertical: 4,
   },
   addMoreButtonText: {
     color: '#E9323D',
     fontSize: 12,
     fontFamily: 'DMSans-Bold',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   addMoreContainer: {
     width: '100%',
-  },
-  menuActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginTop: 12,
   },
-  menuTitle: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 20,
-    color: '#1C1917',
+
+  /* ── Menu type tabs ────────────────────────── */
+  menuTypeTabsContainer: {
+    marginBottom: 20,
   },
+  menuTypeTabsScroll: {
+    flexGrow: 0,
+  },
+  menuTypeTab: {
+    marginRight: 24,
+    paddingBottom: 6,
+    alignItems: 'center',
+  },
+  menuTypeTabText: {
+    fontSize: 14,
+    fontFamily: 'DMSans-Medium',
+    color: '#666666',
+  },
+  menuTypeTabTextActive: {
+    color: '#E9323D',
+    fontFamily: 'DMSans-Bold',
+  },
+  menuTypeTabActiveLine: {
+    width: '100%',
+    height: 2,
+    backgroundColor: '#E9323D',
+    marginTop: 4,
+    borderRadius: 1,
+  },
+
+  /* ── Category filter ───────────────────────── */
+  categoryFilterSection: {
+    marginBottom: 24,
+  },
+  categoryFilterContainer: {
+    flexDirection: 'row',
+    gap: 20,
+  },
+  categoryFilterButton: {
+    paddingVertical: 4,
+    alignItems: 'center',
+  },
+  categoryFilterText: {
+    fontSize: 13,
+    fontFamily: 'DMSans-Medium',
+    color: '#666666',
+  },
+  categoryFilterTextActive: {
+    color: '#E9323D',
+    fontFamily: 'DMSans-Bold',
+  },
+  categoryUnderline: {
+    width: '100%',
+    height: 2,
+    backgroundColor: '#E9323D',
+    marginTop: 3,
+    borderRadius: 1,
+  },
+
+  /* ── Category sections ─────────────────────── */
   categorySection: {
-    marginBottom: 16,
+    marginBottom: 8,
   },
   categoryTitle: {
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
     letterSpacing: 2,
-    color: '#8C7E77',
+    color: '#1B2541',
     textTransform: 'uppercase',
-    marginBottom: 12,
+    marginBottom: 16,
+    marginTop: 8,
   },
-  // Modals
+
+  /* ── Dish items (inline, no cards) ─────────── */
+  dishRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 4,
+  },
+  dishTextCol: {
+    flex: 1,
+  },
+  dishName: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 18,
+    color: '#1A1A1A',
+    letterSpacing: -0.3,
+    lineHeight: 24,
+  },
+  dishDescription: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 14,
+    color: '#444444',
+    lineHeight: 20,
+    marginTop: 2,
+  },
+  heartFilled: {
+    fontSize: 22,
+    color: '#E9323D',
+    marginTop: 2,
+  },
+  heartEmpty: {
+    fontSize: 22,
+    color: '#E5E5E5',
+    marginTop: 2,
+  },
+  dishDivider: {
+    height: 1,
+    backgroundColor: '#E5E5E5',
+    marginTop: 16,
+    marginBottom: 40,
+  },
+
+  /* ── Fixed bottom CTA ──────────────────────── */
+  bottomCta: {
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 2,
+    borderTopColor: '#1A1A1A',
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  ctaRedLine: {
+    width: 32,
+    height: 3,
+    backgroundColor: '#E9323D',
+    borderRadius: 2,
+    marginBottom: 8,
+  },
+  ctaText: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 12,
+    letterSpacing: 4,
+    color: '#E9323D',
+    textTransform: 'uppercase',
+  },
+
+  /* ── Modals ────────────────────────────────── */
   modalContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
@@ -1303,18 +1448,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F4',
+    borderBottomColor: '#E5E5E5',
   },
   modalCancelButton: {
     fontSize: 14,
-    color: '#5A4D48',
+    color: '#666666',
     fontFamily: 'DMSans-Regular',
   },
   modalTitle: {
     fontFamily: 'DMSans-Bold',
     fontSize: 18,
     letterSpacing: -0.5,
-    color: '#1C1917',
+    color: '#1A1A1A',
   },
   modalSubmitButton: {
     fontSize: 14,
@@ -1322,7 +1467,7 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Bold',
   },
   modalSubmitButtonDisabled: {
-    color: '#8C7E77',
+    color: '#999999',
   },
   modalContent: {
     flex: 1,
@@ -1331,7 +1476,7 @@ const styles = StyleSheet.create({
   },
   modalInstructions: {
     fontSize: 14,
-    color: '#5A4D48',
+    color: '#444444',
     marginBottom: 20,
     lineHeight: 20,
     fontFamily: 'DMSans-Regular',
@@ -1344,20 +1489,20 @@ const styles = StyleSheet.create({
   },
   menuUrlInput: {
     borderWidth: 1,
-    borderColor: '#E7E5E4',
-    borderRadius: 16,
+    borderColor: '#E5E5E5',
+    borderRadius: 8,
     padding: 14,
     fontSize: 14,
-    color: '#1C1917',
+    color: '#1A1A1A',
     backgroundColor: '#FAFAF9',
     fontFamily: 'DMSans-Regular',
   },
   addUrlButton: {
     marginTop: 20,
     paddingVertical: 14,
-    borderRadius: 16,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E7E5E4',
+    borderColor: '#E5E5E5',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FAFAF9',
@@ -1381,79 +1526,13 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     backgroundColor: '#FAFAF9',
-    borderRadius: 16,
+    borderRadius: 8,
     padding: 14,
     fontSize: 14,
-    color: '#1C1917',
+    color: '#1A1A1A',
     fontFamily: 'DMSans-Regular',
     borderWidth: 1,
-    borderColor: '#E7E5E4',
+    borderColor: '#E5E5E5',
     textAlignVertical: 'top',
-  },
-  // Menu type tabs
-  menuTypeTabsContainer: {
-    marginBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F4',
-  },
-  menuTypeTabsScroll: {
-    flexGrow: 0,
-  },
-  menuTypeTab: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    marginRight: 8,
-    borderBottomWidth: 3,
-    borderBottomColor: 'transparent',
-  },
-  menuTypeTabActive: {
-    borderBottomColor: '#E9323D',
-  },
-  menuTypeTabText: {
-    fontSize: 16,
-    fontFamily: 'DMSans-Bold',
-    color: '#5A4D48',
-  },
-  menuTypeTabTextActive: {
-    color: '#E9323D',
-  },
-  // Category filter chips
-  categoryFilterSection: {
-    marginBottom: 16,
-  },
-  categoryFilterLabel: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 10,
-    letterSpacing: 2,
-    color: '#8C7E77',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-  },
-  categoryFilterContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  categoryFilterButton: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#E7E5E4',
-  },
-  categoryFilterButtonActive: {
-    backgroundColor: '#E9323D',
-    borderWidth: 1,
-    borderColor: '#E9323D',
-  },
-  categoryFilterText: {
-    fontSize: 12,
-    fontFamily: 'DMSans-Regular',
-    color: '#5A4D48',
-  },
-  categoryFilterTextActive: {
-    color: '#FFFFFF',
-    fontFamily: 'DMSans-Bold',
   },
 });
