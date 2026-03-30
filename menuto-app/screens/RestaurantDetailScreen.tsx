@@ -961,15 +961,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
         </ScrollView>
       )}
 
-      {/* Fixed bottom CTA */}
-      {menuDishes.length > 0 && !isLoading && !isParsing && (
-        <View style={styles.bottomCta}>
-          <View style={styles.ctaRedLine} />
-          <TouchableOpacity onPress={onGetRecommendations}>
-            <Text style={styles.ctaText}>CHOOSE DISH</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      {/* Footer CTA removed — user navigates via tab bar or back button */}
 
       {/* Paste Menu Text Modal */}
       <Modal
@@ -1125,9 +1117,9 @@ const styles = StyleSheet.create({
   },
   restaurantName: {
     fontFamily: 'DMSans-Bold',
-    fontSize: 48,
-    lineHeight: 48 * 0.85,
-    letterSpacing: -2.5,
+    fontSize: 34,
+    lineHeight: 38,
+    letterSpacing: -1.5,
     color: '#1A1A1A',
     marginBottom: 8,
   },
@@ -1412,26 +1404,8 @@ const styles = StyleSheet.create({
   },
 
   /* ── Fixed bottom CTA ──────────────────────── */
-  bottomCta: {
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 2,
-    borderTopColor: '#1A1A1A',
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  ctaRedLine: {
-    width: 32,
-    height: 3,
-    backgroundColor: '#E9323D',
-    borderRadius: 2,
-    marginBottom: 8,
-  },
-  ctaText: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 12,
-    letterSpacing: 4,
-    color: '#E9323D',
-    textTransform: 'uppercase',
+  // bottomCta removed — user navigates via tab bar
+  _unused: {
   },
 
   /* ── Modals ────────────────────────────────── */
