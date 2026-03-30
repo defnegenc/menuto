@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { ParsedDish } from '../../types';
 
-const TERRA = '#CE3E25';
+const TERRA = '#E9323D';
 
 interface DishScoringCardProps {
   menuDishes: ParsedDish[];
@@ -209,9 +209,9 @@ const styles = StyleSheet.create({
     backgroundColor: TERRA,
   },
   loadingMessage: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: 'DMSans-Medium',
-    color: '#44403C',
+    color: '#5A4D48',
     letterSpacing: -0.3,
   },
 
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Bold',
   },
   menuFoundText: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: 'DMSans-Medium',
     color: '#1C1917',
   },
@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
     color: '#1C1917',
   },
   pasteTextLink: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: 'DMSans-Regular',
     color: '#A8A29E',
     textAlign: 'center',

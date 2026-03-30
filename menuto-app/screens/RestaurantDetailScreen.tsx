@@ -777,7 +777,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                     value={searchText}
                     onChangeText={handleSearchMenu}
                     placeholder="Search the menu..."
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor="#8C7E77"
                   />
                 </View>
               </View>
@@ -1083,28 +1083,28 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAFAF9',
     alignItems: 'center',
     justifyContent: 'center',
   },
   backArrow: {
     fontSize: 18,
-    color: '#111827',
+    color: '#1C1917',
     fontFamily: 'DMSans-Bold',
   },
   headerTextContainer: {
     flex: 1,
   },
   restaurantName: {
-    fontFamily: 'IBMPlexMono-SemiBold',
-    fontSize: 17,
+    fontFamily: 'DMSans-Bold',
+    fontSize: 18,
     letterSpacing: -0.5,
-    color: '#111827',
+    color: '#1C1917',
   },
   restaurantAddress: {
     fontFamily: 'DMSans-Regular',
-    fontSize: 13,
-    color: '#9CA3AF',
+    fontSize: 12,
+    color: '#8C7E77',
     marginTop: 2,
   },
   // Loading
@@ -1118,14 +1118,14 @@ const styles = StyleSheet.create({
   loadingMessage: {
     fontFamily: 'DMSans-Bold',
     fontSize: 18,
-    color: '#111827',
+    color: '#1C1917',
     marginTop: 20,
     textAlign: 'center',
   },
   loadingSubMessage: {
     fontFamily: 'DMSans-Regular',
     fontSize: 14,
-    color: '#9CA3AF',
+    color: '#8C7E77',
     marginTop: 8,
     textAlign: 'center',
   },
@@ -1143,8 +1143,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   emptyFavoritesText: {
-    fontSize: 15,
-    color: '#6B7280',
+    fontSize: 14,
+    color: '#5A4D48',
     fontStyle: 'italic',
     fontFamily: 'DMSans-Regular',
   },
@@ -1155,7 +1155,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAFAF9',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#F5F5F4',
@@ -1171,12 +1171,12 @@ const styles = StyleSheet.create({
   searchText: {
     flex: 1,
     fontFamily: 'DMSans-Regular',
-    fontSize: 15,
-    color: '#111827',
+    fontSize: 14,
+    color: '#1C1917',
   },
   noResultsText: {
-    fontSize: 15,
-    color: '#6B7280',
+    fontSize: 14,
+    color: '#5A4D48',
     textAlign: 'center',
     fontStyle: 'italic',
     padding: 20,
@@ -1187,14 +1187,14 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
     letterSpacing: 2,
-    color: '#9CA3AF',
+    color: '#8C7E77',
     textTransform: 'uppercase',
     marginBottom: 12,
   },
   favoritesTitle: {
     fontFamily: 'DMSans-Bold',
     fontSize: 18,
-    color: '#111827',
+    color: '#1C1917',
   },
   favoritesCards: {
     marginBottom: 16,
@@ -1208,12 +1208,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E7E5E4',
   },
   fallbackDishName: {
-    fontFamily: 'IBMPlexMono-SemiBold',
+    fontFamily: 'DMSans-Bold',
     fontSize: 16,
-    color: '#111827',
+    color: '#1C1917',
   },
   removeButton: {
     backgroundColor: '#E9323D',
@@ -1258,7 +1258,7 @@ const styles = StyleSheet.create({
   menuTitle: {
     fontFamily: 'DMSans-Bold',
     fontSize: 20,
-    color: '#111827',
+    color: '#1C1917',
   },
   categorySection: {
     marginBottom: 16,
@@ -1267,7 +1267,7 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
     letterSpacing: 2,
-    color: '#9CA3AF',
+    color: '#8C7E77',
     textTransform: 'uppercase',
     marginBottom: 12,
   },
@@ -1285,26 +1285,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: '#F5F5F4',
   },
   modalCancelButton: {
-    fontSize: 15,
-    color: '#6B7280',
+    fontSize: 14,
+    color: '#5A4D48',
     fontFamily: 'DMSans-Regular',
   },
   modalTitle: {
-    fontFamily: 'IBMPlexMono-SemiBold',
-    fontSize: 17,
+    fontFamily: 'DMSans-Bold',
+    fontSize: 18,
     letterSpacing: -0.5,
-    color: '#111827',
+    color: '#1C1917',
   },
   modalSubmitButton: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#E9323D',
     fontFamily: 'DMSans-Bold',
   },
   modalSubmitButtonDisabled: {
-    color: '#9CA3AF',
+    color: '#8C7E77',
   },
   modalContent: {
     flex: 1,
@@ -1312,8 +1312,8 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   modalInstructions: {
-    fontSize: 15,
-    color: '#6B7280',
+    fontSize: 14,
+    color: '#5A4D48',
     marginBottom: 20,
     lineHeight: 20,
     fontFamily: 'DMSans-Regular',
@@ -1326,12 +1326,12 @@ const styles = StyleSheet.create({
   },
   menuUrlInput: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E7E5E4',
     borderRadius: 16,
     padding: 14,
-    fontSize: 15,
-    color: '#111827',
-    backgroundColor: '#F9FAFB',
+    fontSize: 14,
+    color: '#1C1917',
+    backgroundColor: '#FAFAF9',
     fontFamily: 'DMSans-Regular',
   },
   addUrlButton: {
@@ -1339,13 +1339,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E7E5E4',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAFAF9',
   },
   addUrlButtonText: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#E9323D',
     fontFamily: 'DMSans-Bold',
   },
@@ -1362,21 +1362,21 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAFAF9',
     borderRadius: 16,
     padding: 14,
-    fontSize: 15,
-    color: '#111827',
+    fontSize: 14,
+    color: '#1C1917',
     fontFamily: 'DMSans-Regular',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E7E5E4',
     textAlignVertical: 'top',
   },
   // Menu type tabs
   menuTypeTabsContainer: {
     marginBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: '#F5F5F4',
   },
   menuTypeTabsScroll: {
     flexGrow: 0,
@@ -1394,7 +1394,7 @@ const styles = StyleSheet.create({
   menuTypeTabText: {
     fontSize: 16,
     fontFamily: 'DMSans-Bold',
-    color: '#6B7280',
+    color: '#5A4D48',
   },
   menuTypeTabTextActive: {
     color: '#E9323D',
@@ -1407,7 +1407,7 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
     letterSpacing: 2,
-    color: '#9CA3AF',
+    color: '#8C7E77',
     marginBottom: 8,
     textTransform: 'uppercase',
   },
@@ -1422,7 +1422,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E7E5E4',
   },
   categoryFilterButtonActive: {
     backgroundColor: '#E9323D',
@@ -1430,9 +1430,9 @@ const styles = StyleSheet.create({
     borderColor: '#E9323D',
   },
   categoryFilterText: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: 'DMSans-Regular',
-    color: '#6B7280',
+    color: '#5A4D48',
   },
   categoryFilterTextActive: {
     color: '#FFFFFF',

@@ -229,18 +229,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E7E5E4',
     padding: 20,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 18,
     fontFamily: 'DMSans-SemiBold',
-    color: '#111827',
+    color: '#1C1917',
     marginBottom: 8,
   },
   sectionSubtitle: {
-    fontSize: 13,
-    color: '#9CA3AF',
+    fontSize: 12,
+    color: '#8C7E77',
     marginBottom: 12,
     fontFamily: 'DMSans-Regular',
   },
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#E7E5E4',
   },
   sliderDotActive: {
     backgroundColor: RED,
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   },
   sliderLabel: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#8C7E77',
     fontFamily: 'DMSans-Medium',
   },
 
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E7E5E4',
   },
   chipSelected: {
     backgroundColor: '#FFF5F5',
@@ -342,13 +342,13 @@ const styles = StyleSheet.create({
 
   // Free-text mood
   moodInput: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAFAF9',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E7E5E4',
     padding: 16,
-    fontSize: 15,
-    color: '#111827',
+    fontSize: 14,
+    color: '#1C1917',
     fontFamily: 'DMSans-Regular',
     minHeight: 56,
     lineHeight: 22,
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
 
   // Continue button
   continueButton: {
-    backgroundColor: '#111111',
+    backgroundColor: '#1C1917',
     borderRadius: 999,
     paddingVertical: 18,
     alignItems: 'center',
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
   },
   continueButtonText: {
     color: '#FFFFFF',
-    fontSize: 17,
+    fontSize: 18,
     fontFamily: 'DMSans-SemiBold',
   },
 });

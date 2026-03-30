@@ -378,28 +378,17 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut, onTestOnboarding,
   return (
     <View style={styles.container}>
       <View style={[styles.screenHeader, { paddingTop: insets.top }]}>
-        {/* Back + test buttons */}
-        <View style={styles.headerTopRow}>
+        <View style={styles.headerRow}>
           {onBackToTabs && (
             <TouchableOpacity style={styles.backButton} onPress={onBackToTabs}>
               <Text style={styles.backArrow}>←</Text>
             </TouchableOpacity>
           )}
           <View style={{ flex: 1 }} />
-          {onTestOnboarding && (
-            <TouchableOpacity style={styles.testButton} onPress={onTestOnboarding}>
-              <Text style={styles.testButtonText}>Preview Onboarding</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity onPress={handleStartEditingPreferences}>
+            <Text style={styles.editLink}>Edit</Text>
+          </TouchableOpacity>
         </View>
-        {/* Eyebrow + editorial title */}
-        <View style={styles.eyebrowRow}>
-          <View style={styles.eyebrowLine} />
-          <Text style={styles.eyebrowText}>Account</Text>
-        </View>
-        <Text style={styles.screenTitle}>
-          My{'\n'}<Text style={styles.titleAccent}>profile</Text>
-        </Text>
       </View>
 
       <ScrollView
@@ -527,19 +516,26 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginBottom: 8,
   },
-  testButton: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    marginBottom: 12,
+  editTopButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 4,
   },
-  testButtonText: {
+  editTopButtonText: {
+    fontFamily: 'DMSans-SemiBold',
+    fontSize: 15,
+    color: '#E9323D',
+  },
+  previewButton: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    marginTop: 16,
+    marginBottom: 32,
+    marginHorizontal: 24,
+  },
+  previewButtonText: {
     fontFamily: 'DMSans-Medium',
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: 13,
+    color: '#D1D5DB',
   },
   screenHeaderDivider: {
     height: 1,

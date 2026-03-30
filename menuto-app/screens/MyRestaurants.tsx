@@ -16,6 +16,7 @@ import { FavoriteRestaurant, FavoriteDish } from '../types';
 import { RestaurantCard } from '../components/RestaurantCard';
 import { SearchRestaurantCard } from '../components/SearchRestaurantCard';
 import { SearchRestaurantSelected } from '../components/SearchRestaurantSelected';
+import { ScreenHeader } from '../components/ScreenHeader';
 
 const TERRA = '#E9323D';
 const DARK = '#1C1917';
@@ -125,15 +126,7 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.eyebrowRow}>
-          <View style={styles.eyebrowLine} />
-          <Text style={styles.eyebrowText}>My Spots</Text>
-        </View>
-        <Text style={styles.headerTitle}>
-          Your{'\n'}<Text style={styles.headerAccent}>restaurants</Text>
-        </Text>
-      </View>
+      <ScreenHeader title="Your" accent="restaurants" />
 
       {/* Search */}
       <View style={styles.searchSection}>

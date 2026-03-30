@@ -18,17 +18,17 @@ import { api } from '../services/api';
 const TERRA = '#E9323D';
 const RED = '#E9323D';
 const BG = '#FFFFFF';
-const DARK = '#111827';
-const MUTED = '#6B7280';
-const LIGHT = '#9CA3AF';
-const STONE_50 = '#F9FAFB';
-const STONE_100 = '#F3F4F6';
-const STONE_200 = '#E5E7EB';
+const DARK = '#1C1917';
+const MUTED = '#5A4D48';
+const LIGHT = '#8C7E77';
+const STONE_50 = '#FAFAF9';
+const STONE_100 = '#F5F5F4';
+const STONE_200 = '#E7E5E4';
 const FONT = 'DMSans-Regular';
 const FONT_MEDIUM = 'DMSans-Medium';
 const FONT_SEMIBOLD = 'DMSans-SemiBold';
 const FONT_BOLD = 'DMSans-Bold';
-const FONT_MONO = 'IBMPlexMono-SemiBold';
+const FONT_MONO = 'DMSans-Bold';
 const SHADOW = {
   shadowColor: '#000',
   shadowOffset: { width: 0, height: 2 },
@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
     ...SHADOW,
   },
   restaurantName: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: FONT,
     fontStyle: 'italic',
     color: LIGHT,
@@ -663,7 +663,7 @@ const styles = StyleSheet.create({
     borderColor: STONE_200,
   },
   orderAgainBtnText: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: FONT_SEMIBOLD,
     fontWeight: '600',
   },
@@ -684,7 +684,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   addNoteBtnText: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: FONT_MEDIUM,
     fontWeight: '500',
     color: MUTED,
@@ -697,7 +697,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   notesInput: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: FONT,
     color: DARK,
     minHeight: 80,
@@ -727,7 +727,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   submitBtnText: {
-    fontSize: 17,
+    fontSize: 18,
     fontFamily: FONT_SEMIBOLD,
     fontWeight: '600',
     color: '#FFFFFF',

@@ -20,9 +20,9 @@ import {
 
 const RED = '#E9323D';
 const RED_LIGHT = '#FFF5F5';
-const DARK = '#111111';
-const MEDIUM = '#6B7280';
-const LIGHT_TEXT = '#9CA3AF';
+const DARK = '#1C1917';
+const MEDIUM = '#5A4D48';
+const LIGHT_TEXT = '#8C7E77';
 
 const NEIGHBORHOODS: Record<string, string[]> = {
   'New York': [
@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
     backgroundColor: RED,
   },
   progressDotInactive: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#E7E5E4',
   },
   // Step content
   stepContent: {
@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
     fontSize: 44,
     lineHeight: 46,
     letterSpacing: -1.5,
-    color: '#111827',
+    color: '#1C1917',
     marginBottom: 16,
   },
   headlineAccent: {
@@ -514,16 +514,16 @@ const styles = StyleSheet.create({
   },
   subline: {
     fontFamily: 'DMSans-Regular',
-    fontSize: 17,
+    fontSize: 18,
     lineHeight: 26,
-    color: '#6B7280',
+    color: '#5A4D48',
     maxWidth: '90%',
     marginBottom: 32,
   },
   // Selected count
   selectedCount: {
     fontFamily: 'DMSans-SemiBold',
-    fontSize: 13,
+    fontSize: 12,
     color: RED,
     marginBottom: 16,
   },
@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E7E5E4',
     backgroundColor: '#FFFFFF',
   },
   regionTabActive: {
@@ -551,8 +551,8 @@ const styles = StyleSheet.create({
   },
   regionTabText: {
     fontFamily: 'DMSans-Medium',
-    fontSize: 13,
-    color: '#6B7280',
+    fontSize: 12,
+    color: '#5A4D48',
   },
   regionTabTextActive: {
     fontFamily: 'DMSans-Bold',
@@ -580,12 +580,12 @@ const styles = StyleSheet.create({
   },
   pillUnselected: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E7E5E4',
     backgroundColor: '#FFFFFF',
   },
   pillText: {
     fontFamily: 'DMSans-Medium',
-    fontSize: 15,
+    fontSize: 14,
   },
   pillTextLarge: {
     fontSize: 16,
@@ -672,7 +672,7 @@ const styles = StyleSheet.create({
   },
   spiceLabel: {
     fontFamily: 'DMSans-Medium',
-    fontSize: 13,
+    fontSize: 12,
     color: RED,
     fontStyle: 'italic',
     marginTop: 2,
@@ -691,7 +691,7 @@ const styles = StyleSheet.create({
   cuisineSearchInput: {
     flex: 1,
     fontFamily: 'DMSans-Regular',
-    fontSize: 15,
+    fontSize: 14,
     color: '#1C1917',
     paddingVertical: 12,
   },
@@ -713,7 +713,7 @@ const styles = StyleSheet.create({
   },
   showAllButtonText: {
     fontFamily: 'DMSans-Medium',
-    fontSize: 13,
+    fontSize: 12,
     color: RED,
   },
   // Map placeholder
@@ -781,7 +781,7 @@ const styles = StyleSheet.create({
   },
   cityChipText: {
     fontFamily: 'DMSans-Medium',
-    fontSize: 13,
+    fontSize: 12,
     color: MEDIUM,
   },
   cityChipTextActive: {
@@ -829,7 +829,7 @@ const styles = StyleSheet.create({
   },
   skipText: {
     fontFamily: 'DMSans-Bold',
-    fontSize: 15,
+    fontSize: 14,
     color: LIGHT_TEXT,
   },
 });

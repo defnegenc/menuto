@@ -16,9 +16,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store/useStore';
 import { api } from '../services/api';
 import { FavoriteRestaurant, ParsedDish } from '../types';
-import { theme } from '../theme';
-import { UnifiedHeader } from '../components/UnifiedHeader';
 import { SearchBar } from '../components/SearchBar';
+import { ScreenHeader } from '../components/ScreenHeader';
 import { SearchRestaurantCard } from '../components/SearchRestaurantCard';
 import { SearchRestaurantSelected } from '../components/SearchRestaurantSelected';
 import { DishRecommendations } from './DishRecommendations';
@@ -27,7 +26,8 @@ import { MultiDishScoring } from './MultiDishScoring';
 import { DishScoringCard } from './choosedish/DishScoringCard';
 import { PreferencesPanel } from './choosedish/PreferencesPanel';
 
-const TERRA = '#CE3E25';
+const RED = '#E9323D';
+const TERRA = RED; // alias for any remaining refs
 
 interface Props {
   onSelectRestaurant?: (restaurant: FavoriteRestaurant) => void;
@@ -318,7 +318,15 @@ export function ChooseDishLanding({
   if (isParsing) {
     return (
       <View style={styles.container}>
-        <UnifiedHeader title="Choose Dish" showUnderline={false} />
+        <View style={[styles.editorialHeader, { paddingTop: insets.top + 8 }]}>
+          <View style={styles.eyebrowRow}>
+            <View style={styles.eyebrowLine} />
+            <Text style={styles.eyebrowText}>Choose Dish</Text>
+          </View>
+          <Text style={styles.headerTitle}>
+            Find your{'\n'}<Text style={styles.headerAccent}>dish</Text>
+          </Text>
+        </View>
         <ParsingScreen restaurantName={selectedRestaurant?.name} />
       </View>
     );
@@ -326,7 +334,9 @@ export function ChooseDishLanding({
 
   return (
     <View style={styles.container}>
-      <UnifiedHeader title="Choose Dish" showUnderline={false} />
+      <View style={{ paddingTop: insets.top + 8 }}>
+        <ScreenHeader title="Find your" accent="dish" />
+      </View>
 
       <ScrollView
         style={styles.scrollView}
@@ -615,17 +625,52 @@ function ParsingScreen({ restaurantName }: { restaurantName?: string }) {
   );
 }
 
-const MEDIUM = '#44403C';
+const MEDIUM = '#5A4D48';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
+  // Editorial header
+  editorialHeader: {
+    paddingHorizontal: 24,
+    paddingBottom: 8,
+  },
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  eyebrowLine: {
+    width: 32,
+    height: 2,
+    backgroundColor: RED,
+  },
+  eyebrowText: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 10,
+    letterSpacing: 3,
+    color: RED,
+    textTransform: 'uppercase',
+  },
+  headerTitle: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 44,
+    lineHeight: 46,
+    letterSpacing: -1.5,
+    color: '#1C1917',
+  },
+  headerAccent: {
+    fontFamily: 'PlayfairDisplay-Italic',
+    color: RED,
+    fontWeight: '500',
+  },
   searchSection: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.lg,
-    paddingBottom: theme.spacing.xs,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingBottom: 4,
     backgroundColor: '#FFFFFF',
   },
   scrollView: {
@@ -635,14 +680,14 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   stepSection: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.xl,
-    paddingBottom: theme.spacing.md,
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 12,
   },
   stepText: {
-    fontSize: 13,
+    fontSize: 12,
     color: MEDIUM,
-    marginBottom: theme.spacing.sm,
+    marginBottom: 8,
     fontFamily: 'DMSans-Regular',
   },
   stepUnderline: {
@@ -651,41 +696,41 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   selectedRestaurantInfo: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.lg,
-    paddingBottom: theme.spacing.sm,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
   selectedRestaurantName: {
     fontSize: 42,
     fontFamily: 'DMSans-Bold',
     color: '#1C1917',
     letterSpacing: -2.5,
-    marginBottom: theme.spacing.xs,
+    marginBottom: 4,
   },
   selectedRestaurantAddress: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#A8A29E',
     fontFamily: 'DMSans-Regular',
     fontStyle: 'italic',
   },
   resultsSection: {
-    paddingHorizontal: theme.spacing.lg,
+    paddingHorizontal: 16,
   },
   loadingState: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: theme.spacing.xl,
-    gap: theme.spacing.sm,
+    paddingVertical: 20,
+    gap: 8,
   },
   loadingText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#A8A29E',
     fontFamily: 'DMSans-Regular',
   },
   emptyState: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.xl,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
     alignItems: 'center',
   },
   emptyStateText: {
@@ -700,7 +745,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.xl,
+    paddingHorizontal: 20,
   },
   parsingRestaurantName: {
     fontSize: 28,
@@ -730,7 +775,7 @@ const styles = StyleSheet.create({
   parsingSubtext: {
     fontSize: 14,
     color: '#78716C',
-    marginTop: theme.spacing.sm,
+    marginTop: 8,
     textAlign: 'center',
     fontFamily: 'DMSans-Regular',
   },
@@ -744,14 +789,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F5F5F4',
   },
   modalCancelButton: {
     fontSize: 14,
-    color: '#44403C',
+    color: '#5A4D48',
     fontFamily: 'DMSans-Regular',
   },
   modalTitle: {
@@ -769,13 +814,13 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     flex: 1,
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.lg,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   modalInstructions: {
     fontSize: 14,
-    color: '#44403C',
-    marginBottom: theme.spacing.lg,
+    color: '#5A4D48',
+    marginBottom: 16,
     lineHeight: 20,
     fontFamily: 'DMSans-Regular',
   },
@@ -794,8 +839,8 @@ const styles = StyleSheet.create({
   menuUrlRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.md,
+    gap: 8,
+    marginTop: 12,
   },
   menuUrlInput: {
     borderWidth: 1,
@@ -808,8 +853,8 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Regular',
   },
   addUrlButton: {
-    marginTop: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
+    marginTop: 16,
+    paddingVertical: 12,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: '#F5F5F4',
@@ -823,39 +868,39 @@ const styles = StyleSheet.create({
     color: TERRA,
   },
   removeUrlButton: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 999,
     backgroundColor: '#FAFAF9',
     borderWidth: 1,
     borderColor: '#F5F5F4',
   },
   removeUrlButtonText: {
-    color: '#44403C',
+    color: '#5A4D48',
     fontSize: 12,
     fontFamily: 'DMSans-Bold',
   },
 
   // Review modal
   reviewCategorySection: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: 16,
     backgroundColor: '#FAFAF9',
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#F5F5F4',
-    padding: theme.spacing.lg,
+    padding: 16,
   },
   reviewCategoryTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: 'DMSans-Bold',
     color: '#1C1917',
-    marginBottom: theme.spacing.sm,
+    marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   reviewDishItem: {
-    marginBottom: theme.spacing.sm,
-    paddingBottom: theme.spacing.sm,
+    marginBottom: 8,
+    paddingBottom: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#F5F5F4',
   },

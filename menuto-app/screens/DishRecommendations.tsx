@@ -615,18 +615,18 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAFAF9',
     alignItems: 'center',
     justifyContent: 'center',
   },
   backButtonText: {
     fontSize: 18,
-    color: '#111827',
+    color: '#1C1917',
   },
   headerTitle: {
-    fontFamily: 'IBMPlexMono-SemiBold',
+    fontFamily: 'DMSans-Bold',
     fontSize: 16,
-    color: '#111827',
+    color: '#1C1917',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
     marginLeft: 12,
@@ -643,11 +643,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   recommendationTitle: {
-    fontFamily: 'IBMPlexMono-SemiBold',
+    fontFamily: 'DMSans-Bold',
     fontSize: 16,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
-    color: '#111827',
+    color: '#1C1917',
     marginBottom: 12,
   },
   featuredCard: {
@@ -661,13 +661,13 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
     letterSpacing: 2,
-    color: '#9CA3AF',
+    color: '#8C7E77',
     textTransform: 'uppercase',
   },
   reasoningText: {
     fontFamily: 'DMSans-Regular',
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#8C7E77',
     paddingLeft: 4,
     lineHeight: 20,
   },
@@ -676,7 +676,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E7E5E4',
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -684,7 +684,7 @@ const styles = StyleSheet.create({
   newRecommendationText: {
     fontFamily: 'DMSans-SemiBold',
     fontSize: 12,
-    color: '#6B7280',
+    color: '#5A4D48',
   },
   allRecommendationsSection: {
     marginBottom: 20,
@@ -693,7 +693,7 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
     letterSpacing: 2,
-    color: '#9CA3AF',
+    color: '#8C7E77',
     textTransform: 'uppercase',
     marginBottom: 12,
   },
@@ -701,10 +701,10 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: '#E7E5E4',
   },
   continueButton: {
-    backgroundColor: '#111111',
+    backgroundColor: '#1C1917',
     borderRadius: 999,
     paddingVertical: 18,
     alignItems: 'center',
@@ -716,15 +716,15 @@ const styles = StyleSheet.create({
   },
   continueButtonText: {
     fontFamily: 'DMSans-SemiBold',
-    fontSize: 17,
+    fontSize: 18,
     color: '#FFFFFF',
   },
   continueButtonDisabled: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#E7E5E4',
     opacity: 0.6,
   },
   continueButtonTextDisabled: {
-    color: '#6B7280',
+    color: '#5A4D48',
   },
   searchSection: {
     paddingHorizontal: 16,
@@ -738,7 +738,7 @@ const styles = StyleSheet.create({
   noResultsText: {
     fontFamily: 'DMSans-Regular',
     fontSize: 14,
-    color: '#6B7280',
+    color: '#5A4D48',
     textAlign: 'center',
   },
   modalContainer: {
@@ -754,7 +754,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#E7E5E4',
   },
   modalCancelButton: {
     fontFamily: 'DMSans-SemiBold',
@@ -762,9 +762,9 @@ const styles = StyleSheet.create({
     color: '#E9323D',
   },
   modalTitle: {
-    fontFamily: 'IBMPlexMono-SemiBold',
+    fontFamily: 'DMSans-Bold',
     fontSize: 16,
-    color: '#111827',
+    color: '#1C1917',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
@@ -776,7 +776,7 @@ const styles = StyleSheet.create({
   rationaleText: {
     fontFamily: 'DMSans-Regular',
     fontSize: 14,
-    color: '#111827',
+    color: '#1C1917',
     lineHeight: 24,
   },
 });
