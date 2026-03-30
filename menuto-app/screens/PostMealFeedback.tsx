@@ -14,21 +14,28 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStore } from '../store/useStore';
 import { api } from '../services/api';
 
-// ─── Design tokens (v3) ───────────────────────────────────────────────
-const TERRA = '#CE3E25';
+// ─── Design tokens ───────────────────────────────────────────────────
+const TERRA = '#E9323D';
+const RED = '#E9323D';
 const BG = '#FFFFFF';
-const DARK = '#1C1917';
-const MEDIUM = '#44403C';
-const MUTED = '#78716C';
-const LIGHT = '#A8A29E';
-const STONE_50 = '#FAFAF9';
-const STONE_100 = '#F5F5F4';
-const STONE_200 = '#E7E5E4';
-const SHADOW = { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 16 };
-const FONT = Platform.OS === 'ios' ? 'DM Sans' : 'DMSans-Regular';
-const FONT_MEDIUM = Platform.OS === 'ios' ? 'DM Sans' : 'DMSans-Medium';
-const FONT_BOLD = Platform.OS === 'ios' ? 'DM Sans' : 'DMSans-Bold';
-const FONT_SEMIBOLD = Platform.OS === 'ios' ? 'DM Sans' : 'DMSans-SemiBold';
+const DARK = '#111827';
+const MUTED = '#6B7280';
+const LIGHT = '#9CA3AF';
+const STONE_50 = '#F9FAFB';
+const STONE_100 = '#F3F4F6';
+const STONE_200 = '#E5E7EB';
+const FONT = 'DMSans-Regular';
+const FONT_MEDIUM = 'DMSans-Medium';
+const FONT_SEMIBOLD = 'DMSans-SemiBold';
+const FONT_BOLD = 'DMSans-Bold';
+const FONT_MONO = 'IBMPlexMono-SemiBold';
+const SHADOW = {
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.04,
+  shadowRadius: 8,
+  elevation: 2,
+};
 
 // ─── Types ────────────────────────────────────────────────────────────
 interface PostMealFeedbackProps {
@@ -528,10 +535,11 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   dishName: {
-    fontSize: 24,
-    fontFamily: FONT_BOLD,
-    fontWeight: '700',
+    fontSize: 18,
+    fontFamily: FONT_MONO,
     color: DARK,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
     marginBottom: 6,
   },
   dishDescription: {

@@ -4,7 +4,8 @@ const KEY = 'menuto:last_auth';
 
 export type LastAuthMethod =
   | 'email_password_sign_in'
-  | 'email_password_sign_up';
+  | 'email_password_sign_up'
+  | 'google';
 
 export type LastAuthRecord = {
   method: LastAuthMethod;

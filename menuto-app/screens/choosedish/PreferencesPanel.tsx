@@ -7,7 +7,7 @@ import {
   TextInput,
 } from 'react-native';
 
-const TERRA = '#CE3E25';
+const RED = '#E9323D';
 
 interface PreferencesPanelProps {
   hungerLevel: number;
@@ -226,27 +226,21 @@ const styles = StyleSheet.create({
 
   // Section cards
   sectionCard: {
-    backgroundColor: '#FAFAF9',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#F5F5F4',
+    borderColor: '#E5E7EB',
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 16,
-    elevation: 2,
   },
   sectionTitle: {
-    fontSize: 22,
-    fontFamily: 'DMSans-Bold',
-    color: '#1C1917',
-    letterSpacing: -0.8,
+    fontSize: 17,
+    fontFamily: 'DMSans-SemiBold',
+    color: '#111827',
     marginBottom: 8,
   },
   sectionSubtitle: {
-    fontSize: 14,
-    color: '#78716C',
+    fontSize: 13,
+    color: '#9CA3AF',
     marginBottom: 12,
     fontFamily: 'DMSans-Regular',
   },
@@ -282,14 +276,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sliderDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#E7E5E4',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#E5E7EB',
   },
   sliderDotActive: {
-    backgroundColor: TERRA,
-    opacity: 0.4,
+    backgroundColor: RED,
+    opacity: 1,
   },
   sliderThumb: {
     position: 'absolute',
@@ -299,8 +293,8 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: TERRA,
-    shadowColor: TERRA,
+    backgroundColor: RED,
+    shadowColor: RED,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -313,8 +307,8 @@ const styles = StyleSheet.create({
   },
   sliderLabel: {
     fontSize: 12,
-    color: '#A8A29E',
-    fontFamily: 'DMSans-Regular',
+    color: '#9CA3AF',
+    fontFamily: 'DMSans-Medium',
   },
 
   // Chips (shared for cravings + meal structure)
@@ -324,41 +318,37 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    backgroundColor: '#FAFAF9',
+    backgroundColor: '#FFFFFF',
     borderRadius: 999,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#F5F5F4',
+    borderColor: '#E5E7EB',
   },
   chipSelected: {
-    backgroundColor: TERRA,
-    borderColor: TERRA,
-    shadowColor: TERRA,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 3,
+    backgroundColor: '#FFF5F5',
+    borderColor: RED,
+    borderWidth: 2,
   },
   chipText: {
     fontSize: 14,
-    color: '#78716C',
-    fontFamily: 'DMSans-Regular',
+    color: '#374151',
+    fontFamily: 'DMSans-Medium',
   },
   chipTextSelected: {
-    color: '#FFFFFF',
-    fontFamily: 'DMSans-Bold',
+    color: RED,
+    fontFamily: 'DMSans-SemiBold',
   },
 
   // Free-text mood
   moodInput: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F9FAFB',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#F5F5F4',
-    padding: 14,
+    borderColor: '#E5E7EB',
+    padding: 16,
     fontSize: 15,
-    color: '#1C1917',
+    color: '#111827',
     fontFamily: 'DMSans-Regular',
     minHeight: 56,
     lineHeight: 22,
@@ -366,17 +356,22 @@ const styles = StyleSheet.create({
 
   // Continue button
   continueButton: {
-    backgroundColor: '#1C1917',
+    backgroundColor: '#111111',
     borderRadius: 999,
-    height: 56,
+    paddingVertical: 18,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
     marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 6,
   },
   continueButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontFamily: 'DMSans-Bold',
+    fontSize: 17,
+    fontFamily: 'DMSans-SemiBold',
   },
 });

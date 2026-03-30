@@ -378,22 +378,28 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut, onTestOnboarding,
   return (
     <View style={styles.container}>
       <View style={[styles.screenHeader, { paddingTop: insets.top }]}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerLeft}>
-            {onBackToTabs && (
-              <TouchableOpacity style={styles.backButton} onPress={onBackToTabs}>
-                <Text style={styles.backArrow}>←</Text>
-              </TouchableOpacity>
-            )}
-            <Text style={styles.screenTitle}>My profile</Text>
-          </View>
+        {/* Back + test buttons */}
+        <View style={styles.headerTopRow}>
+          {onBackToTabs && (
+            <TouchableOpacity style={styles.backButton} onPress={onBackToTabs}>
+              <Text style={styles.backArrow}>←</Text>
+            </TouchableOpacity>
+          )}
+          <View style={{ flex: 1 }} />
           {onTestOnboarding && (
             <TouchableOpacity style={styles.testButton} onPress={onTestOnboarding}>
               <Text style={styles.testButtonText}>Preview Onboarding</Text>
             </TouchableOpacity>
           )}
         </View>
-        <View style={styles.screenHeaderDivider} />
+        {/* Eyebrow + editorial title */}
+        <View style={styles.eyebrowRow}>
+          <View style={styles.eyebrowLine} />
+          <Text style={styles.eyebrowText}>Account</Text>
+        </View>
+        <Text style={styles.screenTitle}>
+          My{'\n'}<Text style={styles.titleAccent}>profile</Text>
+        </Text>
       </View>
 
       <ScrollView

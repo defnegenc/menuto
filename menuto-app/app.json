@@ -61,7 +61,8 @@
           "locationAlwaysAndWhenInUsePermission": "Menuto uses your location to find nearby restaurants and provide personalized recommendations.",
           "locationWhenInUsePermission": "Menuto uses your location to find nearby restaurants and provide personalized recommendations."
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {
