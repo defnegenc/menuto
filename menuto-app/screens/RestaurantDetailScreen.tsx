@@ -1104,13 +1104,13 @@ const styles = StyleSheet.create({
   eyebrowLine: {
     width: 32,
     height: 2,
-    backgroundColor: '#1B2541',
+    backgroundColor: '#1A1A1A',
   },
   eyebrowText: {
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
     letterSpacing: 3,
-    color: '#1B2541',
+    color: '#1A1A1A',
     textTransform: 'uppercase',
   },
   titleRow: {
@@ -1228,7 +1228,7 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
     letterSpacing: 3,
-    color: '#1B2541',
+    color: '#1A1A1A',
     textTransform: 'uppercase',
     marginBottom: 12,
   },
@@ -1351,7 +1351,7 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
     letterSpacing: 2,
-    color: '#1B2541',
+    color: '#1A1A1A',
     textTransform: 'uppercase',
     marginBottom: 16,
     marginTop: 8,

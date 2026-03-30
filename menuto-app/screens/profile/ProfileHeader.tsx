@@ -100,7 +100,7 @@ export function ProfileHeader({
                   </Text>
                 </View>
               )}
-              <TouchableOpacity style={styles.changePhotoButton} onPress={onProfilePhotoChange}>
+              <TouchableOpacity onPress={onProfilePhotoChange}>
                 <Text style={styles.changePhotoButtonText}>Change Photo</Text>
               </TouchableOpacity>
             </View>
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     width: 83,
     height: 83,
     borderRadius: 9999,
-    backgroundColor: '#FFF5F5',
+    backgroundColor: '#FAFAF9',
   },
   profilePicText: {
     fontSize: 28,
@@ -208,18 +208,17 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 28,
-    color: '#111827',
+    color: '#1A1A1A',
     fontFamily: 'PlayfairDisplay-Italic',
   },
   userHandle: {
-    fontSize: 13,
-    fontStyle: 'italic',
-    color: '#9CA3AF',
+    fontSize: 14,
+    color: '#666666',
     fontFamily: 'DMSans-Regular',
   },
   separator: {
     height: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#E5E5E5',
     marginHorizontal: 20,
     marginVertical: 12,
   },
@@ -239,20 +238,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: '#E5E5E5',
   },
   modalCancelButton: {
-    fontSize: 15,
-    color: '#6B7280',
+    fontSize: 14,
+    color: '#666666',
     fontFamily: 'DMSans-Regular',
   },
   modalTitle: {
     fontSize: 17,
-    color: '#111827',
+    color: '#1A1A1A',
     fontFamily: 'DMSans-Bold',
   },
   modalSubmitButton: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#E9323D',
     fontFamily: 'DMSans-SemiBold',
   },
@@ -270,7 +269,7 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 9999,
     marginBottom: 12,
-    backgroundColor: '#FFF5F5',
+    backgroundColor: '#FAFAF9',
   },
   modalProfilePicPlaceholder: {
     width: 100,
@@ -287,15 +286,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontFamily: 'DMSans-Bold',
   },
-  changePhotoButton: {
-    backgroundColor: '#111111',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 999,
-  },
   changePhotoButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
+    color: '#E9323D',
+    fontSize: 14,
     fontFamily: 'DMSans-SemiBold',
   },
   inputGroup: {
@@ -303,20 +296,20 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 10,
-    color: '#9CA3AF',
+    color: '#1A1A1A',
     marginBottom: 8,
     fontFamily: 'DMSans-Bold',
-    letterSpacing: 2,
+    letterSpacing: 3,
     textTransform: 'uppercase',
   },
   textInput: {
     borderWidth: 1,
-    borderColor: 'transparent',
-    borderRadius: 16,
+    borderColor: '#E5E5E5',
+    borderRadius: 8,
     padding: 16,
-    fontSize: 17,
-    color: '#111827',
-    backgroundColor: '#F9FAFB',
+    fontSize: 14,
+    color: '#1A1A1A',
+    backgroundColor: '#FFFFFF',
     fontFamily: 'DMSans-Regular',
   },
   spiceSliderContainer: {
@@ -340,7 +333,7 @@ const styles = StyleSheet.create({
   sliderTrack: {
     width: '100%',
     height: 6,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#E5E5E5',
     borderRadius: 3,
     position: 'relative',
     justifyContent: 'center',
@@ -368,7 +361,7 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     backgroundColor: '#FFFFFF',
     borderWidth: 2,
-    borderColor: '#E5E7EB',
+    borderColor: '#E5E5E5',
   },
   sliderStopActive: {
     backgroundColor: '#E9323D',
@@ -376,8 +369,8 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.2 }],
   },
   spiceDescription: {
-    fontSize: 15,
-    color: '#6B7280',
+    fontSize: 14,
+    color: '#444444',
     textAlign: 'center',
     fontFamily: 'DMSans-Regular',
   },

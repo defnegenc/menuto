@@ -267,13 +267,13 @@ const styles = StyleSheet.create({
   eyebrowLine: {
     width: 32,
     height: 2,
-    backgroundColor: '#1B2541',
+    backgroundColor: '#1A1A1A',
   },
   eyebrowText: {
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
     letterSpacing: 3,
-    color: '#1B2541',
+    color: '#1A1A1A',
     textTransform: 'uppercase',
   },
   headerTitle: {
@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
     letterSpacing: 3,
-    color: '#1B2541',
+    color: '#1A1A1A',
     textTransform: 'uppercase',
     paddingHorizontal: 24,
     paddingTop: 20,
@@ -389,11 +389,11 @@ const styles = StyleSheet.create({
     borderTopColor: '#F5F5F4',
   },
   footerButton: {
-    backgroundColor: '#1B2541',
+    backgroundColor: '#1A1A1A',
     borderRadius: 999,
     paddingVertical: 18,
     alignItems: 'center',
-    shadowColor: '#1B2541',
+    shadowColor: '#1A1A1A',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,

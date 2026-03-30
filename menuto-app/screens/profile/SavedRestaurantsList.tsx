@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import { theme } from '../../theme';
 import { FavoriteRestaurant } from '../../types';
 import { RestaurantCard } from '../../components/RestaurantCard';
 import { SearchBar } from '../../components/SearchBar';
@@ -109,10 +108,10 @@ export function SavedRestaurantsList({
             )}
 
             <View style={styles.editButtonsContainer}>
-              <TouchableOpacity style={styles.cancelButton} onPress={onCancelEditingTop3}>
+              <TouchableOpacity onPress={onCancelEditingTop3}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.saveButton} onPress={onSaveTop3}>
+              <TouchableOpacity onPress={onSaveTop3}>
                 <Text style={styles.saveButtonText}>Save</Text>
               </TouchableOpacity>
             </View>
@@ -134,13 +133,17 @@ export function SavedRestaurantsList({
               </View>
             ) : (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>No top restaurants selected</Text>
-                <Text style={styles.emptyStateSubtext}>Tap "Edit" to choose your top 3</Text>
+                <Text style={styles.emptyStateText}>Pick your top 3 restaurants</Text>
+                <TouchableOpacity style={styles.addTop3Button} onPress={onStartEditingTop3}>
+                  <Text style={styles.addTop3ButtonText}>+ Choose favorites</Text>
+                </TouchableOpacity>
               </View>
             )}
           </>
         )}
       </View>
+
+      <View style={styles.sectionDivider} />
 
       {/* Dishes You've Tried */}
       <View style={styles.section}>
@@ -178,7 +181,7 @@ export function SavedRestaurantsList({
       {/* Sign Out Button */}
       {onSignOut && (
         <View style={styles.signOutContainer}>
-          <TouchableOpacity style={styles.signOutButton} onPress={onSignOut}>
+          <TouchableOpacity onPress={onSignOut}>
             <Text style={styles.signOutButtonText}>Sign Out</Text>
           </TouchableOpacity>
         </View>
@@ -187,183 +190,181 @@ export function SavedRestaurantsList({
   );
 }
 
-const RED = '#E9323D';
-
 const styles = StyleSheet.create({
   section: {
-    paddingHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
+    paddingHorizontal: 16,
+    marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 24,
-    color: '#111827',
-    marginBottom: theme.spacing.sm,
-    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 10,
+    color: '#1A1A1A',
+    marginBottom: 8,
+    fontFamily: 'DMSans-Bold',
+    letterSpacing: 3,
+    textTransform: 'uppercase',
   },
   preferenceHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
+    marginBottom: 8,
   },
   editButtonText: {
-    color: RED,
-    fontSize: 13,
-    fontFamily: 'DMSans-SemiBold',
+    color: '#E9323D',
+    fontSize: 14,
+    fontFamily: 'DMSans-Regular',
   },
   selectedLabel: {
-    fontSize: theme.typography.sizes.sm,
-    color: '#6B7280',
-    marginBottom: theme.spacing.sm,
+    fontSize: 12,
+    color: '#666666',
+    marginBottom: 8,
     fontFamily: 'DMSans-Regular',
   },
   emptyText: {
-    fontSize: theme.typography.sizes.md,
-    color: '#9CA3AF',
+    fontSize: 14,
+    color: '#666666',
     fontStyle: 'italic',
     fontFamily: 'DMSans-Regular',
   },
   editButtonsContainer: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: theme.spacing.lg,
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    borderRadius: 999,
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    gap: 24,
+    marginTop: 16,
+    justifyContent: 'flex-end',
   },
   cancelButtonText: {
-    fontSize: 17,
-    color: '#111827',
-    fontFamily: 'DMSans-SemiBold',
-  },
-  saveButton: {
-    flex: 1,
-    backgroundColor: '#111111',
-    borderRadius: 999,
-    paddingVertical: 16,
-    alignItems: 'center',
+    fontSize: 14,
+    color: '#666666',
+    fontFamily: 'DMSans-Regular',
   },
   saveButtonText: {
-    fontSize: 17,
-    color: '#FFFFFF',
+    fontSize: 14,
+    color: '#E9323D',
     fontFamily: 'DMSans-SemiBold',
   },
   top3RestaurantsContainer: {
-    gap: theme.spacing.sm,
+    gap: 8,
   },
   selectedTop3Container: {
-    marginBottom: theme.spacing.md,
+    marginBottom: 12,
     padding: 20,
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E5E5E5',
   },
   selectedTop3Item: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: '#E5E5E5',
   },
   selectedTop3Text: {
     fontSize: 17,
-    color: '#111827',
-    fontFamily: 'DMSans-SemiBold',
+    color: '#1A1A1A',
+    fontFamily: 'PlayfairDisplay-Italic',
   },
   removeTop3Button: {
-    padding: theme.spacing.xs,
+    padding: 4,
   },
   removeTop3Text: {
     fontSize: 20,
-    color: RED,
+    color: '#E9323D',
     fontWeight: 'bold',
   },
   top3ChipsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: theme.spacing.md,
+    marginBottom: 12,
   },
   top3Chip: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: 'transparent',
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 999,
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E5E5E5',
   },
   top3ChipDisabled: {
     opacity: 0.5,
   },
   top3ChipText: {
     fontSize: 12,
-    color: '#374151',
+    color: '#666666',
     fontFamily: 'DMSans-Medium',
   },
   top3ChipTextDisabled: {
-    color: '#9CA3AF',
+    color: '#666666',
   },
   emptyState: {
     alignItems: 'center',
     paddingVertical: 40,
   },
   emptyStateText: {
-    fontSize: 16,
-    color: '#9CA3AF',
+    fontSize: 14,
+    color: '#666666',
     marginBottom: 4,
     fontFamily: 'DMSans-Regular',
   },
   emptyStateSubtext: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: '#666666',
     fontFamily: 'DMSans-Regular',
+  },
+  addTop3Button: {
+    marginTop: 12,
+    borderWidth: 1.5,
+    borderColor: '#E9323D',
+    borderStyle: 'dashed',
+    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  addTop3ButtonText: {
+    fontFamily: 'DMSans-SemiBold',
+    fontSize: 14,
+    color: '#E9323D',
   },
   chipsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: theme.spacing.md,
+    marginBottom: 12,
   },
   triedDishChip: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: 'transparent',
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 999,
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E5E5E5',
     minHeight: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
   triedDishChipText: {
     fontSize: 12,
-    color: '#374151',
+    color: '#444444',
     fontFamily: 'DMSans-Medium',
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: '#E5E5E5',
+    marginHorizontal: 16,
+    marginBottom: 20,
   },
   signOutContainer: {
-    paddingHorizontal: theme.spacing.lg,
+    paddingHorizontal: 16,
     paddingBottom: 20,
     marginTop: 20,
-  },
-  signOutButton: {
-    backgroundColor: 'transparent',
-    borderRadius: 999,
-    paddingVertical: 14,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   signOutButtonText: {
-    color: '#6B7280',
-    fontSize: 16,
-    fontFamily: 'DMSans-Medium',
+    color: '#E9323D',
+    fontSize: 14,
+    fontFamily: 'DMSans-Regular',
   },
 });

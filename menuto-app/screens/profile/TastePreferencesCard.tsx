@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import { theme } from '../../theme';
 import { SearchBar } from '../../components/SearchBar';
 import {
   POPULAR_CUISINES,
@@ -211,10 +210,10 @@ export function TastePreferencesCard({
 
             {isEditingCuisines && !isEditingPreferences && (
               <View style={styles.editButtonsContainer}>
-                <TouchableOpacity style={styles.cancelButton} onPress={onCancelEditingCuisines}>
+                <TouchableOpacity onPress={onCancelEditingCuisines}>
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.saveButton} onPress={onSaveCuisines}>
+                <TouchableOpacity onPress={onSaveCuisines}>
                   <Text style={styles.saveButtonText}>Save</Text>
                 </TouchableOpacity>
               </View>
@@ -236,6 +235,8 @@ export function TastePreferencesCard({
           )
         )}
       </View>
+
+      <View style={styles.divider} />
 
       {/* Dietary Restrictions */}
       <View style={styles.preferenceGroup}>
@@ -281,10 +282,10 @@ export function TastePreferencesCard({
 
             {isEditingDietary && !isEditingPreferences && (
               <View style={styles.editButtonsContainer}>
-                <TouchableOpacity style={styles.cancelButton} onPress={onCancelEditingDietary}>
+                <TouchableOpacity onPress={onCancelEditingDietary}>
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.saveButton} onPress={onSaveDietary}>
+                <TouchableOpacity onPress={onSaveDietary}>
                   <Text style={styles.saveButtonText}>Save</Text>
                 </TouchableOpacity>
               </View>
@@ -306,6 +307,8 @@ export function TastePreferencesCard({
           )
         )}
       </View>
+
+      <View style={styles.divider} />
 
       {/* Home Base */}
       <View style={styles.preferenceGroup}>
@@ -359,10 +362,10 @@ export function TastePreferencesCard({
 
             {isEditingHomeBase && !isEditingPreferences && (
               <View style={styles.editButtonsContainer}>
-                <TouchableOpacity style={styles.cancelButton} onPress={onCancelEditingHomeBase}>
+                <TouchableOpacity onPress={onCancelEditingHomeBase}>
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.saveButton} onPress={onSaveHomeBase}>
+                <TouchableOpacity onPress={onSaveHomeBase}>
                   <Text style={styles.saveButtonText}>Save</Text>
                 </TouchableOpacity>
               </View>
@@ -377,10 +380,10 @@ export function TastePreferencesCard({
 
       {isEditingPreferences && (
         <View style={styles.editButtonsContainer}>
-          <TouchableOpacity style={styles.cancelButton} onPress={onCancelEditingPreferences}>
+          <TouchableOpacity onPress={onCancelEditingPreferences}>
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.saveButton} onPress={onSavePreferences}>
+          <TouchableOpacity onPress={onSavePreferences}>
             <Text style={styles.saveButtonText}>Save</Text>
           </TouchableOpacity>
         </View>
@@ -389,152 +392,137 @@ export function TastePreferencesCard({
   );
 }
 
-const RED = '#E9323D';
-const RED_LIGHT = '#FFF5F5';
-const DARK = '#111111';
-
 const styles = StyleSheet.create({
   section: {
-    paddingHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
+    paddingHorizontal: 16,
+    marginBottom: 20,
     backgroundColor: '#FFFFFF',
   },
   sectionTitle: {
-    fontSize: 24,
-    color: '#111827',
-    marginBottom: theme.spacing.sm,
-    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 10,
+    color: '#1A1A1A',
+    marginBottom: 8,
+    fontFamily: 'DMSans-Bold',
+    letterSpacing: 3,
+    textTransform: 'uppercase',
   },
   preferenceGroup: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: 20,
   },
   preferenceHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
+    marginBottom: 8,
   },
   preferenceLabel: {
-    fontSize: 17,
-    color: '#111827',
-    fontFamily: 'DMSans-Medium',
+    fontSize: 10,
+    color: '#1A1A1A',
+    fontFamily: 'DMSans-Bold',
+    letterSpacing: 3,
+    textTransform: 'uppercase',
   },
   editButtonText: {
-    color: RED,
-    fontSize: 13,
-    fontFamily: 'DMSans-SemiBold',
+    color: '#E9323D',
+    fontSize: 14,
+    fontFamily: 'DMSans-Regular',
   },
   chipsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: theme.spacing.md,
+    marginBottom: 12,
   },
   cuisineChip: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 999,
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E5E5E5',
   },
   cuisineChipSelected: {
-    backgroundColor: RED_LIGHT,
-    borderWidth: 2,
-    borderColor: RED,
+    backgroundColor: '#E9323D',
+    borderWidth: 1,
+    borderColor: '#E9323D',
   },
   cuisineChipText: {
     fontSize: 13,
-    color: '#374151',
+    color: '#666666',
     fontFamily: 'DMSans-Medium',
   },
   cuisineChipTextSelected: {
-    color: RED,
+    color: '#FFFFFF',
     fontFamily: 'DMSans-SemiBold',
   },
   selectedCuisinesContainer: {
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.md,
+    marginTop: 12,
+    marginBottom: 12,
   },
   selectedLabel: {
-    fontSize: theme.typography.sizes.sm,
-    color: '#9CA3AF',
-    marginBottom: theme.spacing.sm,
+    fontSize: 12,
+    color: '#666666',
+    marginBottom: 8,
     fontFamily: 'DMSans-Medium',
   },
   emptyText: {
-    fontSize: theme.typography.sizes.md,
-    color: '#9CA3AF',
+    fontSize: 14,
+    color: '#666666',
     fontStyle: 'italic',
-    fontFamily: 'DMSans-Medium',
+    fontFamily: 'DMSans-Regular',
   },
   expandButton: {
-    marginTop: theme.spacing.sm,
-    paddingVertical: theme.spacing.sm,
+    marginTop: 8,
+    paddingVertical: 8,
   },
   expandButtonText: {
-    fontSize: theme.typography.sizes.md,
-    color: RED,
+    fontSize: 14,
+    color: '#E9323D',
     fontFamily: 'DMSans-Medium',
   },
   collapseButton: {
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.sm,
-    paddingVertical: theme.spacing.sm,
+    marginTop: 8,
+    marginBottom: 8,
+    paddingVertical: 8,
   },
   collapseButtonText: {
-    fontSize: theme.typography.sizes.md,
-    color: RED,
+    fontSize: 14,
+    color: '#E9323D',
     fontFamily: 'DMSans-Medium',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E5E5E5',
+    marginBottom: 20,
   },
   editButtonsContainer: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: theme.spacing.lg,
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    borderRadius: 999,
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    gap: 24,
+    marginTop: 16,
+    justifyContent: 'flex-end',
   },
   cancelButtonText: {
-    fontSize: 17,
-    color: DARK,
-    fontFamily: 'DMSans-SemiBold',
-  },
-  saveButton: {
-    flex: 1,
-    backgroundColor: DARK,
-    borderRadius: 999,
-    paddingVertical: 16,
-    alignItems: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    fontSize: 14,
+    color: '#666666',
+    fontFamily: 'DMSans-Regular',
   },
   saveButtonText: {
-    fontSize: 17,
-    color: '#FFFFFF',
+    fontSize: 14,
+    color: '#E9323D',
     fontFamily: 'DMSans-SemiBold',
   },
   homeBaseDisplayText: {
     fontSize: 14,
-    color: '#111827',
-    fontFamily: 'DMSans-Medium',
+    color: '#1A1A1A',
+    fontFamily: 'PlayfairDisplay-Italic',
   },
   homeBaseSelector: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 10,
-    padding: theme.spacing.md,
+    borderColor: '#E5E5E5',
+    borderRadius: 8,
+    padding: 12,
     backgroundColor: '#FFFFFF',
-    marginBottom: theme.spacing.md,
+    marginBottom: 12,
   },
   homeBaseSelectorContent: {
     flexDirection: 'row',
@@ -542,55 +530,55 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   homeBaseSelectorText: {
-    fontSize: theme.typography.sizes.md,
-    color: '#111827',
+    fontSize: 14,
+    color: '#1A1A1A',
     fontFamily: 'DMSans-Medium',
   },
   homeBaseSelectorIcon: {
-    fontSize: theme.typography.sizes.sm,
-    color: '#9CA3AF',
+    fontSize: 12,
+    color: '#666666',
   },
   homeBasePickerContainer: {
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
+    marginTop: 8,
+    marginBottom: 12,
   },
   homeBaseCityList: {
     maxHeight: 200,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 10,
+    borderColor: '#E5E5E5',
+    borderRadius: 8,
     backgroundColor: '#FFFFFF',
   },
   homeBaseCityItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: theme.spacing.md,
+    padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: '#E5E5E5',
   },
   homeBaseCityItemSelected: {
-    backgroundColor: RED_LIGHT,
+    backgroundColor: '#FAFAF9',
     borderWidth: 1,
-    borderColor: RED,
+    borderColor: '#E9323D',
   },
   homeBaseCityName: {
-    fontSize: theme.typography.sizes.md,
-    color: '#111827',
+    fontSize: 14,
+    color: '#1A1A1A',
     fontFamily: 'DMSans-Medium',
   },
   homeBaseSelectedIcon: {
     fontSize: 18,
-    color: RED,
+    color: '#E9323D',
     fontWeight: 'bold',
   },
   spiceSliderContainer: {
     alignItems: 'center',
-    marginTop: theme.spacing.md,
+    marginTop: 12,
   },
   currentSelectionDisplay: {
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: 12,
   },
   currentPeppers: {
     fontSize: 28,
@@ -599,13 +587,13 @@ const styles = StyleSheet.create({
   customSlider: {
     width: '100%',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
-    paddingHorizontal: theme.spacing.md,
+    marginBottom: 12,
+    paddingHorizontal: 12,
   },
   sliderTrack: {
     width: '100%',
     height: 6,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#E5E5E5',
     borderRadius: 3,
     position: 'relative',
     justifyContent: 'center',
@@ -615,7 +603,7 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     height: '100%',
-    backgroundColor: RED,
+    backgroundColor: '#E9323D',
     borderRadius: 3,
   },
   sliderStops: {
@@ -633,18 +621,17 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     backgroundColor: '#FFFFFF',
     borderWidth: 3,
-    borderColor: '#E5E7EB',
-    ...theme.shadows.sm,
+    borderColor: '#E5E5E5',
   },
   sliderStopActive: {
-    backgroundColor: RED,
-    borderColor: RED,
+    backgroundColor: '#E9323D',
+    borderColor: '#E9323D',
     transform: [{ scale: 1.2 }],
   },
   spiceDescription: {
-    fontSize: theme.typography.sizes.md,
-    color: '#111827',
+    fontSize: 14,
+    color: '#444444',
     textAlign: 'center',
-    fontFamily: 'DMSans-Medium',
+    fontFamily: 'DMSans-Regular',
   },
 });

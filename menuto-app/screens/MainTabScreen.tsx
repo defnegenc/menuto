@@ -75,29 +75,28 @@ export function MainTabScreen({
         )}
       </View>
 
-      {/* Bottom tab bar */}
+      {/* Bottom tab bar — segmented toggle */}
       <View style={[styles.tabBar, { paddingBottom: insets.bottom + 8 }]}>
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => setActiveTab('spots')}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.tabIndicator, activeTab === 'spots' && styles.tabIndicatorActive]} />
-          <Text style={[styles.tabLabel, activeTab === 'spots' && styles.tabLabelActive]}>
-            My List
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.tab}
-          onPress={() => setActiveTab('choose')}
-          activeOpacity={0.7}
-        >
-          <View style={[styles.tabIndicator, activeTab === 'choose' && styles.tabIndicatorActive]} />
-          <Text style={[styles.tabLabel, activeTab === 'choose' && styles.tabLabelActive]}>
-            Choose Dish
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.toggleContainer}>
+          <TouchableOpacity
+            style={[styles.toggleTab, activeTab === 'spots' && styles.toggleTabActive]}
+            onPress={() => setActiveTab('spots')}
+            activeOpacity={0.9}
+          >
+            <Text style={[styles.toggleLabel, activeTab === 'spots' && styles.toggleLabelActive]}>
+              MY LIST
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleTab, activeTab === 'choose' && styles.toggleTabActive]}
+            onPress={() => setActiveTab('choose')}
+            activeOpacity={0.9}
+          >
+            <Text style={[styles.toggleLabel, activeTab === 'choose' && styles.toggleLabelActive]}>
+              CHOOSE DISH
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -119,34 +118,35 @@ const styles = StyleSheet.create({
   },
   // Tab bar
   tabBar: {
-    flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
-    paddingTop: 12,
-    paddingHorizontal: 48,
+    paddingTop: 10,
+    paddingHorizontal: 20,
   },
-  tab: {
+  toggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 4,
+    padding: 3,
+  },
+  toggleTab: {
     flex: 1,
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 3,
   },
-  tabIndicator: {
-    width: 20,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: 'transparent',
+  toggleTabActive: {
+    backgroundColor: '#1A1A1A',
   },
-  tabIndicatorActive: {
-    backgroundColor: RED,
+  toggleLabel: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 12,
+    letterSpacing: 2,
+    color: '#9CA3AF',
   },
-  tabLabel: {
-    fontFamily: 'DMSans-SemiBold',
-    fontSize: 13,
-    color: '#D1D5DB',
-    letterSpacing: 0.3,
-  },
-  tabLabelActive: {
-    color: '#111827',
+  toggleLabelActive: {
+    color: '#FFFFFF',
   },
 });

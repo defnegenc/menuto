@@ -338,76 +338,116 @@ export function ChooseDishLanding({
         showsVerticalScrollIndicator={false}
       >
         <>
-          {/* Step 1: Search for restaurant */}
-          {!searchText && !selectedRestaurant && (
-            <View style={styles.stepSection}>
-              <Text style={styles.stepText}>Step 1: Search for a restaurant</Text>
-              <View style={styles.stepUnderline} />
+          {/* ── STEP 1: Find restaurant ───────────────────── */}
+          <View style={styles.stepBlock}>
+            <View style={styles.stepHeader}>
+              <View style={[styles.stepNumber, selectedRestaurant && styles.stepNumberDone]}>
+                <Text style={[styles.stepNumberText, selectedRestaurant && styles.stepNumberTextDone]}>
+                  {selectedRestaurant ? '✓' : '1'}
+                </Text>
+              </View>
+              <View style={styles.stepMeta}>
+                <Text style={styles.stepTitle}>
+                  {selectedRestaurant ? selectedRestaurant.name : 'Find a restaurant'}
+                </Text>
+                {selectedRestaurant && (
+                  <Text style={styles.stepSubtitle}>
+                    {selectedRestaurant.vicinity?.split(',').slice(0, 2).join(', ')}
+                  </Text>
+                )}
+                {!selectedRestaurant && !searchText && (
+                  <Text style={styles.stepSubtitle}>Search by name or browse nearby</Text>
+                )}
+              </View>
+              {selectedRestaurant && (
+                <TouchableOpacity onPress={() => { setSelectedRestaurant(null); setSearchText(''); setMenuDishes([]); setMenuFound(false); }}>
+                  <Text style={styles.changeLink}>Change</Text>
+                </TouchableOpacity>
+              )}
             </View>
-          )}
 
-          {/* Search Bar */}
-          <View style={styles.searchSection}>
-            <SearchBar
-              value={searchText}
-              onChangeText={setSearchText}
-              placeholder="Search restaurants..."
-            />
+            {/* Search — only when no restaurant selected */}
+            {!selectedRestaurant && (
+              <View style={styles.stepContent}>
+                <SearchBar
+                  value={searchText}
+                  onChangeText={setSearchText}
+                  placeholder="Search restaurants..."
+                />
+                {searchResults.length > 0 && (
+                  <View style={styles.resultsSection}>
+                    {searchResults.map(renderRestaurantCard)}
+                  </View>
+                )}
+                {isSearching && (
+                  <View style={styles.loadingState}>
+                    <ActivityIndicator size="small" color={TERRA} />
+                    <Text style={styles.loadingText}>Searching...</Text>
+                  </View>
+                )}
+                {!isSearching && searchResults.length === 0 && searchText.length > 1 && (
+                  <Text style={styles.noResultsText}>No restaurants found</Text>
+                )}
+              </View>
+            )}
           </View>
 
-          {/* Selected Restaurant Info */}
+          {/* ── STEP 2: Menu ─────────────────────────────── */}
           {selectedRestaurant && (
-            <View style={styles.selectedRestaurantInfo}>
-              <Text style={styles.selectedRestaurantName}>
-                {selectedRestaurant.name}
-              </Text>
-              <Text style={styles.selectedRestaurantAddress}>
-                {selectedRestaurant.vicinity
-                  ? selectedRestaurant.vicinity.split(',').slice(0, 3).join(', ')
-                  : ''}
-              </Text>
+            <View style={styles.stepBlock}>
+              <View style={styles.stepHeader}>
+                <View style={[styles.stepNumber, menuFound && styles.stepNumberDone]}>
+                  <Text style={[styles.stepNumberText, menuFound && styles.stepNumberTextDone]}>
+                    {menuFound ? '✓' : '2'}
+                  </Text>
+                </View>
+                <View style={styles.stepMeta}>
+                  <Text style={styles.stepTitle}>
+                    {menuFound ? 'Menu ready' : isLoadingMenu ? 'Loading menu...' : 'Add a menu'}
+                  </Text>
+                  <Text style={styles.stepSubtitle}>
+                    {menuFound
+                      ? `${menuDishes.length} dishes available`
+                      : 'Photo, link, or paste text'}
+                  </Text>
+                </View>
+                {menuFound && (
+                  <TouchableOpacity onPress={() => setShowReviewModal(true)}>
+                    <Text style={styles.changeLink}>Review</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {!menuFound && (
+                <View style={styles.stepContent}>
+                  <DishScoringCard
+                    menuDishes={menuDishes}
+                    isLoadingMenu={isLoadingMenu}
+                    menuFound={menuFound}
+                    onAddPhoto={handleAddPhoto}
+                    onAddMenuLink={handleAddMenuLink}
+                    onPasteMenuText={handlePasteMenuText}
+                    onReviewMenu={() => setShowReviewModal(true)}
+                  />
+                </View>
+              )}
             </View>
           )}
 
-          {/* Search Results */}
-          {searchText && !selectedRestaurant && (
-            <>
-              {searchResults.length > 0 && (
-                <View style={styles.resultsSection}>
-                  {searchResults.map(renderRestaurantCard)}
+          {/* ── STEP 3: Preferences ──────────────────────── */}
+          {selectedRestaurant && menuFound && (
+            <View style={styles.stepBlock}>
+              <View style={styles.stepHeader}>
+                <View style={styles.stepNumber}>
+                  <Text style={styles.stepNumberText}>3</Text>
                 </View>
-              )}
-              {isSearching && (
-                <View style={styles.loadingState}>
-                  <ActivityIndicator size="small" color={TERRA} />
-                  <Text style={styles.loadingText}>Searching restaurants...</Text>
+                <View style={styles.stepMeta}>
+                  <Text style={styles.stepTitle}>Set your preferences</Text>
+                  <Text style={styles.stepSubtitle}>Cravings, hunger, and vibe</Text>
                 </View>
-              )}
-              {!isSearching && searchResults.length === 0 && searchText && !selectedRestaurant && (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyStateText}>
-                    No restaurants found for "{searchText}". Try a different search term.
-                  </Text>
-                </View>
-              )}
-            </>
-          )}
+              </View>
 
-          {/* Menu section when restaurant is selected */}
-          {selectedRestaurant && (
-            <>
-              <DishScoringCard
-                menuDishes={menuDishes}
-                isLoadingMenu={isLoadingMenu}
-                menuFound={menuFound}
-                onAddPhoto={handleAddPhoto}
-                onAddMenuLink={handleAddMenuLink}
-                onPasteMenuText={handlePasteMenuText}
-                onReviewMenu={() => setShowReviewModal(true)}
-              />
-
-              {/* Preferences show immediately when menu is found */}
-              {menuFound && (
+              <View style={styles.stepContent}>
                 <PreferencesPanel
                   hungerLevel={hungerLevel}
                   preferenceLevel={preferenceLevel}
@@ -421,8 +461,8 @@ export function ChooseDishLanding({
                   onSetFreeTextMood={setFreeTextMood}
                   onContinue={handleContinue}
                 />
-              )}
-            </>
+              </View>
+            </View>
           )}
         </>
       </ScrollView>
@@ -640,13 +680,13 @@ const styles = StyleSheet.create({
   eyebrowLine: {
     width: 32,
     height: 2,
-    backgroundColor: '#1B2541',
+    backgroundColor: '#1A1A1A',
   },
   eyebrowText: {
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
     letterSpacing: 3,
-    color: '#1B2541',
+    color: '#1A1A1A',
     textTransform: 'uppercase',
   },
   headerTitle: {
@@ -680,7 +720,7 @@ const styles = StyleSheet.create({
   },
   stepText: {
     fontSize: 10,
-    color: '#1B2541',
+    color: '#1A1A1A',
     marginBottom: 0,
     fontFamily: 'DMSans-Bold',
     textTransform: 'uppercase',
@@ -798,7 +838,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 10,
     fontFamily: 'DMSans-Bold',
-    color: '#1B2541',
+    color: '#1A1A1A',
     textTransform: 'uppercase',
     letterSpacing: 3,
   },
@@ -891,7 +931,7 @@ const styles = StyleSheet.create({
   reviewCategoryTitle: {
     fontSize: 10,
     fontFamily: 'DMSans-Bold',
-    color: '#1B2541',
+    color: '#1A1A1A',
     marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 3,

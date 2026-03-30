@@ -10,7 +10,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { useStore } from '../store/useStore';
-import { theme } from '../theme';
 import { FavoriteRestaurant } from '../types';
 import { api } from '../services/api';
 import {
@@ -470,12 +469,6 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut, onTestOnboarding,
           loadingTriedDishes={loadingTriedDishes}
           onSignOut={onSignOut}
         />
-
-        {onTestOnboarding && (
-          <TouchableOpacity style={styles.previewButton} onPress={onTestOnboarding}>
-            <Text style={styles.previewButtonText}>Preview Onboarding</Text>
-          </TouchableOpacity>
-        )}
       </ScrollView>
     </View>
   );
@@ -498,31 +491,19 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAFAF9',
     justifyContent: 'center',
     alignItems: 'center',
   },
   backArrow: {
     fontFamily: 'DMSans-Regular',
     fontSize: 18,
-    color: '#6B7280',
+    color: '#666666',
   },
   editLink: {
     fontFamily: 'DMSans-SemiBold',
-    fontSize: 15,
+    fontSize: 14,
     color: '#E9323D',
-  },
-  previewButton: {
-    alignItems: 'center',
-    paddingVertical: 20,
-    marginTop: 16,
-    marginBottom: 32,
-    marginHorizontal: 24,
-  },
-  previewButtonText: {
-    fontFamily: 'DMSans-Medium',
-    fontSize: 13,
-    color: '#D1D5DB',
   },
   scrollView: {
     flex: 1,
