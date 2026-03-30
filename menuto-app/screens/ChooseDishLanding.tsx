@@ -318,14 +318,8 @@ export function ChooseDishLanding({
   if (isParsing) {
     return (
       <View style={styles.container}>
-        <View style={[styles.editorialHeader, { paddingTop: insets.top + 8 }]}>
-          <View style={styles.eyebrowRow}>
-            <View style={styles.eyebrowLine} />
-            <Text style={styles.eyebrowText}>Choose Dish</Text>
-          </View>
-          <Text style={styles.headerTitle}>
-            Find your{'\n'}<Text style={styles.headerAccent}>dish</Text>
-          </Text>
+        <View style={{ paddingTop: insets.top + 8 }}>
+          <ScreenHeader title="Find your" accent="dish" />
         </View>
         <ParsingScreen restaurantName={selectedRestaurant?.name} />
       </View>

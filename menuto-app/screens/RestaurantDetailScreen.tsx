@@ -733,10 +733,15 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
           <Text style={styles.backArrow}>{'←'}</Text>
           <Text style={styles.backLabel}>BACK</Text>
         </TouchableOpacity>
-        <Text style={styles.restaurantName} numberOfLines={2}>{restaurant.name}</Text>
-        <Text style={styles.cuisineLine}>
-          {(restaurant.cuisine_type || 'DINING').toUpperCase()}{restaurant.rating ? ` · ${restaurant.rating}\u2605` : ''}
-        </Text>
+        <View style={styles.titleRow}>
+          <View style={styles.titleAccentLine} />
+          <View style={styles.titleTextCol}>
+            <Text style={styles.restaurantName} numberOfLines={2}>{restaurant.name}</Text>
+            <Text style={styles.cuisineLine}>
+              {(restaurant.cuisine_type || 'DINING').toUpperCase()}{restaurant.rating ? ` · ${restaurant.rating}\u2605` : ''}
+            </Text>
+          </View>
+        </View>
         <Text style={styles.restaurantAddress} numberOfLines={1}>
           {(restaurant.vicinity ?? 'Location unknown').split(',').slice(0, 3).join(', ')}
         </Text>
@@ -1108,13 +1113,28 @@ const styles = StyleSheet.create({
     color: '#1B2541',
     textTransform: 'uppercase',
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 14,
+  },
+  titleAccentLine: {
+    width: 3,
+    backgroundColor: '#E9323D',
+    borderRadius: 1.5,
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  titleTextCol: {
+    flex: 1,
+  },
   restaurantName: {
     fontFamily: 'PlayfairDisplay-Italic',
     fontSize: 36,
     lineHeight: 42,
     letterSpacing: -1,
     color: '#1A1A1A',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   cuisineLine: {
     fontFamily: 'DMSans-Bold',
