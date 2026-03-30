@@ -97,11 +97,7 @@ export function TastePreferencesCard({
     <View style={styles.section}>
       <View style={styles.preferenceHeader}>
         <Text style={styles.sectionTitle}>Your Preferences</Text>
-        {!isEditingPreferences && (
-          <TouchableOpacity onPress={onStartEditingPreferences}>
-            <Text style={styles.editButtonText}>Edit</Text>
-          </TouchableOpacity>
-        )}
+        {/* Edit removed — global edit at top */}
       </View>
 
       {isEditingPreferences ? (

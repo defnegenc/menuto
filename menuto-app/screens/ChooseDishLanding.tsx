@@ -646,13 +646,13 @@ const styles = StyleSheet.create({
   eyebrowLine: {
     width: 32,
     height: 2,
-    backgroundColor: RED,
+    backgroundColor: '#1B2541',
   },
   eyebrowText: {
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
     letterSpacing: 3,
-    color: RED,
+    color: '#1B2541',
     textTransform: 'uppercase',
   },
   headerTitle: {

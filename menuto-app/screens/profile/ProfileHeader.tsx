@@ -50,11 +50,7 @@ export function ProfileHeader({
   return (
     <>
       {/* Profile Section */}
-      <View style={styles.profileSectionHeader}>
-        <TouchableOpacity onPress={onEditProfile}>
-          <Text style={styles.editButtonText}>Edit</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Edit removed — global edit at top */}
       <View style={styles.profileSection}>
         <View style={styles.profilePicContainer}>
           {user?.profile_photo ? (

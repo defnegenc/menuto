@@ -729,17 +729,19 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Inline header */}
+      {/* Editorial header — matches MyRestaurants style */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backArrow}>{'<'}</Text>
+          <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.restaurantName} numberOfLines={1}>{restaurant.name}</Text>
-          <Text style={styles.restaurantAddress} numberOfLines={1}>
-            {(restaurant.vicinity ?? 'Location unknown').split(',').slice(0, 3).join(', ')}
-          </Text>
+        <View style={styles.eyebrowRow}>
+          <View style={styles.eyebrowLine} />
+          <Text style={styles.eyebrowText}>Restaurant</Text>
         </View>
+        <Text style={styles.restaurantName} numberOfLines={2}>{restaurant.name}</Text>
+        <Text style={styles.restaurantAddress} numberOfLines={1}>
+          {(restaurant.vicinity ?? 'Location unknown').split(',').slice(0, 3).join(', ')}
+        </Text>
       </View>
 
       {isLoading && (
@@ -1073,11 +1075,9 @@ const styles = StyleSheet.create({
   },
   // Inline header
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    gap: 12,
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
   backButton: {
     width: 40,
@@ -1086,26 +1086,43 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAF9',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 12,
   },
   backArrow: {
-    fontSize: 18,
+    fontSize: 20,
     color: '#1C1917',
-    fontFamily: 'DMSans-Bold',
   },
-  headerTextContainer: {
-    flex: 1,
+  eyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  eyebrowLine: {
+    width: 32,
+    height: 2,
+    backgroundColor: '#1B2541',
+  },
+  eyebrowText: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 10,
+    letterSpacing: 3,
+    color: '#1B2541',
+    textTransform: 'uppercase',
   },
   restaurantName: {
     fontFamily: 'DMSans-Bold',
-    fontSize: 18,
-    letterSpacing: -0.5,
+    fontSize: 36,
+    lineHeight: 40,
+    letterSpacing: -1.5,
     color: '#1C1917',
+    marginBottom: 4,
   },
   restaurantAddress: {
     fontFamily: 'DMSans-Regular',
-    fontSize: 12,
+    fontSize: 14,
     color: '#8C7E77',
-    marginTop: 2,
+    fontStyle: 'italic',
   },
   // Loading
   loadingContainer: {
@@ -1148,9 +1165,10 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     fontFamily: 'DMSans-Regular',
   },
-  // Search input
+  // Search input — matches MyRestaurants style
   searchContainer: {
-    marginBottom: 12,
+    paddingHorizontal: 24,
+    marginBottom: 16,
   },
   searchInput: {
     flexDirection: 'row',
@@ -1182,12 +1200,12 @@ const styles = StyleSheet.create({
     padding: 20,
     fontFamily: 'DMSans-Regular',
   },
-  // Section titles — eyebrow pattern
+  // Section titles — dark blue eyebrow pattern
   sectionTitle: {
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
-    letterSpacing: 2,
-    color: '#8C7E77',
+    letterSpacing: 3,
+    color: '#1B2541',
     textTransform: 'uppercase',
     marginBottom: 12,
   },
@@ -1198,17 +1216,17 @@ const styles = StyleSheet.create({
   },
   favoritesCards: {
     marginBottom: 16,
+    gap: 12,
   },
   fallbackCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    backgroundColor: '#FAFAF9',
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E7E5E4',
+    borderColor: '#F5F5F4',
   },
   fallbackDishName: {
     fontFamily: 'DMSans-Bold',

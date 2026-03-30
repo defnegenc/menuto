@@ -56,11 +56,7 @@ export function SavedRestaurantsList({
       <View style={styles.section}>
         <View style={styles.preferenceHeader}>
           <Text style={styles.sectionTitle}>Your Top Restaurants</Text>
-          {!isEditingTop3 && (
-            <TouchableOpacity onPress={onStartEditingTop3}>
-              <Text style={styles.editButtonText}>Edit</Text>
-            </TouchableOpacity>
-          )}
+          {/* Edit removed — global edit at top */}
         </View>
 
         {isEditingTop3 ? (

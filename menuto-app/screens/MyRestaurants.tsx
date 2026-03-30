@@ -267,13 +267,13 @@ const styles = StyleSheet.create({
   eyebrowLine: {
     width: 32,
     height: 2,
-    backgroundColor: TERRA,
+    backgroundColor: '#1B2541',
   },
   eyebrowText: {
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
     letterSpacing: 3,
-    color: TERRA,
+    color: '#1B2541',
     textTransform: 'uppercase',
   },
   headerTitle: {
@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Bold',
     fontSize: 13,
     letterSpacing: 3,
-    color: TERRA,
+    color: '#1B2541',
     textTransform: 'uppercase',
     paddingHorizontal: 24,
     paddingTop: 20,
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#F5F5F4',
   },
   footerButton: {
-    backgroundColor: TERRA,
+    backgroundColor: '#1B2541',
     borderRadius: 999,
     paddingVertical: 18,
     alignItems: 'center',

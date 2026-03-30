@@ -470,6 +470,12 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut, onTestOnboarding,
           loadingTriedDishes={loadingTriedDishes}
           onSignOut={onSignOut}
         />
+
+        {onTestOnboarding && (
+          <TouchableOpacity style={styles.previewButton} onPress={onTestOnboarding}>
+            <Text style={styles.previewButtonText}>Preview Onboarding</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );
@@ -482,45 +488,26 @@ const styles = StyleSheet.create({
   },
   screenHeader: {
     paddingHorizontal: 24,
-    paddingBottom: 12,
+    paddingBottom: 8,
   },
   headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  headerLeft: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#F9FAFB',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
   },
   backArrow: {
     fontFamily: 'DMSans-Regular',
-    fontSize: 20,
+    fontSize: 18,
     color: '#6B7280',
   },
-  screenTitle: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 44,
-    lineHeight: 46,
-    letterSpacing: -1.5,
-    color: '#111827',
-    marginBottom: 8,
-  },
-  editTopButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-  },
-  editTopButtonText: {
+  editLink: {
     fontFamily: 'DMSans-SemiBold',
     fontSize: 15,
     color: '#E9323D',
@@ -536,10 +523,6 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Medium',
     fontSize: 13,
     color: '#D1D5DB',
-  },
-  screenHeaderDivider: {
-    height: 1,
-    backgroundColor: '#F3F4F6',
   },
   scrollView: {
     flex: 1,
