@@ -771,7 +771,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
               {/* Minimal search bar */}
               <View style={styles.searchContainer}>
                 <View style={styles.searchInput}>
-                  <Text style={styles.searchIcon}>{'🔍'}</Text>
+                  <Text style={styles.searchIcon}>⌕</Text>
                   <TextInput
                     style={styles.searchTextInput}
                     value={searchText}
@@ -824,13 +824,10 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                 ) : null;
               })()}
 
-              {/* "THE MENU" label with red underline */}
+              {/* Menu header */}
               <View style={styles.menuHeader}>
                 <View style={styles.menuTitleRow}>
-                  <View style={styles.menuLabelWrap}>
-                    <Text style={styles.menuLabel}>THE MENU</Text>
-                    <View style={styles.menuLabelUnderline} />
-                  </View>
+                  <Text style={styles.sectionTitle}>Menu</Text>
                   {showAddMoreOptions ? (
                     <TouchableOpacity style={styles.addMoreButton} onPress={() => setShowAddMoreOptions(false)}>
                       <Text style={styles.addMoreButtonText}>Cancel</Text>
@@ -1228,12 +1225,11 @@ const styles = StyleSheet.create({
   },
   favoritesBoxLabel: {
     fontFamily: 'DMSans-Bold',
-    fontSize: 12,
+    fontSize: 10,
     letterSpacing: 3,
     color: '#E9323D',
     textTransform: 'uppercase',
-    fontStyle: 'italic',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   favoritesBoxList: {
     fontFamily: 'DMSans-Regular',
@@ -1252,23 +1248,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
-  menuLabelWrap: {
-    alignSelf: 'flex-start',
-  },
-  menuLabel: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 12,
-    letterSpacing: 3,
-    color: '#E9323D',
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  menuLabelUnderline: {
-    width: 56,
-    height: 4,
-    backgroundColor: '#E9323D',
-    borderRadius: 2,
-  },
+  // menuLabel styles removed — using sectionTitle instead
   addMoreButton: {
     paddingHorizontal: 0,
     paddingVertical: 4,
@@ -1369,11 +1349,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dishName: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 18,
+    fontFamily: 'DMSans-SemiBold',
+    fontSize: 16,
     color: '#1A1A1A',
-    letterSpacing: -0.3,
-    lineHeight: 24,
+    letterSpacing: -0.2,
+    lineHeight: 22,
   },
   dishDescription: {
     fontFamily: 'DMSans-Regular',
