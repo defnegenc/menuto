@@ -195,10 +195,10 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xl,
   },
   sectionTitle: {
-    fontSize: 22,
+    fontSize: 24,
     color: '#111827',
     marginBottom: theme.spacing.sm,
-    fontFamily: 'DMSans-SemiBold',
+    fontFamily: 'PlayfairDisplay-Italic',
   },
   preferenceHeader: {
     flexDirection: 'row',

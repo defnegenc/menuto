@@ -400,10 +400,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   sectionTitle: {
-    fontSize: 22,
+    fontSize: 24,
     color: '#111827',
     marginBottom: theme.spacing.sm,
-    fontFamily: 'DMSans-SemiBold',
+    fontFamily: 'PlayfairDisplay-Italic',
   },
   preferenceGroup: {
     marginBottom: theme.spacing.xl,

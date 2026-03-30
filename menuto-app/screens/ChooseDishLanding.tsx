@@ -685,14 +685,16 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   stepText: {
-    fontSize: 12,
-    color: MEDIUM,
-    marginBottom: 8,
-    fontFamily: 'DMSans-Regular',
+    fontSize: 10,
+    color: '#1B2541',
+    marginBottom: 0,
+    fontFamily: 'DMSans-Bold',
+    textTransform: 'uppercase',
+    letterSpacing: 3,
   },
   stepUnderline: {
-    height: 1,
-    backgroundColor: '#E7E5E4',
+    height: 0,
+    backgroundColor: 'transparent',
     alignSelf: 'stretch',
   },
   selectedRestaurantInfo: {
@@ -701,15 +703,15 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   selectedRestaurantName: {
-    fontSize: 42,
-    fontFamily: 'DMSans-Bold',
+    fontSize: 36,
+    fontFamily: 'PlayfairDisplay-Italic',
     color: '#1C1917',
-    letterSpacing: -2.5,
+    letterSpacing: -1,
     marginBottom: 4,
   },
   selectedRestaurantAddress: {
-    fontSize: 12,
-    color: '#A8A29E',
+    fontSize: 14,
+    color: '#8C7E77',
     fontFamily: 'DMSans-Regular',
     fontStyle: 'italic',
   },
@@ -724,8 +726,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   loadingText: {
-    fontSize: 12,
-    color: '#A8A29E',
+    fontSize: 14,
+    color: '#666666',
     fontFamily: 'DMSans-Regular',
   },
   emptyState: {
@@ -735,7 +737,7 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 14,
-    color: MEDIUM,
+    color: '#666666',
     textAlign: 'center',
     fontFamily: 'DMSans-Regular',
   },
@@ -749,9 +751,9 @@ const styles = StyleSheet.create({
   },
   parsingRestaurantName: {
     fontSize: 28,
-    fontFamily: 'DMSans-Bold',
+    fontFamily: 'PlayfairDisplay-Italic',
     color: '#1C1917',
-    letterSpacing: -1.5,
+    letterSpacing: -0.5,
     marginBottom: 32,
     textAlign: 'center',
   },
@@ -769,12 +771,12 @@ const styles = StyleSheet.create({
   parsingText: {
     fontSize: 18,
     fontFamily: 'DMSans-Bold',
-    color: '#1C1917',
+    color: '#444444',
     textAlign: 'center',
   },
   parsingSubtext: {
     fontSize: 14,
-    color: '#78716C',
+    color: '#666666',
     marginTop: 8,
     textAlign: 'center',
     fontFamily: 'DMSans-Regular',
@@ -796,13 +798,15 @@ const styles = StyleSheet.create({
   },
   modalCancelButton: {
     fontSize: 14,
-    color: '#5A4D48',
+    color: '#666666',
     fontFamily: 'DMSans-Regular',
   },
   modalTitle: {
-    fontSize: 16,
+    fontSize: 10,
     fontFamily: 'DMSans-Bold',
-    color: '#1C1917',
+    color: '#1B2541',
+    textTransform: 'uppercase',
+    letterSpacing: 3,
   },
   modalSubmitButton: {
     fontSize: 14,
@@ -819,7 +823,7 @@ const styles = StyleSheet.create({
   },
   modalInstructions: {
     fontSize: 14,
-    color: '#5A4D48',
+    color: '#444444',
     marginBottom: 16,
     lineHeight: 20,
     fontFamily: 'DMSans-Regular',
@@ -876,8 +880,8 @@ const styles = StyleSheet.create({
     borderColor: '#F5F5F4',
   },
   removeUrlButtonText: {
-    color: '#5A4D48',
-    fontSize: 12,
+    color: '#666666',
+    fontSize: 14,
     fontFamily: 'DMSans-Bold',
   },
 
@@ -891,12 +895,12 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   reviewCategoryTitle: {
-    fontSize: 12,
+    fontSize: 10,
     fontFamily: 'DMSans-Bold',
-    color: '#1C1917',
+    color: '#1B2541',
     marginBottom: 8,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 3,
   },
   reviewDishItem: {
     marginBottom: 8,
@@ -911,8 +915,8 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Medium',
   },
   reviewDishDescription: {
-    fontSize: 12,
-    color: '#A8A29E',
+    fontSize: 14,
+    color: '#666666',
     fontFamily: 'DMSans-Regular',
     fontStyle: 'italic',
   },

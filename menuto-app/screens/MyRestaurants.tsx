@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   searchText: {
     flex: 1,
     fontFamily: 'DMSans-Regular',
-    fontSize: 15,
+    fontSize: 14,
     color: DARK,
   },
   clearText: {
@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontFamily: 'DMSans-Bold',
-    fontSize: 13,
+    fontSize: 10,
     letterSpacing: 3,
     color: '#1B2541',
     textTransform: 'uppercase',
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontFamily: 'DMSans-Regular',
     fontSize: 14,
-    color: LIGHT_TEXT,
+    color: '#666666',
   },
   // Empty states
   emptyState: {
@@ -363,16 +363,16 @@ const styles = StyleSheet.create({
     paddingVertical: 80,
   },
   emptyTitle: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 20,
+    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 24,
     color: DARK,
     marginBottom: 8,
     letterSpacing: -0.5,
   },
   emptySubtext: {
     fontFamily: 'DMSans-Regular',
-    fontSize: 15,
-    color: LIGHT_TEXT,
+    fontSize: 14,
+    color: '#666666',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -393,15 +393,17 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingVertical: 18,
     alignItems: 'center',
-    shadowColor: TERRA,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 6,
+    shadowColor: '#1B2541',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 3,
   },
   footerButtonText: {
     fontFamily: 'DMSans-Bold',
-    fontSize: 16,
+    fontSize: 14,
     color: '#FFFFFF',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
 });

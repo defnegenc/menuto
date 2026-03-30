@@ -207,9 +207,9 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Bold',
   },
   userName: {
-    fontSize: 24,
+    fontSize: 28,
     color: '#111827',
-    fontFamily: 'DMSans-SemiBold',
+    fontFamily: 'PlayfairDisplay-Italic',
   },
   userHandle: {
     fontSize: 13,
