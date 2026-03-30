@@ -378,28 +378,17 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut, onTestOnboarding,
   return (
     <View style={styles.container}>
       <View style={[styles.screenHeader, { paddingTop: insets.top }]}>
-        {/* Back + test buttons */}
-        <View style={styles.headerTopRow}>
+        <View style={styles.headerRow}>
           {onBackToTabs && (
             <TouchableOpacity style={styles.backButton} onPress={onBackToTabs}>
               <Text style={styles.backArrow}>←</Text>
             </TouchableOpacity>
           )}
           <View style={{ flex: 1 }} />
-          {onTestOnboarding && (
-            <TouchableOpacity style={styles.testButton} onPress={onTestOnboarding}>
-              <Text style={styles.testButtonText}>Preview Onboarding</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity style={styles.editTopButton} onPress={handleStartEditingPreferences}>
+            <Text style={styles.editTopButtonText}>Edit</Text>
+          </TouchableOpacity>
         </View>
-        {/* Eyebrow + editorial title */}
-        <View style={styles.eyebrowRow}>
-          <View style={styles.eyebrowLine} />
-          <Text style={styles.eyebrowText}>Account</Text>
-        </View>
-        <Text style={styles.screenTitle}>
-          My{'\n'}<Text style={styles.titleAccent}>profile</Text>
-        </Text>
       </View>
 
       <ScrollView
@@ -481,6 +470,13 @@ export function ProfileScreen({ onSelectRestaurant, onSignOut, onTestOnboarding,
           loadingTriedDishes={loadingTriedDishes}
           onSignOut={onSignOut}
         />
+
+        {/* Preview Onboarding — at the very bottom */}
+        {onTestOnboarding && (
+          <TouchableOpacity style={styles.previewButton} onPress={onTestOnboarding}>
+            <Text style={styles.previewButtonText}>Preview Onboarding</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );
@@ -493,39 +489,36 @@ const styles = StyleSheet.create({
   },
   screenHeader: {
     paddingHorizontal: 24,
-    paddingBottom: 12,
+    paddingBottom: 8,
   },
   headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-  },
-  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#F9FAFB',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
   },
   backArrow: {
     fontFamily: 'DMSans-Regular',
-    fontSize: 20,
+    fontSize: 18,
     color: '#6B7280',
   },
   screenTitle: {
     fontFamily: 'DMSans-Bold',
-    fontSize: 44,
-    lineHeight: 46,
-    letterSpacing: -1.5,
+    fontSize: 28,
+    letterSpacing: -1,
     color: '#111827',
-    marginBottom: 8,
+  },
+  titleAccent: {
+    fontFamily: 'PlayfairDisplay-Italic',
+    color: '#E9323D',
+    fontWeight: '500',
   },
   testButton: {
     backgroundColor: '#F9FAFB',
@@ -542,8 +535,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   screenHeaderDivider: {
-    height: 1,
-    backgroundColor: '#F3F4F6',
+    height: 0,
   },
   scrollView: {
     flex: 1,

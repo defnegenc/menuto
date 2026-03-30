@@ -419,9 +419,11 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   preferenceLabel: {
-    fontSize: 17,
+    fontSize: 14,
     color: '#111827',
-    fontFamily: 'DMSans-Medium',
+    fontFamily: 'IBMPlexMono-SemiBold',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   editButtonText: {
     color: RED,
