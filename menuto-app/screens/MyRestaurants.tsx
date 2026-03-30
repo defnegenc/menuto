@@ -17,10 +17,10 @@ import { RestaurantCard } from '../components/RestaurantCard';
 import { SearchRestaurantCard } from '../components/SearchRestaurantCard';
 import { SearchRestaurantSelected } from '../components/SearchRestaurantSelected';
 
-const RED = '#CE3E25';
+const TERRA = '#E9323D';
 const DARK = '#1C1917';
-const MEDIUM = '#44403C';
-const LIGHT_TEXT = '#78716C';
+const MEDIUM = '#5A4D48';
+const LIGHT_TEXT = '#8C7E77';
 
 interface Props {
   onSelectRestaurant: (restaurant: FavoriteRestaurant) => void;
@@ -161,7 +161,7 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
       >
         {isLoading ? (
           <View style={styles.emptyState}>
-            <ActivityIndicator size="large" color={RED} />
+            <ActivityIndicator size="large" color={TERRA} />
             <Text style={styles.emptySubtext}>Loading your spots...</Text>
           </View>
         ) : (
@@ -217,7 +217,7 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
             {/* Searching */}
             {searchText && isSearching && (
               <View style={styles.loadingRow}>
-                <ActivityIndicator size="small" color={RED} />
+                <ActivityIndicator size="small" color={TERRA} />
                 <Text style={styles.loadingText}>Searching...</Text>
               </View>
             )}
@@ -260,45 +260,42 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-
-  // ─── Header (brutalist: big type, no curves) ───
   header: {
     paddingHorizontal: 24,
     paddingTop: 16,
-    paddingBottom: 20,
-    borderBottomWidth: 2,
-    borderBottomColor: DARK,
+    paddingBottom: 16,
   },
   eyebrowRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   eyebrowLine: {
-    width: 40,
-    height: 3,
-    backgroundColor: RED,
+    width: 32,
+    height: 2,
+    backgroundColor: TERRA,
   },
   eyebrowText: {
     fontFamily: 'DMSans-Bold',
-    fontSize: 11,
-    letterSpacing: 4,
-    color: RED,
+    fontSize: 10,
+    letterSpacing: 3,
+    color: TERRA,
     textTransform: 'uppercase',
   },
   headerTitle: {
     fontFamily: 'DMSans-Bold',
-    fontSize: 42,
-    lineHeight: 44,
-    letterSpacing: -2,
-    color: DARK,
+    fontSize: 44,
+    lineHeight: 46,
+    letterSpacing: -1.5,
+    color: '#111827',
   },
   headerAccent: {
-    color: RED,
+    fontFamily: 'PlayfairDisplay-Italic',
+    color: TERRA,
+    fontWeight: '500',
   },
-
-  // ─── Search (sharp rectangle, no rounded corners) ───
+  // Search
   searchSection: {
     paddingHorizontal: 24,
     paddingVertical: 12,
@@ -307,9 +304,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FAFAF9',
-    borderRadius: 0,
-    borderWidth: 2,
-    borderColor: '#E7E5E4',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F5F5F4',
     paddingHorizontal: 16,
     paddingVertical: 14,
     gap: 10,
@@ -330,8 +327,7 @@ const styles = StyleSheet.create({
     color: LIGHT_TEXT,
     padding: 4,
   },
-
-  // ─── Content ───
+  // Scroll
   scrollView: {
     flex: 1,
   },
@@ -340,22 +336,19 @@ const styles = StyleSheet.create({
   },
   restaurantList: {
     paddingHorizontal: 24,
-    gap: 0,  // no gap — cards sit flush against each other
+    gap: 12,
   },
   sectionLabel: {
     fontFamily: 'DMSans-Bold',
-    fontSize: 11,
-    letterSpacing: 4,
-    color: RED,
+    fontSize: 13,
+    letterSpacing: 3,
+    color: TERRA,
     textTransform: 'uppercase',
     paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingTop: 20,
     paddingBottom: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E7E5E4',
   },
-
-  // ─── Loading ───
+  // Loading
   loadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -368,8 +361,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: LIGHT_TEXT,
   },
-
-  // ─── Empty states ───
+  // Empty states
   emptyState: {
     flex: 1,
     justifyContent: 'center',
@@ -379,11 +371,10 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontFamily: 'DMSans-Bold',
-    fontSize: 22,
+    fontSize: 20,
     color: DARK,
     marginBottom: 8,
     letterSpacing: -0.5,
-    textTransform: 'uppercase',
   },
   emptySubtext: {
     fontFamily: 'DMSans-Regular',
@@ -392,8 +383,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
-
-  // ─── Footer button (brutalist: sharp rectangle, dark red) ───
+  // Footer
   footer: {
     position: 'absolute',
     bottom: 0,
@@ -402,20 +392,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     paddingHorizontal: 24,
     paddingTop: 12,
-    borderTopWidth: 2,
-    borderTopColor: DARK,
+    borderTopWidth: 1,
+    borderTopColor: '#F5F5F4',
   },
   footerButton: {
-    backgroundColor: RED,
-    borderRadius: 0,
+    backgroundColor: TERRA,
+    borderRadius: 999,
     paddingVertical: 18,
     alignItems: 'center',
+    shadowColor: TERRA,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 6,
   },
   footerButtonText: {
     fontFamily: 'DMSans-Bold',
-    fontSize: 15,
+    fontSize: 16,
     color: '#FFFFFF',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
   },
 });
