@@ -1349,11 +1349,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dishName: {
-    fontFamily: 'DMSans-SemiBold',
-    fontSize: 16,
+    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 20,
     color: '#1A1A1A',
-    letterSpacing: -0.2,
-    lineHeight: 22,
+    letterSpacing: -0.3,
+    lineHeight: 26,
   },
   dishDescription: {
     fontFamily: 'DMSans-Regular',
