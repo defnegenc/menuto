@@ -1103,12 +1103,12 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingTop: 8,
-    paddingBottom: 20,
+    paddingTop: 4,
+    paddingBottom: 12,
   },
   backButton: {
     alignSelf: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   backArrow: {
     fontSize: 20,
@@ -1212,7 +1212,7 @@ const styles = StyleSheet.create({
 
   /* ── Search ────────────────────────────────── */
   searchContainer: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   searchInput: {
     flexDirection: 'row',
@@ -1370,14 +1370,14 @@ const styles = StyleSheet.create({
 
   /* ── Category filter ───────────────────────── */
   categoryFilterSection: {
-    marginBottom: 24,
+    marginBottom: 12,
   },
   categoryFilterContainer: {
     flexDirection: 'row',
-    gap: 20,
+    gap: 16,
   },
   categoryFilterButton: {
-    paddingVertical: 4,
+    paddingVertical: 2,
     alignItems: 'center',
   },
   categoryFilterText: {
