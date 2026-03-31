@@ -563,7 +563,7 @@ export function ChooseDishLanding({
         </View>
       </Modal>
 
-      {/* Review Menu Modal */}
+      {/* Review Menu Modal — journal style matching RestaurantDetailScreen */}
       <Modal
         visible={showReviewModal}
         animationType="slide"
@@ -572,14 +572,33 @@ export function ChooseDishLanding({
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowReviewModal(false)}>
-              <Text style={styles.modalCancelButton}>Close</Text>
+              <Text style={styles.modalCancelButton}>Done</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>
-              {menuDishes.length} dishes
+              {menuDishes.length} DISHES
             </Text>
             <View style={{ width: 50 }} />
           </View>
           <ScrollView style={styles.modalContent}>
+            {/* Add more items */}
+            <View style={styles.addMoreSection}>
+              <Text style={styles.addMoreLabel}>ADD MORE ITEMS</Text>
+              <View style={styles.addMoreRow}>
+                <TouchableOpacity style={styles.addMoreBtn} onPress={() => { setShowReviewModal(false); handleAddPhoto(); }}>
+                  <Text style={styles.addMoreBtnText}>📸 Photo</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.addMoreBtn} onPress={() => { setShowReviewModal(false); setMenuUrls(['']); setShowMenuUrlModal(true); }}>
+                  <Text style={styles.addMoreBtnText}>🔗 Link</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.addMoreBtn} onPress={() => { setShowReviewModal(false); setShowTextModal(true); }}>
+                  <Text style={styles.addMoreBtnText}>📋 Text</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.reviewDivider} />
+
+            {/* Grouped dishes — journal style */}
             {(() => {
               const grouped: { [key: string]: ParsedDish[] } = {};
               menuDishes.forEach((dish) => {
@@ -600,6 +619,7 @@ export function ChooseDishLanding({
                       {dish.description && (
                         <Text style={styles.reviewDishDescription}>{dish.description}</Text>
                       )}
+                      <View style={styles.reviewDishDivider} />
                     </View>
                   ))}
                 </View>
@@ -759,7 +779,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: '#E5E5E5',
   },
   stepHeader: {
     flexDirection: 'row',
@@ -767,10 +787,10 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   stepNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
+    width: 28,
+    height: 28,
+    borderRadius: 0,
+    backgroundColor: '#1A1A1A',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -779,8 +799,8 @@ const styles = StyleSheet.create({
   },
   stepNumberText: {
     fontFamily: 'DMSans-Bold',
-    fontSize: 14,
-    color: '#9CA3AF',
+    fontSize: 12,
+    color: '#FFFFFF',
   },
   stepNumberTextDone: {
     color: '#FFFFFF',
@@ -1046,39 +1066,71 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Bold',
   },
 
-  // Review modal
-  reviewCategorySection: {
+  // Review modal — journal style
+  addMoreSection: {
     marginBottom: 16,
+  },
+  addMoreLabel: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 10,
+    letterSpacing: 3,
+    color: '#1B2541',
+    textTransform: 'uppercase',
+    marginBottom: 12,
+  },
+  addMoreRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  addMoreBtn: {
+    flex: 1,
     backgroundColor: '#FAFAF9',
-    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#F5F5F4',
-    padding: 16,
+    borderColor: '#E5E5E5',
+    borderRadius: 0,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  addMoreBtnText: {
+    fontFamily: 'DMSans-SemiBold',
+    fontSize: 12,
+    color: '#1A1A1A',
+  },
+  reviewDivider: {
+    height: 1,
+    backgroundColor: '#E5E5E5',
+    marginBottom: 24,
+  },
+  reviewCategorySection: {
+    marginBottom: 24,
   },
   reviewCategoryTitle: {
-    fontSize: 10,
     fontFamily: 'DMSans-Bold',
-    color: '#1A1A1A',
-    marginBottom: 8,
-    textTransform: 'uppercase',
+    fontSize: 10,
     letterSpacing: 3,
+    color: '#1B2541',
+    textTransform: 'uppercase',
+    marginBottom: 16,
   },
   reviewDishItem: {
-    marginBottom: 8,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F4',
+    marginBottom: 24,
   },
   reviewDishName: {
-    fontSize: 14,
-    color: '#1C1917',
+    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 18,
+    color: '#1A1A1A',
+    letterSpacing: -0.3,
     marginBottom: 4,
-    fontFamily: 'DMSans-Medium',
   },
   reviewDishDescription: {
-    fontSize: 14,
-    color: '#666666',
     fontFamily: 'DMSans-Regular',
-    fontStyle: 'italic',
+    fontSize: 14,
+    color: '#444444',
+    lineHeight: 20,
+  },
+  reviewDishDivider: {
+    height: 1,
+    backgroundColor: '#E5E5E5',
+    marginTop: 16,
   },
 });

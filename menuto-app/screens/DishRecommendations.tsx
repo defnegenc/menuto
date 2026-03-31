@@ -463,23 +463,10 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
                           explanation: '',
                           restaurant_id: restaurant.place_id
                         }}
+                        rank={index + 1}
                         isSelected={isSelected}
                         onPress={() => handleDishSelect(dish)}
-                        showScore={!hasUserHadDish(dish.name)}
-                        isFeatured={index === 0}
-                        onScorePress={() => {
-                          // Format score breakdown for tooltip
-                          const breakdown = dish.score_breakdown || {};
-                          const breakdownText = `Score Breakdown:\n\n` +
-                            `Personal Taste: ${(breakdown.taste_compatibility || breakdown.customer_praise || 0).toFixed(2)}\n` +
-                            `Popularity: ${(breakdown.customer_praise || 0).toFixed(2)}\n` +
-                            `Craving Match: ${(breakdown.craving_match || 0).toFixed(2)}\n` +
-                            `Hunger Match: ${(breakdown.hunger || 0).toFixed(2)}\n` +
-                            `Friend Boost: ${(breakdown.friend_boost || 0).toFixed(2)}\n\n` +
-                            `Total Score: ${(dish.recommendation_score || 0).toFixed(2)}`;
-                          setSelectedRationale(breakdownText);
-                          setShowRationaleModal(true);
-                        }}
+                        isFavorite={hasUserHadDish(dish.name)}
                       />
                       
                       {/* Recommendation reason — compact */}
@@ -529,20 +516,7 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
                       }}
                       isSelected={selectedDishes.some(d => d.id === dish.id)}
                       onPress={() => handleDishSelect(dish)}
-                      showScore={!hasUserHadDish(dish.name)}
-                      onScorePress={() => {
-                        // Format score breakdown for tooltip
-                        const breakdown = dish.score_breakdown || {};
-                        const breakdownText = [
-                          `Personal Taste: ${(breakdown.customer_praise || breakdown.taste_compatibility || 0).toFixed(2)}`,
-                          `Popularity: ${(breakdown.customer_praise || 0).toFixed(2)}`,
-                          `Craving Match: ${(breakdown.craving_match || 0).toFixed(2)}`,
-                          `Hunger Match: ${(breakdown.hunger || 0).toFixed(2)}`,
-                          `Friend Boost: ${(breakdown.friend_boost || 0).toFixed(2)}`
-                        ].join('\n');
-                        setSelectedRationale(breakdownText);
-                        setShowRationaleModal(true);
-                      }}
+                      isFavorite={hasUserHadDish(dish.name)}
                     />
                   ))}
               </View>

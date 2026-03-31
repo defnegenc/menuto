@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { ParsedDish } from '../types';
 
 const RED = '#E9323D';
@@ -21,6 +21,7 @@ interface MenuItemCardProps {
   showScore?: boolean;
   isFeatured?: boolean;
   onScorePress?: () => void;
+  rank?: number;
 }
 
 export const MenuItemCard: React.FC<MenuItemCardProps> = ({
@@ -32,149 +33,107 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({
   showScore = false,
   isFeatured = false,
   onScorePress,
+  rank,
 }) => {
   return (
     <TouchableOpacity
-      style={[
-        styles.card,
-        isFavorite && styles.favoriteCard,
-        isSelected && styles.selectedCard,
-        isFeatured && styles.featuredCard,
-      ]}
+      style={[styles.card, isSelected && styles.cardSelected]}
       onPress={onPress}
       disabled={!onPress}
       activeOpacity={0.7}
     >
-      <View style={styles.topRow}>
-        <View style={styles.nameRow}>
-          <Text style={styles.dishName}>{capitalizeText(dish.name)}</Text>
-          {showScore && dish.score > 0 && (
-            <TouchableOpacity onPress={onScorePress} disabled={!onScorePress}>
-              <View style={styles.scoreBadge}>
-                <Text style={styles.scoreText}>
-                  {dish.score > 1 ? Math.round(dish.score) : Math.round(dish.score * 100)}%
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
-        </View>
-        {onAddToFavorites && (
-          <TouchableOpacity
-            style={[styles.addButton, isFavorite && styles.addButtonActive]}
-            onPress={() => onAddToFavorites(dish)}
-          >
-            <Text style={styles.addButtonText}>
-              {isFavorite ? '✓' : '+'}
-            </Text>
-          </TouchableOpacity>
+      {/* Rank + Name row */}
+      <View style={styles.nameRow}>
+        {rank !== undefined && (
+          <Text style={styles.rank}>#{rank}</Text>
         )}
+        <Text style={styles.name} numberOfLines={2}>{capitalizeText(dish.name)}</Text>
+        {isFavorite && <Text style={styles.heart}>♥</Text>}
       </View>
 
+      {/* Description */}
       {dish.description ? (
         <Text style={styles.description} numberOfLines={2}>
           {capitalizeText(dish.description)}
         </Text>
       ) : null}
 
-      {dish.price ? (
-        <Text style={styles.price}>${dish.price}</Text>
-      ) : null}
+      {/* Price + action */}
+      <View style={styles.bottomRow}>
+        {dish.price ? (
+          <Text style={styles.price}>${dish.price}</Text>
+        ) : <View />}
+
+        {onAddToFavorites && (
+          <TouchableOpacity
+            onPress={() => onAddToFavorites(dish)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.addText}>
+              {isFavorite ? '✓ Added' : '+ Add'}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    padding: 18,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
     gap: 6,
   },
-  favoriteCard: {
-    borderColor: RED,
-    backgroundColor: '#FFF5F5',
+  cardSelected: {
+    borderBottomColor: RED,
   },
-  selectedCard: {
-    borderWidth: 2,
-    borderColor: RED,
-    backgroundColor: '#FFF5F5',
-  },
-  featuredCard: {
-    borderColor: RED,
-    borderWidth: 1,
-    backgroundColor: '#FFF5F5',
-  },
-  // Top row: name + score + add button
-  topRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
+  // Name row
   nameRow: {
-    flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'baseline',
     gap: 8,
-    flexWrap: 'wrap',
   },
-  dishName: {
-    fontFamily: 'IBMPlexMono-SemiBold',
-    fontSize: 15,
-    color: '#111827',
-    letterSpacing: 0.3,
-    textTransform: 'uppercase',
-    lineHeight: 20,
-  },
-  scoreBadge: {
-    backgroundColor: '#FFF5F5',
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  scoreText: {
+  rank: {
     fontFamily: 'DMSans-Bold',
-    fontSize: 10,
+    fontSize: 12,
     color: RED,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    minWidth: 20,
+  },
+  name: {
+    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 20,
+    color: '#1A1A1A',
+    letterSpacing: -0.3,
+    flex: 1,
+  },
+  heart: {
+    fontSize: 16,
+    color: RED,
   },
   // Description
   description: {
     fontFamily: 'DMSans-Regular',
-    fontSize: 13,
-    color: '#9CA3AF',
-    fontStyle: 'italic',
-    lineHeight: 18,
+    fontSize: 14,
+    color: '#444444',
+    lineHeight: 20,
   },
-  // Price
-  price: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 16,
-    color: '#374151',
-    marginTop: 2,
-  },
-  // Add button — circular
-  addButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    justifyContent: 'center',
+  // Bottom
+  bottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    flexShrink: 0,
+    marginTop: 4,
   },
-  addButtonActive: {
-    backgroundColor: RED,
-    borderColor: RED,
+  price: {
+    fontFamily: 'DMSans-SemiBold',
+    fontSize: 15,
+    color: '#1A1A1A',
   },
-  addButtonText: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 18,
+  addText: {
+    fontFamily: 'DMSans-SemiBold',
+    fontSize: 13,
     color: RED,
   },
 });
