@@ -540,8 +540,8 @@ class MenuParser:
     
     def _create_text_prompt(self, text: str, restaurant_name: str) -> str:
         """Create prompt for text content - works for both HTML text and OCR/PDF"""
-        # Use up to 12000 chars to handle large menus (about 3000 tokens input)
-        menu_text = text[:12000]
+        # Gemini 2.5 Flash handles 1M tokens — use up to 50k chars for large menus
+        menu_text = text[:50000]
         return f"""
 Parse this restaurant menu from {restaurant_name} and return a JSON object with a "dishes" array and "cuisine_type".
 
@@ -579,14 +579,15 @@ Return ONLY a JSON object with this structure:
 }}
 
 Rules:
-- Extract ALL dishes from the entire menu
-- Use EXACT section names as categories when present (Antipasti, Pasta, Soups, etc.)
+- Extract ALL dishes from the ENTIRE menu — do NOT stop early. Include EVERY section (specials, mains, sides, desserts, drinks, lunch specials, add-ons, etc.)
+- Use EXACT section names as categories when present (e.g., "Chef's Specials", "Small Bites", "Signature Noodles", "Entrees", "Sides", "Dessert", "Cocktails", "Wines", "Beers")
 - Only use generic categories if no sections are evident
-- Extract prices as numbers (convert "$12.99" to 12.99)
+- Extract prices as numbers (convert "$12.99" to 12.99). For ranges like "$17/$65" use the lower number.
 - Keep descriptions under 30 words
-- Only include dietary_tags if explicitly mentioned (vegetarian, vegan, gluten-free, spicy)
+- Include dietary_tags from explicit labels (V, VG, GF, Dairy) and from content analysis
 - Only include ingredients explicitly listed
 - Determine cuisine_type from dish names and restaurant name
+- IGNORE non-menu content: contact info, hours, addresses, social media, gallery sections, reservation links
 - For dietary_flags, analyze ALL ingredients (including hidden ones like anchovy in Caesar dressing, fish sauce in Pad Thai, parmesan in pesto) to determine true dietary compatibility. Don't just check if "vegetarian" is written — think about what the dish actually contains.
 - is_vegetarian: no meat, poultry, fish, or seafood (eggs and dairy OK)
 - is_vegan: no animal products at all (no meat, dairy, eggs, honey)
