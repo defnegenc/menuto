@@ -59,20 +59,18 @@ export function MainTabScreen({
         />
       </View>
 
-      {/* Active screen */}
-      <View style={styles.screenContainer}>
-        {activeTab === 'spots' && (
-          <MyRestaurants
-            onSelectRestaurant={onSelectRestaurant}
-            onAddRestaurant={onAddRestaurant}
-          />
-        )}
-        {activeTab === 'choose' && (
-          <ChooseDishLanding
-            onSelectRestaurant={onSelectRestaurant}
-            onNavigateToRecommendations={onNavigateToDishRecommendations}
-          />
-        )}
+      {/* Both screens stay mounted — inactive one hidden to preserve state */}
+      <View style={[styles.screenContainer, activeTab !== 'spots' && styles.hidden]}>
+        <MyRestaurants
+          onSelectRestaurant={onSelectRestaurant}
+          onAddRestaurant={onAddRestaurant}
+        />
+      </View>
+      <View style={[styles.screenContainer, activeTab !== 'choose' && styles.hidden]}>
+        <ChooseDishLanding
+          onSelectRestaurant={onSelectRestaurant}
+          onNavigateToRecommendations={onNavigateToDishRecommendations}
+        />
       </View>
 
       {/* Bottom tab bar — segmented toggle */}
@@ -109,6 +107,9 @@ const styles = StyleSheet.create({
   },
   screenContainer: {
     flex: 1,
+  },
+  hidden: {
+    display: 'none',
   },
   // Profile icon
   profileIconContainer: {
