@@ -437,21 +437,59 @@ async def _run_ingest_job(job: IngestJob):
                 "cuisine_type": cuisine_type,
                 "menu_type": menu_type,
             }
-            menu_result = _safe_supabase_insert("parsed_menus", supabase_menu_data, fallback_remove=["menu_type", "place_id"])
+            # Check if a menu already exists for this restaurant — merge into it
+            sb = _get_supabase()
+            existing_menu = None
+            try:
+                existing_result = (
+                    sb.table("parsed_menus")
+                    .select("id")
+                    .eq("place_id", job.place_id)
+                    .order("parsed_at", desc=True)
+                    .limit(1)
+                    .maybe_single()
+                    .execute()
+                )
+                if existing_result.data:
+                    existing_menu = existing_result.data
+            except Exception:
+                pass
 
-            if not menu_result.data:
-                job.url_status[url] = "failed"
-                job.results[url] = {"success": False, "error": "db_insert_failed"}
-                failed += 1
-                continue
+            if existing_menu:
+                menu_id = existing_menu["id"]
+                # Update dish count
+                try:
+                    sb.table("parsed_menus").update({
+                        "dish_count": existing_menu.get("dish_count", 0) + len(dishes_data),
+                    }).eq("id", menu_id).execute()
+                except Exception:
+                    pass
+                logger.info(f"Merging {len(dishes_data)} new dishes into existing menu {menu_id}")
+            else:
+                menu_result = _safe_supabase_insert("parsed_menus", supabase_menu_data, fallback_remove=["menu_type", "place_id"])
+                if not menu_result.data:
+                    job.url_status[url] = "failed"
+                    job.results[url] = {"success": False, "error": "db_insert_failed"}
+                    failed += 1
+                    continue
+                menu_id = menu_result.data[0]["id"]
 
-            menu_id = menu_result.data[0]["id"]
+            # Insert dishes (dedup by name within this menu)
+            existing_dish_names: set[str] = set()
+            try:
+                existing_dishes_result = sb.table("parsed_dishes").select("name").eq("menu_id", menu_id).execute()
+                existing_dish_names = {d["name"].lower() for d in (existing_dishes_result.data or [])}
+            except Exception:
+                pass
 
-            # Insert dishes
+            new_count = 0
             for i, dish in enumerate(dishes_data):
+                dish_name = dish.get("name", "")
+                if dish_name.lower() in existing_dish_names:
+                    continue  # skip duplicate
                 dish_row = {
                     "menu_id": menu_id,
-                    "name": dish.get("name"),
+                    "name": dish_name,
                     "description": dish.get("description"),
                     "price": dish.get("price"),
                     "category": dish.get("category", "main"),
@@ -462,15 +500,17 @@ async def _run_ingest_job(job: IngestJob):
                 }
                 try:
                     _safe_supabase_insert("parsed_dishes", dish_row, fallback_remove=["price"])
+                    new_count += 1
                 except Exception as dish_err:
-                    logger.error(f"❌ Dish #{i} '{dish.get('name')}' insert failed: {dish_err}")
+                    logger.error(f"❌ Dish #{i} '{dish_name}' insert failed: {dish_err}")
 
             job.url_status[url] = "done"
             job.results[url] = {
                 "success": True,
                 "menu_id": menu_id,
                 "menu_type": menu_type,
-                "dish_count": len(dishes_data),
+                "dish_count": new_count,
+                "skipped_duplicates": len(dishes_data) - new_count,
             }
             ok += 1
             logger.info(f"✅ Ingest {job.id} parsed {url} -> {len(dishes_data)} dishes ({menu_type})")
