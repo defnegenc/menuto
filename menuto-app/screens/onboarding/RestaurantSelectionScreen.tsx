@@ -122,7 +122,10 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
       Alert.alert('Add a restaurant', 'Select at least one restaurant to continue.');
       return;
     }
-    if (!user || !userId) return;
+    if (!user || !userId) {
+      Alert.alert('Error', 'Please sign in first.');
+      return;
+    }
 
     const newRestaurants = selectedRestaurants.map(r => ({
       place_id: r.place_id,
