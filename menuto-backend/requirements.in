@@ -1,10 +1,11 @@
-fastapi
+fastapi>=0.115.0
 uvicorn[standard]
 pydantic
 python-multipart
 pillow
 pytesseract
 requests
+httpx
 supabase
 sqlalchemy
 psycopg2-binary
@@ -13,3 +14,4 @@ google-genai
 PyMuPDF
 beautifulsoup4
 lxml
+python-dotenv
