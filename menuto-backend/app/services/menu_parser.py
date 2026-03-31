@@ -300,11 +300,18 @@ class MenuParser:
             
         except Exception as e:
             logger.error(f"HTML scraping failed: {e}")
+            error_str = str(e)
+            if "404" in error_str:
+                msg = "This URL returned a 404. The restaurant may use a JavaScript-based menu system that we can't scrape directly. Try pasting the menu text instead, or use a direct link to a PDF menu."
+            elif "403" in error_str:
+                msg = "This website blocked our request. Try pasting the menu text instead."
+            else:
+                msg = f"Could not read the menu from this URL. Try pasting the menu text or taking a photo instead."
             raise MenuParsingError(
-                "Failed to fetch/parse menu HTML.",
+                msg,
                 status_code=400,
                 code="html_scrape_failed",
-                details={"url": url, "error": str(e)},
+                details={"url": url, "error": error_str},
             )
     
     def parse_with_llm_strict(
@@ -314,8 +321,8 @@ class MenuParser:
         *,
         request_id: str = "",
         debug_ctx: Optional[Dict] = None,
-        model: str = "gemini-2.5-flash",
-        timeout_s: int = 180,  # 3 minutes for large menus
+        model: str = "gemini-2.0-flash",
+        timeout_s: int = 60,  # 1 minute — 2.0-flash is fast
     ) -> Tuple[List[Dict], str]:
         """Step 4: Parse with strict JSON response and validation.
 
@@ -333,7 +340,7 @@ class MenuParser:
                 t0 = time.perf_counter()
                 full_prompt = f"You are a menu parsing expert. Return ONLY a valid JSON object, no markdown, no commentary.\n\n{user_prompt}"
                 resp = self.client.models.generate_content(
-                    model='gemini-2.5-flash',
+                    model='gemini-2.0-flash',
                     contents=full_prompt,
                     config=genai.types.GenerateContentConfig(
                         temperature=0.1,

@@ -101,7 +101,7 @@ Return ONLY valid JSON, no other text.
             # Load image for Gemini
             img = Image.open(image_path)
             response = self.client.models.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-2.0-flash',
                 contents=[prompt, img],
                 config=genai.types.GenerateContentConfig(
                     temperature=0.1,
