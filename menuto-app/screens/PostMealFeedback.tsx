@@ -135,13 +135,16 @@ export const PostMealFeedback: React.FC<PostMealFeedbackProps> = ({
   const silentlyAddToFavorites = useCallback(() => {
     if (!user || !userId || rating < 4) return;
 
-    const existingDishes = user.favorite_dishes || [];
+    // Build one merged update to avoid overwriting
+    let updatedUser = { ...user };
+
+    // Add dish to favorites
+    const existingDishes = updatedUser.favorite_dishes || [];
     const alreadyFav = existingDishes.some(
       (f) => f.dish_name === dish.name && f.restaurant_id === dish.restaurant,
     );
-
     if (!alreadyFav) {
-      const updatedDishes = [
+      updatedUser.favorite_dishes = [
         ...existingDishes,
         {
           dish_name: dish.name,
@@ -149,14 +152,13 @@ export const PostMealFeedback: React.FC<PostMealFeedbackProps> = ({
           rating,
         },
       ];
-      setUser({ ...user, favorite_dishes: updatedDishes }, userId);
     }
 
-    const existingRests = user.favorite_restaurants || [];
+    // Add restaurant to favorites
+    const existingRests = updatedUser.favorite_restaurants || [];
     const restAlreadyFav = existingRests.some((r) => r.name === dish.restaurant);
-
     if (!restAlreadyFav) {
-      const updatedRests = [
+      updatedUser.favorite_restaurants = [
         ...existingRests,
         {
           place_id:
@@ -167,8 +169,10 @@ export const PostMealFeedback: React.FC<PostMealFeedbackProps> = ({
           cuisine_type: 'Restaurant',
         },
       ];
-      setUser({ ...user, favorite_restaurants: updatedRests }, userId);
     }
+
+    // Single setUser call with both updates
+    setUser(updatedUser, userId);
   }, [user, userId, rating, dish, setUser]);
 
   // ── Submit ────────────────────────────────────────────────────────
