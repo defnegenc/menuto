@@ -771,35 +771,6 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
             />
           ) : (
             <View style={styles.menuContainer}>
-              {/* Search Results - inline dish items */}
-              {searchText.trim() && (
-                <View style={styles.searchResultsSection}>
-                  <Text style={styles.sectionTitle}>
-                    Search Results
-                  </Text>
-
-                  {filteredDishes.map((dish, index) => (
-                    <View key={dish.id || `search-dish-${index}`}>
-                      <View style={styles.dishRow}>
-                        <View style={styles.dishTextCol}>
-                          <Text style={styles.dishName}>{dish.name}</Text>
-                          {dish.description ? (
-                            <Text style={styles.dishDescription} numberOfLines={2}>{dish.description}</Text>
-                          ) : null}
-                        </View>
-                        <TouchableOpacity onPress={() => handleAddDishToFavorites(dish)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-                          <Text style={isDishFavorite(dish) ? styles.heartFilled : styles.heartEmpty}>♥</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <View style={styles.dishDivider} />
-                    </View>
-                  ))}
-                  {filteredDishes.length === 0 && (
-                    <Text style={styles.noResultsText}>No dishes found matching "{searchText}"</Text>
-                  )}
-                </View>
-              )}
-
               {/* Your Favorites — dashed red border box with removable items */}
               {(() => {
                 const favoriteDishes = getFavoriteDishesForRestaurant();
@@ -883,7 +854,33 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                 </View>
               </View>
 
-              {/* Menu Type Tabs — simple text tabs */}
+              {/* Search Results — show below search bar, hide tabs */}
+              {searchText.trim() ? (
+                <View style={styles.searchResultsSection}>
+                  {filteredDishes.map((dish, index) => (
+                    <View key={dish.id || `search-dish-${index}`}>
+                      <View style={styles.dishRow}>
+                        <View style={styles.dishTextCol}>
+                          <Text style={styles.dishName}>{dish.name}</Text>
+                          {dish.description ? (
+                            <Text style={styles.dishDescription} numberOfLines={2}>{dish.description}</Text>
+                          ) : null}
+                        </View>
+                        <TouchableOpacity onPress={() => handleAddDishToFavorites(dish)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                          <Text style={isDishFavorite(dish) ? styles.heartFilled : styles.heartEmpty}>{isDishFavorite(dish) ? '♥' : '♡'}</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <View style={styles.dishDivider} />
+                    </View>
+                  ))}
+                  {filteredDishes.length === 0 && (
+                    <Text style={styles.noResultsText}>No dishes found for "{searchText}"</Text>
+                  )}
+                </View>
+              ) : (
+              <>
+
+              {/* Menu Type Tabs — simple text tabs (hidden during search) */}
               {availableMenuTypes.length > 1 && (
                 <View style={styles.menuTypeTabsContainer}>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.menuTypeTabsScroll}>
@@ -981,6 +978,8 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                     ))}
                   </View>
                 )
+              )}
+              </>
               )}
             </View>
           )}
