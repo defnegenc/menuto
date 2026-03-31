@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -94,9 +94,49 @@ export function PreferencesPanel({
   onSetFreeTextMood,
   onContinue,
 }: PreferencesPanelProps) {
+  const [menuType, setMenuType] = useState('food');
+
+  const handleContinue = () => {
+    // Prepend menu type preference to freeTextMood so the algorithm knows
+    const prefix = menuType === 'food' ? 'Food only, no drinks.'
+      : menuType === 'drinks' ? 'Drinks only, no food.'
+      : 'Both food and drinks.';
+    if (!freeTextMood.includes(prefix)) {
+      onSetFreeTextMood(prefix + (freeTextMood ? ' ' + freeTextMood : ''));
+    }
+    onContinue();
+  };
+
   return (
     <View style={styles.wrapper}>
-      {/* Hunger Level */}
+      {/* What are you looking for? */}
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>What are you looking for?</Text>
+        <View style={styles.chipsContainer}>
+          {[
+            { key: 'food', label: 'Food' },
+            { key: 'drinks', label: 'Drinks' },
+            { key: 'both', label: 'Both' },
+          ].map(({ key, label }) => {
+            const isSelected = menuType === key;
+            return (
+              <TouchableOpacity
+                key={key}
+                style={[styles.chip, isSelected && styles.chipSelected]}
+                onPress={() => setMenuType(key)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Hunger Level — only for food */}
+      {menuType !== 'drinks' && (
       <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>How hungry are you?</Text>
         <SliderControl
@@ -106,6 +146,8 @@ export function PreferencesPanel({
           rightLabel="Ravenous"
         />
       </View>
+
+      )}
 
       {/* Preference Level */}
       <View style={styles.sectionCard}>
@@ -205,7 +247,7 @@ export function PreferencesPanel({
       {/* Continue Button */}
       <TouchableOpacity
         style={styles.continueButton}
-        onPress={onContinue}
+        onPress={handleContinue}
         activeOpacity={0.8}
       >
         <Text style={styles.continueButtonText}>Find my dishes</Text>

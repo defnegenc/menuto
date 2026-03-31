@@ -29,13 +29,7 @@ const FONT_MEDIUM = 'DMSans-Medium';
 const FONT_SEMIBOLD = 'DMSans-SemiBold';
 const FONT_BOLD = 'DMSans-Bold';
 const FONT_MONO = 'DMSans-Bold';
-const SHADOW = {
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.04,
-  shadowRadius: 8,
-  elevation: 2,
-};
+// SHADOW removed — no shadows in journal style
 
 // ─── Types ────────────────────────────────────────────────────────────
 interface PostMealFeedbackProps {
@@ -269,15 +263,10 @@ export const PostMealFeedback: React.FC<PostMealFeedbackProps> = ({
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity
-            onPress={onBack}
-            style={styles.backButton}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <Text style={styles.backArrow}>{'\u2190'}</Text>
+          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <Text style={styles.backArrow}>{'\u2190 BACK'}</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>How was it?</Text>
-          <View style={styles.headerSpacer} />
         </View>
 
         <ScrollView
@@ -482,34 +471,25 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: STONE_50,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 16,
   },
   backArrow: {
-    fontSize: 22,
-    color: DARK,
-    marginTop: -2,
+    fontSize: 16,
+    color: '#666666',
   },
   headerTitle: {
-    flex: 1,
-    textAlign: 'center',
+    fontFamily: 'PlayfairDisplay-Italic',
     fontSize: 28,
-    fontFamily: FONT_BOLD,
-    fontWeight: '700',
-    color: DARK,
-  },
-  headerSpacer: {
-    width: 40,
+    color: '#1A1A1A',
+    letterSpacing: -0.5,
   },
 
   // Scroll
@@ -523,33 +503,28 @@ const styles = StyleSheet.create({
 
   // Dish card
   dishCard: {
-    backgroundColor: STONE_50,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: STONE_100,
-    padding: 20,
+    paddingBottom: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
     marginBottom: 28,
-    ...SHADOW,
   },
   restaurantName: {
     fontSize: 12,
-    fontFamily: FONT,
-    fontStyle: 'italic',
-    color: LIGHT,
-    marginBottom: 6,
+    fontFamily: 'DMSans-Regular',
+    color: '#666666',
+    marginBottom: 4,
   },
   dishName: {
-    fontSize: 18,
-    fontFamily: FONT_MONO,
-    color: DARK,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 24,
+    color: '#1A1A1A',
+    letterSpacing: -0.5,
     marginBottom: 6,
   },
   dishDescription: {
     fontSize: 14,
-    fontFamily: FONT,
-    color: MUTED,
+    fontFamily: 'DMSans-Regular',
+    color: '#444444',
     lineHeight: 20,
   },
 
@@ -561,43 +536,32 @@ const styles = StyleSheet.create({
   starsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 12,
-    marginBottom: 12,
+    gap: 16,
+    marginBottom: 8,
   },
   starTouchable: {
-    padding: 2,
+    padding: 4,
   },
   starCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
+    // no circle — just the star
   },
-  starCircleEmpty: {
-    backgroundColor: STONE_50,
-    borderWidth: 1.5,
-    borderColor: STONE_200,
-  },
-  starCircleFilled: {
-    backgroundColor: TERRA,
-    borderWidth: 0,
-  },
+  starCircleEmpty: {},
+  starCircleFilled: {},
   starIcon: {
-    fontSize: 24,
-    marginTop: Platform.OS === 'ios' ? 1 : 0,
+    fontSize: 28,
   },
   starIconEmpty: {
-    color: STONE_200,
+    color: '#E5E5E5',
   },
   starIconFilled: {
-    color: '#FFFFFF',
+    color: '#E9323D',
   },
   ratingLabel: {
-    fontSize: 16,
-    fontFamily: FONT_SEMIBOLD,
-    fontWeight: '600',
-    color: TERRA,
+    fontSize: 14,
+    fontFamily: 'DMSans-SemiBold',
+    color: '#E9323D',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
 
   // Quick tags
@@ -610,28 +574,27 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   tag: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 100,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 4,
   },
   tagActive: {
-    backgroundColor: TERRA,
+    backgroundColor: '#E9323D',
   },
   tagInactive: {
-    backgroundColor: STONE_50,
+    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: STONE_200,
+    borderColor: '#E5E5E5',
   },
   tagText: {
-    fontSize: 14,
-    fontFamily: FONT_MEDIUM,
-    fontWeight: '500',
+    fontSize: 13,
+    fontFamily: 'DMSans-Medium',
   },
   tagTextActive: {
     color: '#FFFFFF',
   },
   tagTextInactive: {
-    color: MUTED,
+    color: '#666666',
   },
 
   // Would order again
@@ -639,10 +602,11 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   orderAgainLabel: {
-    fontSize: 16,
-    fontFamily: FONT_SEMIBOLD,
-    fontWeight: '600',
-    color: DARK,
+    fontSize: 10,
+    fontFamily: 'DMSans-Bold',
+    letterSpacing: 3,
+    color: '#1B2541',
+    textTransform: 'uppercase',
     marginBottom: 12,
     textAlign: 'center',
   },
@@ -654,17 +618,17 @@ const styles = StyleSheet.create({
   orderAgainBtn: {
     paddingHorizontal: 32,
     paddingVertical: 12,
-    borderRadius: 100,
+    borderRadius: 0,
     minWidth: 100,
     alignItems: 'center',
   },
   orderAgainBtnActive: {
-    backgroundColor: TERRA,
+    backgroundColor: '#1A1A1A',
   },
   orderAgainBtnInactive: {
-    backgroundColor: STONE_50,
+    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: STONE_200,
+    borderColor: '#E5E5E5',
   },
   orderAgainBtnText: {
     fontSize: 14,
@@ -675,7 +639,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   orderAgainBtnTextInactive: {
-    color: MUTED,
+    color: '#666666',
   },
 
   // Notes
@@ -688,16 +652,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   addNoteBtnText: {
-    fontSize: 14,
-    fontFamily: FONT_MEDIUM,
-    fontWeight: '500',
-    color: MUTED,
+    fontSize: 12,
+    color: '#666666',
   },
   notesCard: {
-    backgroundColor: STONE_50,
-    borderRadius: 16,
+    backgroundColor: '#FAFAF9',
+    borderRadius: 0,
     borderWidth: 1,
-    borderColor: STONE_100,
+    borderColor: '#E5E5E5',
     padding: 16,
   },
   notesInput: {
@@ -720,20 +682,20 @@ const styles = StyleSheet.create({
     backgroundColor: BG,
   },
   submitBtn: {
-    backgroundColor: DARK,
-    borderRadius: 100,
+    backgroundColor: '#1A1A1A',
+    borderRadius: 0,
     height: 56,
     alignItems: 'center',
     justifyContent: 'center',
-    ...SHADOW,
   },
   submitBtnDisabled: {
     opacity: 0.4,
   },
   submitBtnText: {
-    fontSize: 18,
-    fontFamily: FONT_SEMIBOLD,
-    fontWeight: '600',
+    fontSize: 14,
+    fontFamily: 'DMSans-Bold',
+    letterSpacing: 2,
     color: '#FFFFFF',
+    textTransform: 'uppercase',
   },
 });
