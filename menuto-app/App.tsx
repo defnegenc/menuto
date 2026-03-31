@@ -411,13 +411,7 @@ function AppContent() {
         );
 
       case 'mainTabs':
-        return <MainTabScreen
-          onSelectRestaurant={handleSelectRestaurant}
-          onAddRestaurant={() => setCurrentScreen('restaurantSearch')}
-          onSignOut={handleSignOut}
-          onTestOnboarding={handleTestOnboarding}
-          onNavigateToDishRecommendations={handleNavigateToDishRecommendations}
-        />;
+        return null; // rendered separately to persist state
 
       case 'restaurantSearch':
         return <RestaurantSearchScreen onComplete={handleRestaurantSearchComplete} onBack={handleBackToMainTabs} />;
@@ -491,10 +485,28 @@ function AppContent() {
     );
   }
 
+  // Keep MainTabScreen always mounted so ChooseDish state persists
+  // Other screens overlay on top
+  const isMainTabs = currentScreen === 'mainTabs';
+  const showOverlay = !isMainTabs && currentScreen !== 'intro' && currentScreen !== 'signIn' && currentScreen !== 'onboarding' && currentScreen !== 'onboardingRestaurants';
+
   return (
     <View style={styles.container}>
       <StatusBar style="dark" />
-      {renderCurrentScreen()}
+      {/* MainTabScreen stays mounted when navigating to restaurant detail, etc. */}
+      {(isMainTabs || showOverlay) && (
+        <View style={[styles.container, !isMainTabs && { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0, pointerEvents: 'none' }]}>
+          <MainTabScreen
+            onSelectRestaurant={handleSelectRestaurant}
+            onAddRestaurant={() => setCurrentScreen('restaurantSearch')}
+            onSignOut={handleSignOut}
+            onTestOnboarding={handleTestOnboarding}
+            onNavigateToDishRecommendations={handleNavigateToDishRecommendations}
+          />
+        </View>
+      )}
+      {/* Overlay screens */}
+      {!isMainTabs && renderCurrentScreen()}
     </View>
   );
 }

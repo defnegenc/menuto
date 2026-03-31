@@ -654,10 +654,10 @@ export function ChooseDishLanding({
 
 // Parsing screen — editorial loading with floating text
 const PARSING_MESSAGES = [
-  'Reading the menu',
-  'Extracting dishes',
-  'Categorizing items',
-  'Almost there',
+  'Flipping through the menu',
+  'Spotting the good stuff',
+  'Tasting with our eyes',
+  'Plating it all together',
 ];
 
 function ParsingScreen({ restaurantName }: { restaurantName?: string }) {
@@ -705,13 +705,14 @@ function ParsingScreen({ restaurantName }: { restaurantName?: string }) {
     }).start();
   }, [lineWidth]);
 
-  // Rotate messages
+  // Rotate messages — state update via setTimeout to avoid useInsertionEffect conflict
   useEffect(() => {
     const interval = setInterval(() => {
-      Animated.timing(textOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+      Animated.timing(textOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+      setTimeout(() => {
         setMessageIndex((prev) => (prev + 1) % PARSING_MESSAGES.length);
         Animated.timing(textOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
-      });
+      }, 220);
     }, 3000);
     return () => clearInterval(interval);
   }, [textOpacity]);
@@ -798,8 +799,6 @@ const styles = StyleSheet.create({
   stepBlock: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
   },
   stepHeader: {
     flexDirection: 'row',

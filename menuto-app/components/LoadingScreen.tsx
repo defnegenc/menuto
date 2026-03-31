@@ -11,10 +11,10 @@ interface LoadingScreenProps {
 }
 
 const PHASES = [
-  'Scanning the menu',
-  'Matching your cravings',
-  'Ranking dishes',
-  'Plating your choices',
+  'Browsing the kitchen',
+  'Matching your mood',
+  'Picking the best bites',
+  'Setting the table',
 ];
 
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({
