@@ -1225,12 +1225,11 @@ const styles = StyleSheet.create({
 
   /* ── Section titles ────────────────────────── */
   sectionTitle: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 10,
-    letterSpacing: 3,
+    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 22,
     color: '#1A1A1A',
-    textTransform: 'uppercase',
-    marginBottom: 12,
+    letterSpacing: -0.3,
+    marginBottom: 16,
   },
 
   /* ── Favorites dashed box ──────────────────── */
