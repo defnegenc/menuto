@@ -17,8 +17,7 @@ import { useStore } from '../../store/useStore';
 import { POPULAR_CITIES, City } from '../../constants';
 
 const RED = '#E9323D';
-const RED_LIGHT = '#FFF5F5';
-const DARK = '#111111';
+const DARK = '#1A1A1A';
 
 interface Restaurant {
   place_id: string;
@@ -113,7 +112,7 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
     const isSelected = selectedRestaurants.some(r => r.place_id === restaurant.place_id);
     if (isSelected) {
       setSelectedRestaurants(selectedRestaurants.filter(r => r.place_id !== restaurant.place_id));
-    } else if (selectedRestaurants.length < 5) {
+    } else {
       setSelectedRestaurants([...selectedRestaurants, restaurant]);
     }
   };
@@ -188,7 +187,7 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="Search restaurants..."
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#8C7E77"
             autoCorrect={false}
           />
         </View>
@@ -199,8 +198,7 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
             <Text style={styles.metaLabel}>SELECTION</Text>
             <Text style={styles.metaCount}>
               <Text style={{ color: RED }}>{selectedRestaurants.length}</Text>
-              <Text style={{ color: '#D1D5DB' }}> / </Text>
-              <Text style={{ color: '#6B7280' }}>5</Text>
+              <Text style={{ color: '#666666' }}> selected</Text>
             </Text>
           </View>
           <View style={styles.cityBadge}>
@@ -244,7 +242,7 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
                   </Text>
                 </View>
                 <View style={[styles.radio, selected && styles.radioSelected]}>
-                  {selected && <View style={styles.radioDot} />}
+                  {selected && <Text style={styles.radioDot}>✓</Text>}
                 </View>
               </TouchableOpacity>
             );
@@ -268,7 +266,7 @@ export function RestaurantSelectionScreen({ onComplete, onBack }: Props) {
                     <Text style={[styles.resultAddress, styles.resultAddressSelected]}>{restaurant.vicinity}</Text>
                   </View>
                   <View style={[styles.radio, styles.radioSelected]}>
-                    <View style={styles.radioDot} />
+                    <Text style={styles.radioDot}>✓</Text>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -352,7 +350,7 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
     letterSpacing: 3,
-    color: RED,
+    color: '#1B2541',
     textTransform: 'uppercase',
   },
   headline: {
@@ -371,7 +369,7 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Regular',
     fontSize: 17,
     lineHeight: 26,
-    color: '#6B7280',
+    color: '#666666',
     marginTop: 16,
     maxWidth: '90%',
   },
@@ -379,7 +377,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAFAF9',
     borderRadius: 16,
     paddingHorizontal: 20,
     paddingVertical: 16,
@@ -389,13 +387,13 @@ const styles = StyleSheet.create({
   },
   searchIcon: {
     fontSize: 20,
-    color: '#9CA3AF',
+    color: '#8C7E77',
     marginRight: 12,
   },
   searchInput: {
     flex: 1,
     fontFamily: 'DMSans-Regular',
-    fontSize: 17,
+    fontSize: 14,
     color: '#111827',
   },
   // Meta row
@@ -409,7 +407,7 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
     letterSpacing: 2,
-    color: '#9CA3AF',
+    color: '#1B2541',
     textTransform: 'uppercase',
     marginBottom: 4,
   },
@@ -421,12 +419,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAFAF9',
     borderRadius: 4,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#E5E5E5',
   },
   cityBadgePin: {
     fontSize: 12,
@@ -434,11 +432,11 @@ const styles = StyleSheet.create({
   cityBadgeText: {
     fontFamily: 'DMSans-Medium',
     fontSize: 12,
-    color: '#6B7280',
+    color: '#666666',
   },
   metaDivider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#E5E5E5',
     marginBottom: 20,
   },
   // Results
@@ -446,7 +444,7 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
     letterSpacing: 2,
-    color: '#9CA3AF',
+    color: '#1B2541',
     textTransform: 'uppercase',
     marginBottom: 14,
     paddingLeft: 4,
@@ -461,62 +459,54 @@ const styles = StyleSheet.create({
   searchingText: {
     fontFamily: 'DMSans-Regular',
     fontSize: 14,
-    color: '#9CA3AF',
+    color: '#666666',
   },
   resultsList: {
-    gap: 10,
+    gap: 0,
     marginBottom: 24,
   },
   resultCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-    gap: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+    gap: 12,
   },
   resultCardSelected: {
-    borderWidth: 2,
-    borderColor: RED,
-    backgroundColor: RED_LIGHT,
-    shadowColor: RED,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
+    backgroundColor: '#FEFAFA',
+    borderLeftWidth: 3,
+    borderLeftColor: RED,
   },
   resultInfo: {
     flex: 1,
   },
   resultName: {
-    fontFamily: 'IBMPlexMono-SemiBold',
-    fontSize: 16,
-    color: '#1F2937',
-    letterSpacing: -0.5,
+    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 18,
+    color: '#1A1A1A',
+    letterSpacing: -0.3,
   },
   resultNameSelected: {
-    color: '#111827',
+    color: '#1A1A1A',
   },
   resultAddress: {
     fontFamily: 'DMSans-Regular',
     fontSize: 13,
-    color: '#9CA3AF',
-    marginTop: 4,
+    color: '#666666',
+    marginTop: 2,
   },
   resultAddressSelected: {
-    color: '#6B7280',
+    color: '#444444',
   },
   // Radio
   radio: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: '#E5E5E5',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -525,10 +515,9 @@ const styles = StyleSheet.create({
     backgroundColor: RED,
   },
   radioDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#FFFFFF',
+    fontFamily: 'DMSans-Bold',
+    fontSize: 12,
+    color: '#FFFFFF',
   },
   // Empty
   emptyState: {
@@ -538,16 +527,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   emptyTitle: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 20,
-    color: '#111827',
+    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 24,
+    color: '#1A1A1A',
     marginBottom: 8,
     letterSpacing: -0.5,
   },
   emptySubtext: {
     fontFamily: 'DMSans-Regular',
     fontSize: 15,
-    color: '#9CA3AF',
+    color: '#666666',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -568,21 +557,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 8,
   },
   ctaButtonDisabled: {
     backgroundColor: '#D1D5DB',
-    shadowOpacity: 0,
   },
   ctaText: {
     fontFamily: 'DMSans-SemiBold',
-    fontSize: 17,
+    fontSize: 14,
     color: '#FFFFFF',
-    letterSpacing: 0.3,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
   ctaBadge: {
     backgroundColor: 'rgba(255,255,255,0.2)',
