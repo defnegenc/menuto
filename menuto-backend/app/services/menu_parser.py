@@ -321,8 +321,8 @@ class MenuParser:
         *,
         request_id: str = "",
         debug_ctx: Optional[Dict] = None,
-        model: str = "gemini-2.0-flash",
-        timeout_s: int = 60,  # 1 minute — 2.0-flash is fast
+        model: str = "gemini-2.5-flash",
+        timeout_s: int = 90,
     ) -> Tuple[List[Dict], str]:
         """Step 4: Parse with strict JSON response and validation.
 
@@ -340,7 +340,7 @@ class MenuParser:
                 t0 = time.perf_counter()
                 full_prompt = f"You are a menu parsing expert. Return ONLY a valid JSON object, no markdown, no commentary.\n\n{user_prompt}"
                 resp = self.client.models.generate_content(
-                    model='gemini-2.0-flash',
+                    model='gemini-2.5-flash',
                     contents=full_prompt,
                     config=genai.types.GenerateContentConfig(
                         temperature=0.1,

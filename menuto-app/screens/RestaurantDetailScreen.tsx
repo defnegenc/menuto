@@ -19,7 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useStore } from '../store/useStore';
 import { api } from '../services/api';
 import { FavoriteRestaurant, ParsedDish } from '../types';
-import { NoMenuState } from '../components/NoMenuState';
+import { AddMenuOptions } from '../components/AddMenuOptions';
 
 interface Props {
   restaurant: FavoriteRestaurant;
@@ -766,9 +766,9 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
       {!isLoading && !isParsing && (
         <ScrollView ref={scrollViewRef} style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {menuDishes.length === 0 ? (
-            <NoMenuState
-              onAddMenuPDF={handleAddMenuPDF}
-              onPasteMenuText={handlePasteMenuText}
+            <AddMenuOptions
+              onAddLink={handleAddMenuPDF}
+              onPasteText={handlePasteMenuText}
               onAddPhoto={handleAddPhoto}
             />
           ) : (
@@ -845,9 +845,9 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                 </View>
                 {showAddMoreOptions && (
                   <View style={styles.addMoreContainer}>
-                    <NoMenuState
-                      onAddMenuPDF={handleAddMenuPDF}
-                      onPasteMenuText={handlePasteMenuText}
+                    <AddMenuOptions
+                      onAddLink={handleAddMenuPDF}
+                      onPasteText={handlePasteMenuText}
                       onAddPhoto={handleAddPhoto}
                       compact
                     />

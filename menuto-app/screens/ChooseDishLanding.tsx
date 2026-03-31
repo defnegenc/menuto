@@ -23,7 +23,7 @@ import { SearchRestaurantSelected } from '../components/SearchRestaurantSelected
 import { DishRecommendations } from './DishRecommendations';
 import { PostMealFeedback } from './PostMealFeedback';
 import { MultiDishScoring } from './MultiDishScoring';
-import { DishScoringCard } from './choosedish/DishScoringCard';
+import { AddMenuOptions } from '../components/AddMenuOptions';
 import { PreferencesPanel } from './choosedish/PreferencesPanel';
 
 const RED = '#E9323D';
@@ -437,16 +437,12 @@ export function ChooseDishLanding({
                 )}
               </View>
 
-              {!menuFound && (
+              {!menuFound && !isLoadingMenu && (
                 <View style={styles.stepContent}>
-                  <DishScoringCard
-                    menuDishes={menuDishes}
-                    isLoadingMenu={isLoadingMenu}
-                    menuFound={menuFound}
+                  <AddMenuOptions
                     onAddPhoto={handleAddPhoto}
-                    onAddMenuLink={handleAddMenuLink}
-                    onPasteMenuText={handlePasteMenuText}
-                    onReviewMenu={() => setShowReviewModal(true)}
+                    onAddLink={() => { setMenuUrls(['']); setShowMenuUrlModal(true); }}
+                    onPasteText={() => setShowTextModal(true)}
                   />
                 </View>
               )}
@@ -619,21 +615,13 @@ export function ChooseDishLanding({
             <View style={{ width: 50 }} />
           </View>
           <ScrollView style={styles.modalContent}>
-            {/* Add more items */}
-            <View style={styles.addMoreSection}>
-              <Text style={styles.addMoreLabel}>ADD MORE ITEMS</Text>
-              <View style={styles.addMoreRow}>
-                <TouchableOpacity style={styles.addMoreBtn} onPress={() => { setShowReviewModal(false); handleAddPhoto(); }}>
-                  <Text style={styles.addMoreBtnText}>📸 Photo</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.addMoreBtn} onPress={() => { setShowReviewModal(false); setMenuUrls(['']); setShowMenuUrlModal(true); }}>
-                  <Text style={styles.addMoreBtnText}>🔗 Link</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.addMoreBtn} onPress={() => { setShowReviewModal(false); setShowTextModal(true); }}>
-                  <Text style={styles.addMoreBtnText}>📋 Text</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+            {/* Add more items — shared component */}
+            <AddMenuOptions
+              compact
+              onAddPhoto={() => { setShowReviewModal(false); handleAddPhoto(); }}
+              onAddLink={() => { setShowReviewModal(false); setMenuUrls(['']); setShowMenuUrlModal(true); }}
+              onPasteText={() => { setShowReviewModal(false); setShowTextModal(true); }}
+            />
 
             <View style={styles.reviewDivider} />
 
