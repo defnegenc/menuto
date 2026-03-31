@@ -13,10 +13,7 @@ export const ScreenHeader: React.FC<Props> = ({ title, accent }) => {
     <View style={styles.container}>
       <Text style={styles.title}>{title}</Text>
       {accent ? (
-        <View style={styles.accentRow}>
-          <View style={styles.dot} />
-          <Text style={styles.accent}>{accent}</Text>
-        </View>
+        <Text style={styles.accent}>{accent}</Text>
       ) : null}
     </View>
   );
@@ -28,30 +25,19 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   title: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 14,
-    letterSpacing: 4,
-    textTransform: 'uppercase',
-    color: '#9CA3AF',
-  },
-  accentRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 10,
-    marginTop: 2,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: RED,
-    marginBottom: 6,
+    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 52,
+    lineHeight: 54,
+    letterSpacing: -2,
+    color: '#1A1A1A',
   },
   accent: {
     fontFamily: 'PlayfairDisplay-Italic',
     fontSize: 52,
-    lineHeight: 56,
-    color: '#1A1A1A',
+    lineHeight: 54,
     letterSpacing: -2,
+    color: RED,
+    marginTop: -4,
+    transform: [{ scaleY: -1 }],
   },
 });

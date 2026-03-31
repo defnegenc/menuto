@@ -429,54 +429,63 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
             <Text style={styles.picksTitle}>Your picks</Text>
             <Text style={styles.picksSubtitle}>Tap to select what you're ordering</Text>
 
-            {filteredRecommendations.map((dish) => {
+            {filteredRecommendations.map((dish, index) => {
               const isSelected = selectedDishes.some(d => d.id === dish.id);
               const reasons = formatRecommendationReason(dish);
-              const reasonText = reasons.length > 0 ? `"${reasons[0]}"` : '';
-              const courseRole = (dish as any).course_role || dish.category || 'main';
+              const reasonText = reasons.length > 0 ? reasons[0] : '';
               const isDiscovery = (dish as any).is_discovery === true;
 
               return (
-                <TouchableOpacity
-                  key={dish.id}
-                  activeOpacity={0.7}
-                  onPress={() => handleDishSelect(dish)}
-                  style={[
-                    styles.dishCard,
-                    isSelected && styles.dishCardSelected,
-                  ]}
-                >
-                  {/* Selection circle */}
-                  <View style={[
-                    styles.selectCircle,
-                    isSelected && styles.selectCircleFilled,
-                  ]}>
-                    {isSelected && <Text style={styles.selectCheck}>{'✓'}</Text>}
-                  </View>
+                <View key={dish.id}>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => handleDishSelect(dish)}
+                    style={[
+                      styles.dishCard,
+                      isSelected && styles.dishCardSelected,
+                    ]}
+                  >
+                    {/* Rank number */}
+                    <Text style={[styles.rankNum, isSelected && styles.rankNumSelected]}>
+                      {index + 1}
+                    </Text>
 
-                  {/* Dish content */}
-                  <View style={styles.dishContent}>
-                    <View style={styles.dishMeta}>
-                      <Text style={styles.dishCategory}>
-                        {capitalizeText(courseRole)}
-                      </Text>
-                      {isDiscovery && (
-                        <Text style={styles.discoveryBadge}>NEW FOR YOU</Text>
-                      )}
+                    {/* Dish content */}
+                    <View style={styles.dishContent}>
+                      <View style={styles.dishNameRow}>
+                        <Text style={styles.dishName} numberOfLines={1}>{dish.name}</Text>
+                        {isDiscovery && <Text style={styles.discoveryDot}>●</Text>}
+                      </View>
+                      {dish.description ? (
+                        <Text style={styles.dishDescription} numberOfLines={1}>
+                          {dish.description}
+                        </Text>
+                      ) : null}
                     </View>
-                    <Text style={styles.dishName}>{dish.name}</Text>
-                    {dish.description ? (
-                      <Text style={styles.dishDescription} numberOfLines={2}>
-                        {dish.description}
-                      </Text>
-                    ) : null}
-                    {reasonText ? (
-                      <Text style={styles.dishReason} numberOfLines={2}>
+
+                    {/* Selection indicator */}
+                    <View style={[styles.selectCircle, isSelected && styles.selectCircleFilled]}>
+                      {isSelected && <Text style={styles.selectCheck}>✓</Text>}
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Expandable reason — always visible, tappable for full text */}
+                  {reasonText ? (
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => {
+                        // Toggle showing full reason via Alert for now
+                        Alert.alert(dish.name, reasonText);
+                      }}
+                      style={styles.reasonRow}
+                    >
+                      <Text style={styles.dishReason} numberOfLines={1}>
                         {reasonText}
                       </Text>
-                    ) : null}
-                  </View>
-                </TouchableOpacity>
+                      <Text style={styles.reasonMore}>more</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
               );
             })}
           </>
@@ -587,27 +596,32 @@ const styles = StyleSheet.create({
   },
   dishCard: {
     flexDirection: 'row',
-    paddingVertical: 20,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
-    gap: 14,
-    alignItems: 'flex-start',
+    gap: 12,
+    alignItems: 'center',
   },
   dishCardSelected: {
-    borderLeftWidth: 3,
-    borderLeftColor: '#E9323D',
     backgroundColor: '#FEFAFA',
   },
-  selectCircle: {
+  rankNum: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 18,
+    color: '#CCCCCC',
     width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
+    textAlign: 'center',
+  },
+  rankNumSelected: {
+    color: '#E9323D',
+  },
+  selectCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
     borderColor: '#E5E5E5',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 2,
   },
   selectCircleFilled: {
     backgroundColor: '#E9323D',
@@ -615,52 +629,56 @@ const styles = StyleSheet.create({
   },
   selectCheck: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: 'DMSans-Bold',
   },
   dishContent: {
     flex: 1,
   },
-  dishMeta: {
+  dishNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  dishCategory: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 10,
-    letterSpacing: 3,
-    color: '#1B2541',
-    textTransform: 'uppercase',
-  },
-  discoveryBadge: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 9,
-    letterSpacing: 2,
-    color: '#E9323D',
-    textTransform: 'uppercase',
+    gap: 6,
   },
   dishName: {
     fontFamily: 'PlayfairDisplay-Italic',
-    fontSize: 20,
+    fontSize: 18,
     color: '#1A1A1A',
     letterSpacing: -0.3,
-    marginBottom: 4,
+    flex: 1,
+  },
+  discoveryDot: {
+    fontSize: 8,
+    color: '#E9323D',
   },
   dishDescription: {
     fontFamily: 'DMSans-Regular',
-    fontSize: 14,
-    color: '#444444',
-    lineHeight: 20,
-    marginBottom: 8,
+    fontSize: 13,
+    color: '#666666',
+    marginTop: 2,
+  },
+  reasonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 52,  // aligned with dish text (16 + 24 rank + 12 gap)
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+    gap: 6,
   },
   dishReason: {
     fontFamily: 'DMSans-Regular',
-    fontSize: 14,
+    fontSize: 13,
     color: '#E9323D',
     fontStyle: 'italic',
-    lineHeight: 20,
+    flex: 1,
+  },
+  reasonMore: {
+    fontFamily: 'DMSans-SemiBold',
+    fontSize: 11,
+    color: '#E9323D',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   continueSection: {
     padding: 16,

@@ -1,22 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '../theme';
-import { UnifiedHeader } from '../components/UnifiedHeader';
-import { MenuItemCard } from '../components/MenuItemCard';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store/useStore';
 import { api } from '../services/api';
 
-interface MultiDishScoringProps {
-  restaurant: {
-    place_id: string;
-    name: string;
-    cuisine_type?: string;
-  };
-  selectedDishes: Recommendation[];
-  onComplete: (dishes: Recommendation[], addToFavorites: boolean[]) => void;
-  onBack: () => void;
-}
+const RED = '#E9323D';
 
 interface Recommendation {
   id: number;
@@ -29,244 +17,166 @@ interface Recommendation {
   avg_rating?: number;
   source: string;
   recommendation_score: number;
-  score_breakdown: {
-    customer_praise: number;
-    taste_compatibility: number;
-    craving_match: number;
-    friend_boost: number;
-  };
+  score_breakdown: Record<string, number>;
   recommendation_reason: string;
   friend_recommendation?: string;
 }
 
-export const MultiDishScoring: React.FC<MultiDishScoringProps> = ({
-  restaurant,
-  selectedDishes,
-  onComplete,
-  onBack
+interface Props {
+  restaurant: { place_id: string; name: string; cuisine_type?: string };
+  selectedDishes: Recommendation[];
+  onComplete: (dishes: Recommendation[], addToFavorites: boolean[]) => void;
+  onBack: () => void;
+}
+
+export const MultiDishScoring: React.FC<Props> = ({
+  restaurant, selectedDishes, onComplete, onBack,
 }) => {
   const { user, userId } = useStore();
-  const [ratings, setRatings] = useState<{[key: number]: number}>({});
-  const [addToFavorites, setAddToFavorites] = useState<{[key: number]: boolean}>({});
-  const [feedback, setFeedback] = useState<{[key: number]: string}>({});
+  const insets = useSafeAreaInsets();
+  const [ratings, setRatings] = useState<Record<number, number>>({});
+  const [favorites, setFavorites] = useState<Record<number, boolean>>({});
+  const [feedback, setFeedback] = useState<Record<number, string>>({});
+  const [expandedNotes, setExpandedNotes] = useState<Record<number, boolean>>({});
 
-  const handleRatingChange = (dishId: number, rating: number) => {
-    setRatings(prev => ({
-      ...prev,
-      [dishId]: rating
-    }));
-  };
-
-  const handleFavoriteToggle = (dishId: number) => {
-    setAddToFavorites(prev => ({
-      ...prev,
-      [dishId]: !prev[dishId]
-    }));
-  };
-
-  const handleFeedbackChange = (dishId: number, text: string) => {
-    setFeedback(prev => ({
-      ...prev,
-      [dishId]: text
-    }));
-  };
+  const allRated = selectedDishes.every(d => ratings[d.id]);
 
   const handleComplete = async () => {
-    // Check if all dishes have been rated
-    const unratedDishes = selectedDishes.filter(dish => !ratings[dish.id]);
-    if (unratedDishes.length > 0) {
-      Alert.alert(
-        'Rate All Dishes',
-        `Please rate ${unratedDishes.length} more dish${unratedDishes.length > 1 ? 'es' : ''} before continuing.`,
-        [{ text: 'OK' }]
-      );
+    if (!allRated) {
+      Alert.alert('Rate all dishes', 'Please rate every dish before continuing.');
       return;
     }
-
     try {
-      // Add restaurant and selected favorite dishes to user's favorites
-      const favoriteDishes = selectedDishes
-        .filter(dish => addToFavorites[dish.id])
-        .map(dish => ({
-          dish_name: dish.name,
-          restaurant_id: restaurant.place_id
-        }));
-
-      // Track ratings for all dishes
       for (const dish of selectedDishes) {
-        const ratingValue = ratings[dish.id];
-        if (ratingValue && dish.id) {
-          const wouldOrderAgain = addToFavorites[dish.id] || false;
+        if (ratings[dish.id]) {
           await api.trackDishRating(
-            String(dish.id),
-            restaurant.place_id,
-            ratingValue,
-            wouldOrderAgain,
-            feedback[dish.id] || undefined
-          ).catch(err => console.warn('Failed to track rating:', err));
+            String(dish.id), restaurant.place_id, ratings[dish.id],
+            favorites[dish.id] || false, feedback[dish.id] || undefined,
+          ).catch(() => {});
         }
       }
 
-      if (favoriteDishes.length > 0) {
-        // Add restaurant to favorites if it's not already there
-        const isRestaurantAlreadyFavorited = user?.favorite_restaurants?.some(
-          r => r.place_id === restaurant.place_id
-        );
-
-        if (!isRestaurantAlreadyFavorited) {
-          // Add restaurant to favorites by updating user preferences
-          const currentRestaurants = user?.favorite_restaurants || [];
-          const newRestaurant = {
-            name: restaurant.name,
-            place_id: restaurant.place_id,
-            cuisine_type: restaurant.cuisine_type || 'Restaurant',
-            vicinity: '', // We don't have this info in this context
-            rating: 4 // Default rating
-          };
-          
-          await api.saveUserPreferences(userId!, {
-            ...user,
-            favorite_restaurants: [...currentRestaurants, newRestaurant]
-          });
-        }
-
-        // Add favorite dishes one by one
-        for (const dish of favoriteDishes) {
-          await api.addFavoriteDish(userId!, dish);
-        }
-        
-        // Update local user state with new favorite dishes
-        const currentFavoriteDishes = user?.favorite_dishes || [];
-        const updatedFavoriteDishes = [...currentFavoriteDishes, ...favoriteDishes];
-        
-        const updatedUser = {
-          ...user,
-          favorite_dishes: updatedFavoriteDishes
-        };
-        
-        // Update the user state in the store
-        const { setUser } = useStore.getState();
-        setUser(updatedUser, userId!);
-        
-        console.log('✅ Updated user state with new favorite dishes:', {
-          newDishes: favoriteDishes.map(d => d.dish_name),
-          totalDishes: updatedFavoriteDishes.length
-        });
+      // Add restaurant + favorite dishes
+      let updatedUser = { ...user };
+      const existingRests = updatedUser?.favorite_restaurants || [];
+      if (!existingRests.some(r => r.place_id === restaurant.place_id)) {
+        updatedUser.favorite_restaurants = [...existingRests, {
+          place_id: restaurant.place_id, name: restaurant.name,
+          vicinity: '', cuisine_type: restaurant.cuisine_type || 'Restaurant',
+        }];
       }
+      const existingDishes = updatedUser?.favorite_dishes || [];
+      for (const dish of selectedDishes) {
+        if (favorites[dish.id] && !existingDishes.some(f => f.dish_name === dish.name)) {
+          existingDishes.push({ dish_name: dish.name, restaurant_id: restaurant.place_id });
+        }
+      }
+      updatedUser.favorite_dishes = existingDishes;
+      const { setUser } = useStore.getState();
+      setUser(updatedUser, userId!);
 
-      onComplete(selectedDishes, selectedDishes.map(dish => addToFavorites[dish.id] || false));
+      onComplete(selectedDishes, selectedDishes.map(d => favorites[d.id] || false));
     } catch (error) {
-      console.error('Error saving favorites:', error);
-      Alert.alert(
-        'Error',
-        'Failed to save your favorites. Please try again.',
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Error', 'Failed to save. Please try again.');
     }
   };
-
-  const allRated = selectedDishes.every(dish => ratings[dish.id]);
 
   return (
     <View style={styles.container}>
-      <UnifiedHeader 
-        title="Rate Dishes" 
-        showBackButton={true}
-        onBack={onBack}
-      />
-      
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.headerSection}>
-          <Text style={styles.headerTitle}>Rate your dishes</Text>
-          <Text style={styles.headerSubtitle}>
-            Rate each dish, add favorites, and share your thoughts
-          </Text>
-        </View>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+          <Text style={styles.backText}>← BACK</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Rate your dishes</Text>
+        <Text style={styles.headerSubtitle}>{restaurant.name}</Text>
+      </View>
 
-        {selectedDishes.map((dish) => (
-          <View key={dish.id} style={styles.dishSection}>
-            <MenuItemCard
-              dish={{
-                id: String(dish.id),
-                name: dish.name,
-                description: dish.description || '',
-                category: dish.category || 'main',
-                ingredients: dish.ingredients || [],
-                dietary_tags: dish.dietary_tags || [],
-                is_user_added: false,
-                score: dish.recommendation_score || 0,
-                explanation: '',
-                restaurant_id: restaurant.place_id
-              }}
-              isSelected={false}
-              onPress={() => {}}
-              showScore={false}
-            />
-            
-            {/* Rating Section */}
-            <View style={styles.ratingSection}>
-              <Text style={styles.ratingLabel}>Rate this dish:</Text>
-              <View style={styles.starsContainer}>
-                {[1, 2, 3, 4, 5].map((star) => (
+      <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+        {selectedDishes.map((dish, index) => {
+          const r = ratings[dish.id] || 0;
+          const isFav = favorites[dish.id] || false;
+          const showNotes = expandedNotes[dish.id] || false;
+
+          return (
+            <View key={dish.id} style={styles.dishSection}>
+              {/* Dish info */}
+              <View style={styles.dishHeader}>
+                <Text style={styles.dishNum}>{index + 1}</Text>
+                <View style={styles.dishInfo}>
+                  <Text style={styles.dishName}>{dish.name}</Text>
+                  {dish.description ? (
+                    <Text style={styles.dishDesc} numberOfLines={1}>{dish.description}</Text>
+                  ) : null}
+                </View>
+              </View>
+
+              {/* Stars — inline, small */}
+              <View style={styles.starsRow}>
+                {[1, 2, 3, 4, 5].map(star => (
                   <TouchableOpacity
                     key={star}
-                    style={styles.starButton}
-                    onPress={() => handleRatingChange(dish.id, star)}
+                    onPress={() => setRatings(prev => ({ ...prev, [dish.id]: star }))}
+                    hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
                   >
-                    <Text style={[
-                      styles.star,
-                      star <= (ratings[dish.id] || 0) && styles.starFilled
-                    ]}>
-                      ★
-                    </Text>
+                    <Text style={[styles.star, star <= r && styles.starFilled]}>★</Text>
                   </TouchableOpacity>
                 ))}
+                {r > 0 && (
+                  <Text style={styles.ratingLabel}>
+                    {r <= 2 ? 'Meh' : r === 3 ? 'Decent' : r === 4 ? 'Good' : 'Great'}
+                  </Text>
+                )}
               </View>
-            </View>
 
-            {/* Add to Favorites Checkbox */}
-            <TouchableOpacity 
-              style={styles.favoriteSection}
-              onPress={() => handleFavoriteToggle(dish.id)}
-            >
-              <View style={styles.checkbox}>
-                {addToFavorites[dish.id] && <Text style={styles.checkmark}>✓</Text>}
+              {/* Favorite + Notes — compact row */}
+              <View style={styles.actionsRow}>
+                <TouchableOpacity
+                  onPress={() => setFavorites(prev => ({ ...prev, [dish.id]: !prev[dish.id] }))}
+                  style={[styles.favBtn, isFav && styles.favBtnActive]}
+                >
+                  <Text style={[styles.favBtnText, isFav && styles.favBtnTextActive]}>
+                    {isFav ? '♥ Saved' : '♡ Save'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setExpandedNotes(prev => ({ ...prev, [dish.id]: !prev[dish.id] }))}
+                >
+                  <Text style={styles.noteLink}>
+                    {showNotes ? '− Hide note' : '+ Add note'}
+                  </Text>
+                </TouchableOpacity>
               </View>
-              <Text style={styles.favoriteLabel}>Add to favorites</Text>
-            </TouchableOpacity>
 
-            {/* Optional Feedback */}
-            <View style={styles.feedbackSection}>
-              <Text style={styles.feedbackLabel}>Tell us more (optional)</Text>
-              <TextInput
-                style={styles.feedbackInput}
-                placeholder="What did you like or dislike?"
-                value={feedback[dish.id] || ''}
-                onChangeText={(text) => handleFeedbackChange(dish.id, text)}
-                multiline
-                numberOfLines={2}
-                textAlignVertical="top"
-              />
+              {/* Expandable notes */}
+              {showNotes && (
+                <TextInput
+                  style={styles.noteInput}
+                  value={feedback[dish.id] || ''}
+                  onChangeText={text => setFeedback(prev => ({ ...prev, [dish.id]: text }))}
+                  placeholder="What did you think?"
+                  placeholderTextColor="#999999"
+                  multiline
+                  numberOfLines={2}
+                  textAlignVertical="top"
+                />
+              )}
             </View>
-          </View>
-        ))}
+          );
+        })}
       </ScrollView>
 
-      {/* Complete Button */}
-      <View style={styles.completeSection}>
-        <TouchableOpacity 
-          style={[
-            styles.completeButton,
-            !allRated && styles.completeButtonDisabled
-          ]}
+      {/* Submit */}
+      <View style={[styles.submitWrapper, { paddingBottom: insets.bottom + 8 }]}>
+        <TouchableOpacity
+          style={[styles.submitBtn, !allRated && styles.submitBtnDisabled]}
           onPress={handleComplete}
           disabled={!allRated}
+          activeOpacity={0.8}
         >
-          <Text style={[
-            styles.completeButtonText,
-            !allRated && styles.completeButtonTextDisabled
-          ]}>
-            Complete
+          <Text style={styles.submitBtnText}>
+            {allRated ? 'DONE' : `RATE ${selectedDishes.length - Object.keys(ratings).length} MORE`}
           </Text>
         </TouchableOpacity>
       </View>
@@ -275,128 +185,59 @@ export const MultiDishScoring: React.FC<MultiDishScoringProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  scrollView: {
-    flex: 1,
-    paddingHorizontal: theme.spacing.lg,
-  },
-  headerSection: {
-    marginTop: theme.spacing.lg,
-    marginBottom: theme.spacing.xl,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: theme.typography.sizes.xl,
-    fontWeight: '700',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
-    textAlign: 'center',
-  },
-  headerSubtitle: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
+
+  // Header
+  header: { paddingHorizontal: 24, paddingBottom: 16 },
+  backBtn: { marginBottom: 16 },
+  backText: { fontFamily: 'DMSans-Bold', fontSize: 10, letterSpacing: 3, color: '#666666', textTransform: 'uppercase' },
+  headerTitle: { fontFamily: 'PlayfairDisplay-Italic', fontSize: 28, color: '#1A1A1A', letterSpacing: -0.5, marginBottom: 4 },
+  headerSubtitle: { fontFamily: 'DMSans-Regular', fontSize: 14, color: '#666666' },
+
+  scrollView: { flex: 1 },
+
+  // Each dish
   dishSection: {
-    marginBottom: theme.spacing.xl,
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
   },
-  ratingSection: {
-    marginTop: theme.spacing.md,
-    alignItems: 'center',
+  dishHeader: { flexDirection: 'row', gap: 12, marginBottom: 12 },
+  dishNum: { fontFamily: 'DMSans-Bold', fontSize: 18, color: '#CCCCCC', width: 24, marginTop: 2 },
+  dishInfo: { flex: 1 },
+  dishName: { fontFamily: 'PlayfairDisplay-Italic', fontSize: 20, color: '#1A1A1A', letterSpacing: -0.3 },
+  dishDesc: { fontFamily: 'DMSans-Regular', fontSize: 13, color: '#666666', marginTop: 2 },
+
+  // Stars
+  starsRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12, paddingLeft: 36 },
+  star: { fontSize: 24, color: '#E5E5E5' },
+  starFilled: { color: RED },
+  ratingLabel: { fontFamily: 'DMSans-SemiBold', fontSize: 12, color: RED, marginLeft: 4, textTransform: 'uppercase', letterSpacing: 1 },
+
+  // Actions
+  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingLeft: 36 },
+  favBtn: { borderWidth: 1, borderColor: '#E5E5E5', borderRadius: 0, paddingHorizontal: 14, paddingVertical: 6 },
+  favBtnActive: { borderColor: RED, backgroundColor: '#FEFAFA' },
+  favBtnText: { fontFamily: 'DMSans-Medium', fontSize: 13, color: '#666666' },
+  favBtnTextActive: { color: RED },
+  noteLink: { fontFamily: 'DMSans-Regular', fontSize: 12, color: '#999999' },
+
+  // Notes
+  noteInput: {
+    marginTop: 12, marginLeft: 36,
+    backgroundColor: '#FAFAF9', borderWidth: 1, borderColor: '#E5E5E5',
+    borderRadius: 0, padding: 12,
+    fontFamily: 'DMSans-Regular', fontSize: 14, color: '#1A1A1A',
+    minHeight: 56,
   },
-  ratingLabel: {
-    fontSize: theme.typography.sizes.md,
-    fontWeight: '600',
-    color: theme.colors.text.primary,
-    marginBottom: theme.spacing.sm,
+
+  // Submit
+  submitWrapper: {
+    paddingHorizontal: 24, paddingTop: 12,
+    backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#E5E5E5',
   },
-  starsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  starButton: {
-    padding: theme.spacing.sm,
-  },
-  star: {
-    fontSize: 32,
-    color: theme.colors.border,
-  },
-  starFilled: {
-    color: theme.colors.primary,
-  },
-  favoriteSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: theme.spacing.md,
-    paddingHorizontal: theme.spacing.sm,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderWidth: 2,
-    borderColor: theme.colors.primary,
-    borderRadius: 4,
-    marginRight: theme.spacing.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkmark: {
-    color: theme.colors.primary,
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  favoriteLabel: {
-    fontSize: theme.typography.sizes.md,
-    color: theme.colors.text.primary,
-    fontWeight: '500',
-  },
-  feedbackSection: {
-    marginTop: theme.spacing.md,
-    paddingHorizontal: theme.spacing.sm,
-  },
-  feedbackLabel: {
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.xs,
-    fontWeight: '500',
-  },
-  feedbackInput: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.sm,
-    fontSize: theme.typography.sizes.sm,
-    color: theme.colors.text.primary,
-    backgroundColor: theme.colors.background,
-    minHeight: 60,
-  },
-  completeSection: {
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.background,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-  },
-  completeButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.lg,
-    paddingVertical: theme.spacing.lg,
-    alignItems: 'center',
-    ...theme.shadows.sm,
-  },
-  completeButtonText: {
-    color: theme.colors.text.light,
-    fontSize: theme.typography.sizes.lg,
-    fontWeight: '600',
-  },
-  completeButtonDisabled: {
-    backgroundColor: theme.colors.border,
-    opacity: 0.6,
-  },
-  completeButtonTextDisabled: {
-    color: theme.colors.text.secondary,
-  },
+  submitBtn: { backgroundColor: '#1A1A1A', borderRadius: 0, height: 56, alignItems: 'center', justifyContent: 'center' },
+  submitBtnDisabled: { opacity: 0.4 },
+  submitBtnText: { fontFamily: 'DMSans-Bold', fontSize: 14, letterSpacing: 2, color: '#FFFFFF', textTransform: 'uppercase' },
 });
