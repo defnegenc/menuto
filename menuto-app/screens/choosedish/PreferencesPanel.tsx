@@ -274,15 +274,13 @@ export function PreferencesPanel({
 const styles = StyleSheet.create({
   wrapper: {
     paddingHorizontal: 16,
-    paddingTop: 8,
-    gap: 24,
+    paddingTop: 4,
+    gap: 16,
   },
 
-  // Sections — editorial, no card backgrounds
+  // Sections — tight, no dividers
   sectionCard: {
-    paddingBottom: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    paddingBottom: 4,
   },
   sectionTitle: {
     fontSize: 20,

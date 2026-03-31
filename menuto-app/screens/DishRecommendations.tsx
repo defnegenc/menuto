@@ -67,6 +67,7 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
   const [searchText, setSearchText] = useState('');
   const [filteredRecommendations, setFilteredRecommendations] = useState<Recommendation[]>([]);
   const [showRationaleModal, setShowRationaleModal] = useState(false);
+  const [expandedDishIds, setExpandedDishIds] = useState<Set<string | number>>(new Set());
   const [selectedRationale, setSelectedRationale] = useState<string>('');
 
   // Helper functions defined first
@@ -267,12 +268,36 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
       });
       console.log('📦 Normalized recommendations:', newRecommendations);
       console.log('📦 Normalized recommendations length:', newRecommendations.length);
-      
+
+      // Filter by menu type if specified in freeTextMood
+      const mood = userPreferences.freeTextMood || '';
+      const DRINK_CATEGORIES = ['drink', 'drinks', 'beverage', 'beverages', 'cocktail', 'cocktails', 'wine', 'beer', 'spirits'];
+      const FOOD_CATEGORIES = ['starter', 'main', 'dessert', 'appetizer', 'side', 'share', 'pasta', 'salad', 'soup', 'entree'];
+
+      let filtered = newRecommendations;
+      if (mood.includes('Drinks only')) {
+        filtered = newRecommendations.filter(r => {
+          const cat = (r.category || '').toLowerCase();
+          const name = (r.name || '').toLowerCase();
+          const desc = (r.description || '').toLowerCase();
+          return DRINK_CATEGORIES.some(d => cat.includes(d) || name.includes(d) || desc.includes(d));
+        });
+        // If no drinks found, show all with a warning
+        if (filtered.length === 0) {
+          console.log('⚠️ No drinks found in recommendations, showing all');
+          filtered = newRecommendations;
+        }
+      } else if (mood.includes('Food only')) {
+        filtered = newRecommendations.filter(r => {
+          const cat = (r.category || '').toLowerCase();
+          return !DRINK_CATEGORIES.some(d => cat.includes(d));
+        });
+        if (filtered.length === 0) filtered = newRecommendations;
+      }
+
       // Store all recommendations for "Other recommendations" section
       setRecommendations(newRecommendations);
-      
-      // Agent already handles meal composition — show all recommendations
-      setFilteredRecommendations(newRecommendations);
+      setFilteredRecommendations(filtered);
 
       // Auto-select the top recommendation (skip dishes user has already had)
       if (newRecommendations.length > 0) {
@@ -469,20 +494,35 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
                     </View>
                   </TouchableOpacity>
 
-                  {/* Expandable reason — always visible, tappable for full text */}
-                  {reasonText ? (
+                  {/* Expandable reason */}
+                  {reasons.length > 0 ? (
                     <TouchableOpacity
                       activeOpacity={0.7}
                       onPress={() => {
-                        // Toggle showing full reason via Alert for now
-                        Alert.alert(dish.name, reasonText);
+                        setExpandedDishIds(prev => {
+                          const next = new Set(prev);
+                          next.has(dish.id) ? next.delete(dish.id) : next.add(dish.id);
+                          return next;
+                        });
                       }}
                       style={styles.reasonRow}
                     >
-                      <Text style={styles.dishReason} numberOfLines={1}>
-                        {reasonText}
-                      </Text>
-                      <Text style={styles.reasonMore}>more</Text>
+                      {expandedDishIds.has(dish.id) ? (
+                        <View style={styles.reasonExpanded}>
+                          {reasons.map((r, ri) => (
+                            <Text key={ri} style={styles.dishReason}>• {r}</Text>
+                          ))}
+                          {dish.description ? (
+                            <Text style={styles.dishDescriptionFull}>{dish.description}</Text>
+                          ) : null}
+                          <Text style={styles.reasonToggle}>hide</Text>
+                        </View>
+                      ) : (
+                        <View style={styles.reasonCollapsed}>
+                          <Text style={styles.dishReasonPreview} numberOfLines={1}>{reasons[0]}</Text>
+                          <Text style={styles.reasonToggle}>more</Text>
+                        </View>
+                      )}
                     </TouchableOpacity>
                   ) : null}
                 </View>
@@ -658,27 +698,46 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   reasonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 52,  // aligned with dish text (16 + 24 rank + 12 gap)
-    paddingBottom: 14,
+    paddingHorizontal: 52,
+    paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5E5',
+  },
+  reasonCollapsed: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
+  },
+  reasonExpanded: {
+    gap: 4,
+  },
+  dishReasonPreview: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 13,
+    color: '#999999',
+    fontStyle: 'italic',
+    flex: 1,
   },
   dishReason: {
     fontFamily: 'DMSans-Regular',
     fontSize: 13,
-    color: '#E9323D',
-    fontStyle: 'italic',
-    flex: 1,
+    color: '#666666',
+    lineHeight: 18,
   },
-  reasonMore: {
+  dishDescriptionFull: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 14,
+    color: '#444444',
+    lineHeight: 20,
+    marginTop: 4,
+  },
+  reasonToggle: {
     fontFamily: 'DMSans-SemiBold',
     fontSize: 11,
     color: '#E9323D',
     textTransform: 'uppercase',
     letterSpacing: 1,
+    marginTop: 4,
   },
   continueSection: {
     padding: 16,

@@ -9,7 +9,7 @@ import {
   Modal,
   TextInput,
   TouchableOpacity,
-  Animated,
+  // Animated removed — using shared LoadingScreen
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,6 +24,7 @@ import { DishRecommendations } from './DishRecommendations';
 import { PostMealFeedback } from './PostMealFeedback';
 import { MultiDishScoring } from './MultiDishScoring';
 import { AddMenuOptions } from '../components/AddMenuOptions';
+import { LoadingScreen } from '../components/LoadingScreen';
 import { PreferencesPanel } from './choosedish/PreferencesPanel';
 
 const RED = '#E9323D';
@@ -340,7 +341,7 @@ export function ChooseDishLanding({
         <View style={{ paddingTop: insets.top + 8 }}>
           <ScreenHeader title="Find your" accent="dish" />
         </View>
-        <ParsingScreen restaurantName={selectedRestaurant?.name} />
+        <LoadingScreen restaurantName={selectedRestaurant?.name} message="Extracting dishes" />
       </View>
     );
   }
@@ -659,106 +660,7 @@ export function ChooseDishLanding({
   );
 }
 
-// Parsing screen — editorial loading with floating text
-const PARSING_MESSAGES = [
-  'Flipping through the menu',
-  'Spotting the good stuff',
-  'Tasting with our eyes',
-  'Plating it all together',
-];
-
-function ParsingScreen({ restaurantName }: { restaurantName?: string }) {
-  const [messageIndex, setMessageIndex] = useState(0);
-  const floatAnim = useRef(new Animated.Value(0)).current;
-  const textOpacity = useRef(new Animated.Value(1)).current;
-  const dotOpacity1 = useRef(new Animated.Value(0.2)).current;
-  const dotOpacity2 = useRef(new Animated.Value(0.2)).current;
-  const dotOpacity3 = useRef(new Animated.Value(0.2)).current;
-  const lineWidth = useRef(new Animated.Value(0)).current;
-
-  // Gentle floating
-  useEffect(() => {
-    const float = Animated.loop(
-      Animated.sequence([
-        Animated.timing(floatAnim, { toValue: -8, duration: 2000, useNativeDriver: true }),
-        Animated.timing(floatAnim, { toValue: 0, duration: 2000, useNativeDriver: true }),
-      ])
-    );
-    float.start();
-    return () => float.stop();
-  }, [floatAnim]);
-
-  // Dot pulse
-  useEffect(() => {
-    const makePulse = (dot: Animated.Value, delay: number) =>
-      Animated.loop(Animated.sequence([
-        Animated.delay(delay),
-        Animated.timing(dot, { toValue: 1, duration: 500, useNativeDriver: true }),
-        Animated.timing(dot, { toValue: 0.2, duration: 500, useNativeDriver: true }),
-      ]));
-    const p1 = makePulse(dotOpacity1, 0);
-    const p2 = makePulse(dotOpacity2, 200);
-    const p3 = makePulse(dotOpacity3, 400);
-    p1.start(); p2.start(); p3.start();
-    return () => { p1.stop(); p2.stop(); p3.stop(); };
-  }, [dotOpacity1, dotOpacity2, dotOpacity3]);
-
-  // Progress line
-  useEffect(() => {
-    Animated.timing(lineWidth, {
-      toValue: 1,
-      duration: 15000,
-      useNativeDriver: false,
-    }).start();
-  }, [lineWidth]);
-
-  // Rotate messages — state update via setTimeout to avoid useInsertionEffect conflict
-  useEffect(() => {
-    const interval = setInterval(() => {
-      Animated.timing(textOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-      setTimeout(() => {
-        setMessageIndex((prev) => (prev + 1) % PARSING_MESSAGES.length);
-        Animated.timing(textOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
-      }, 220);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [textOpacity]);
-
-  const lineWidthInterp = lineWidth.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
-
-  return (
-    <View style={styles.parsingContainer}>
-      <Animated.View style={{ transform: [{ translateY: floatAnim }], alignItems: 'center' }}>
-        {/* Restaurant name — big serif */}
-        {restaurantName && (
-          <Text style={styles.parsingRestaurantName}>{restaurantName}</Text>
-        )}
-
-        {/* Animated dots */}
-        <View style={styles.parsingDotsRow}>
-          {[dotOpacity1, dotOpacity2, dotOpacity3].map((dot, i) => (
-            <Animated.View key={i} style={[styles.parsingDot, { opacity: dot }]} />
-          ))}
-        </View>
-
-        {/* Status message */}
-        <Animated.Text style={[styles.parsingText, { opacity: textOpacity }]}>
-          {PARSING_MESSAGES[messageIndex]}
-        </Animated.Text>
-      </Animated.View>
-
-      {/* Progress line at bottom */}
-      <View style={styles.parsingProgressTrack}>
-        <Animated.View style={[styles.parsingProgressFill, { width: lineWidthInterp }]} />
-      </View>
-
-      <Text style={styles.parsingSubtext}>This may take a few moments</Text>
-    </View>
-  );
-}
+// ParsingScreen removed — now uses shared LoadingScreen component
 
 const MEDIUM = '#5A4D48';
 
