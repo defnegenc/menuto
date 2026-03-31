@@ -389,14 +389,6 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={onBack}>
-              <Text style={styles.backButtonText}>←</Text>
-            </TouchableOpacity>
-            <Text style={styles.headerTitle} numberOfLines={1}>{restaurant.name}</Text>
-          </View>
-        </SafeAreaView>
         <LoadingScreen
           restaurantName={restaurant.name}
           cravings={userPreferences.selectedCravings}
@@ -576,7 +568,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 16,
+    paddingBottom: 100,  // room for fixed continue button
   },
   picksTitle: {
     fontFamily: 'PlayfairDisplay-Italic',
@@ -677,15 +669,10 @@ const styles = StyleSheet.create({
     borderTopColor: '#E7E5E4',
   },
   continueButton: {
-    backgroundColor: '#1C1917',
+    backgroundColor: '#1A1A1A',
     borderRadius: 0,
     paddingVertical: 18,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   continueButtonText: {
     fontFamily: 'DMSans-SemiBold',

@@ -11,45 +11,47 @@ interface Props {
 export const ScreenHeader: React.FC<Props> = ({ title, accent }) => {
   return (
     <View style={styles.container}>
-      <View style={styles.accentLine} />
-      <View style={styles.textCol}>
-        <Text style={styles.title}>{title}</Text>
-        {accent ? <Text style={styles.accent}>{accent}</Text> : null}
-      </View>
+      <Text style={styles.title}>{title}</Text>
+      {accent ? (
+        <View style={styles.accentRow}>
+          <View style={styles.dot} />
+          <Text style={styles.accent}>{accent}</Text>
+        </View>
+      ) : null}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
     paddingHorizontal: 24,
-    paddingBottom: 16,
-    gap: 14,
-  },
-  accentLine: {
-    width: 3,
-    backgroundColor: RED,
-    borderRadius: 1.5,
-    marginTop: 4,
-    marginBottom: 4,
-  },
-  textCol: {
-    flex: 1,
-    gap: 0,
+    paddingBottom: 20,
   },
   title: {
-    fontFamily: 'PlayfairDisplay-Italic',
-    fontSize: 36,
-    lineHeight: 40,
-    letterSpacing: -1,
-    color: '#1A1A1A',
+    fontFamily: 'DMSans-Bold',
+    fontSize: 14,
+    letterSpacing: 4,
+    textTransform: 'uppercase',
+    color: '#9CA3AF',
+  },
+  accentRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 10,
+    marginTop: 2,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: RED,
+    marginBottom: 6,
   },
   accent: {
     fontFamily: 'PlayfairDisplay-Italic',
-    fontSize: 36,
-    lineHeight: 40,
-    color: RED,
+    fontSize: 52,
+    lineHeight: 56,
+    color: '#1A1A1A',
+    letterSpacing: -2,
   },
 });
