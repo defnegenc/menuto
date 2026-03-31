@@ -612,65 +612,101 @@ export function ChooseDishLanding({
   );
 }
 
-// Parsing screen with animated messages
+// Parsing screen — editorial loading with floating text
 const PARSING_MESSAGES = [
-  'Reading menu...',
-  'Extracting dishes...',
-  'Almost done...',
+  'Reading the menu',
+  'Extracting dishes',
+  'Categorizing items',
+  'Almost there',
 ];
 
 function ParsingScreen({ restaurantName }: { restaurantName?: string }) {
   const [messageIndex, setMessageIndex] = useState(0);
-  const messageOpacity = useRef(new Animated.Value(1)).current;
-  const lineOpacity = useRef(new Animated.Value(0.3)).current;
+  const floatAnim = useRef(new Animated.Value(0)).current;
+  const textOpacity = useRef(new Animated.Value(1)).current;
+  const dotOpacity1 = useRef(new Animated.Value(0.2)).current;
+  const dotOpacity2 = useRef(new Animated.Value(0.2)).current;
+  const dotOpacity3 = useRef(new Animated.Value(0.2)).current;
+  const lineWidth = useRef(new Animated.Value(0)).current;
 
+  // Gentle floating
   useEffect(() => {
-    // Pulsing line animation: opacity 0.3 -> 1.0 looping
-    const pulse = Animated.loop(
+    const float = Animated.loop(
       Animated.sequence([
-        Animated.timing(lineOpacity, {
-          toValue: 1.0,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(lineOpacity, {
-          toValue: 0.3,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
+        Animated.timing(floatAnim, { toValue: -8, duration: 2000, useNativeDriver: true }),
+        Animated.timing(floatAnim, { toValue: 0, duration: 2000, useNativeDriver: true }),
       ])
     );
-    pulse.start();
-    return () => pulse.stop();
-  }, [lineOpacity]);
+    float.start();
+    return () => float.stop();
+  }, [floatAnim]);
 
+  // Dot pulse
+  useEffect(() => {
+    const makePulse = (dot: Animated.Value, delay: number) =>
+      Animated.loop(Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(dot, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(dot, { toValue: 0.2, duration: 500, useNativeDriver: true }),
+      ]));
+    const p1 = makePulse(dotOpacity1, 0);
+    const p2 = makePulse(dotOpacity2, 200);
+    const p3 = makePulse(dotOpacity3, 400);
+    p1.start(); p2.start(); p3.start();
+    return () => { p1.stop(); p2.stop(); p3.stop(); };
+  }, [dotOpacity1, dotOpacity2, dotOpacity3]);
+
+  // Progress line
+  useEffect(() => {
+    Animated.timing(lineWidth, {
+      toValue: 1,
+      duration: 15000,
+      useNativeDriver: false,
+    }).start();
+  }, [lineWidth]);
+
+  // Rotate messages
   useEffect(() => {
     const interval = setInterval(() => {
-      Animated.timing(messageOpacity, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }).start(() => {
-        setMessageIndex((prev) => (prev < PARSING_MESSAGES.length - 1 ? prev + 1 : prev));
-        Animated.timing(messageOpacity, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }).start();
+      Animated.timing(textOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+        setMessageIndex((prev) => (prev + 1) % PARSING_MESSAGES.length);
+        Animated.timing(textOpacity, { toValue: 1, duration: 300, useNativeDriver: true }).start();
       });
-    }, 2800);
+    }, 3000);
     return () => clearInterval(interval);
-  }, [messageOpacity]);
+  }, [textOpacity]);
+
+  const lineWidthInterp = lineWidth.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+  });
 
   return (
     <View style={styles.parsingContainer}>
-      <Animated.View style={[styles.parsingLine, { opacity: lineOpacity }]} />
-      {restaurantName && (
-        <Text style={styles.parsingRestaurantName}>{restaurantName}</Text>
-      )}
-      <Animated.Text style={[styles.parsingText, { opacity: messageOpacity }]}>
-        {PARSING_MESSAGES[messageIndex]}
-      </Animated.Text>
+      <Animated.View style={{ transform: [{ translateY: floatAnim }], alignItems: 'center' }}>
+        {/* Restaurant name — big serif */}
+        {restaurantName && (
+          <Text style={styles.parsingRestaurantName}>{restaurantName}</Text>
+        )}
+
+        {/* Animated dots */}
+        <View style={styles.parsingDotsRow}>
+          {[dotOpacity1, dotOpacity2, dotOpacity3].map((dot, i) => (
+            <Animated.View key={i} style={[styles.parsingDot, { opacity: dot }]} />
+          ))}
+        </View>
+
+        {/* Status message */}
+        <Animated.Text style={[styles.parsingText, { opacity: textOpacity }]}>
+          {PARSING_MESSAGES[messageIndex]}
+        </Animated.Text>
+      </Animated.View>
+
+      {/* Progress line at bottom */}
+      <View style={styles.parsingProgressTrack}>
+        <Animated.View style={[styles.parsingProgressFill, { width: lineWidthInterp }]} />
+      </View>
+
       <Text style={styles.parsingSubtext}>This may take a few moments</Text>
     </View>
   );
@@ -859,30 +895,49 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 40,
-  },
-  parsingLine: {
-    width: 48,
-    height: 1,
-    backgroundColor: TERRA,
-    marginBottom: 24,
+    gap: 24,
   },
   parsingRestaurantName: {
-    fontSize: 28,
+    fontSize: 32,
     fontFamily: 'PlayfairDisplay-Italic',
-    color: '#1C1917',
+    color: '#1A1A1A',
     letterSpacing: -0.5,
-    marginBottom: 16,
+    marginBottom: 20,
     textAlign: 'center',
   },
+  parsingDotsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  parsingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#E9323D',
+  },
   parsingText: {
-    fontSize: 14,
-    fontFamily: 'DMSans-Regular',
+    fontSize: 16,
+    fontFamily: 'DMSans-Medium',
     color: '#444444',
     textAlign: 'center',
   },
+  parsingProgressTrack: {
+    width: '100%',
+    height: 2,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 1,
+    overflow: 'hidden',
+    marginHorizontal: 40,
+  },
+  parsingProgressFill: {
+    height: 2,
+    backgroundColor: '#E9323D',
+    borderRadius: 1,
+  },
   parsingSubtext: {
     fontSize: 12,
-    color: '#666666',
+    color: '#9CA3AF',
     marginTop: 6,
     textAlign: 'center',
     fontFamily: 'DMSans-Regular',

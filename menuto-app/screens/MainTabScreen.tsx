@@ -59,14 +59,14 @@ export function MainTabScreen({
         />
       </View>
 
-      {/* Both screens stay mounted — inactive one hidden to preserve state */}
-      <View style={[styles.screenContainer, activeTab !== 'spots' && styles.hidden]}>
+      {/* Both screens always mounted — inactive one pushed offscreen to preserve state */}
+      <View style={[styles.screenContainer, activeTab !== 'spots' && styles.offscreen]}>
         <MyRestaurants
           onSelectRestaurant={onSelectRestaurant}
           onAddRestaurant={onAddRestaurant}
         />
       </View>
-      <View style={[styles.screenContainer, activeTab !== 'choose' && styles.hidden]}>
+      <View style={[styles.screenContainer, activeTab !== 'choose' && styles.offscreen]}>
         <ChooseDishLanding
           onSelectRestaurant={onSelectRestaurant}
           onNavigateToRecommendations={onNavigateToDishRecommendations}
@@ -108,8 +108,14 @@ const styles = StyleSheet.create({
   screenContainer: {
     flex: 1,
   },
-  hidden: {
-    display: 'none',
+  offscreen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0,
+    pointerEvents: 'none',
   },
   // Profile icon
   profileIconContainer: {
