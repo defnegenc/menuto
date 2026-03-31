@@ -811,29 +811,34 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                         <Text style={styles.favEditLink}>{editingFavorites ? 'done' : 'edit'}</Text>
                       </TouchableOpacity>
                     </View>
-                    <View style={styles.favoritesChips}>
-                      {favoriteDishes.map((fav, idx) => (
-                        <View key={`${fav.dish_name}-${idx}`} style={styles.favChip}>
-                          <Text style={styles.favChipText}>{fav.dish_name}</Text>
-                          {editingFavorites && <TouchableOpacity
-                            onPress={() => {
-                              if (!user || !userId) return;
-                              const updated = {
-                                ...user,
-                                favorite_dishes: (user.favorite_dishes || []).filter(f =>
-                                  !(f.dish_name === fav.dish_name &&
-                                    (f.restaurant_id === restaurant.place_id || f.restaurant_id === restaurant.name))
-                                ),
-                              };
-                              setUser(updated, userId);
-                            }}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <Text style={styles.favChipRemove}>×</Text>
-                          </TouchableOpacity>}
-                        </View>
-                      ))}
-                    </View>
+                    {editingFavorites ? (
+                      <View style={styles.favEditList}>
+                        {favoriteDishes.map((fav, idx) => (
+                          <View key={`${fav.dish_name}-${idx}`} style={styles.favEditRow}>
+                            <Text style={styles.favEditName}>{fav.dish_name}</Text>
+                            <TouchableOpacity
+                              onPress={() => {
+                                if (!user || !userId) return;
+                                setUser({
+                                  ...user,
+                                  favorite_dishes: (user.favorite_dishes || []).filter(f =>
+                                    !(f.dish_name === fav.dish_name &&
+                                      (f.restaurant_id === restaurant.place_id || f.restaurant_id === restaurant.name))
+                                  ),
+                                }, userId);
+                              }}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            >
+                              <Text style={styles.favEditRemove}>×</Text>
+                            </TouchableOpacity>
+                          </View>
+                        ))}
+                      </View>
+                    ) : (
+                      <Text style={styles.favMenuList}>
+                        {favoriteDishes.map(f => f.dish_name).join('  ·  ')}
+                      </Text>
+                    )}
                   </View>
                 ) : null;
               })()}
@@ -1103,7 +1108,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     alignSelf: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   backArrow: {
     fontSize: 20,
@@ -1281,35 +1286,36 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999999',
   },
-  favoritesChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  favChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#FEFAFA',
-    borderWidth: 1,
-    borderColor: '#E9323D',
-    borderRadius: 0,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  favChipText: {
-    fontFamily: 'DMSans-Medium',
-    fontSize: 13,
-    color: '#E9323D',
-  },
-  favChipRemove: {
+  favMenuList: {
+    fontFamily: 'PlayfairDisplay-Italic',
     fontSize: 16,
+    color: '#444444',
+    lineHeight: 24,
+  },
+  favEditList: {
+    gap: 0,
+  },
+  favEditRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F4',
+  },
+  favEditName: {
+    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 16,
+    color: '#1A1A1A',
+  },
+  favEditRemove: {
+    fontSize: 18,
     color: '#E9323D',
   },
 
   /* ── Menu header / THE MENU label ──────────── */
   menuHeader: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   menuTitleRow: {
     flexDirection: 'row',
