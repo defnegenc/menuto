@@ -728,23 +728,21 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header — centered, all caps, like a real menu */}
+      {/* Header — stacked, centered, like a real menu */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.restaurantName} numberOfLines={2}>
-            {restaurant.name.toUpperCase()}
-          </Text>
-          <Text style={styles.cuisineLine}>
-            {(restaurant.cuisine_type || 'DINING').toUpperCase()}{restaurant.rating ? ` · ${restaurant.rating}★` : ''}
-          </Text>
-        </View>
-        <View style={styles.headerSpacer} />
-        <Text style={styles.restaurantAddress} numberOfLines={1}>
-          {(restaurant.vicinity ?? 'Location unknown').split(',').slice(0, 3).join(', ')}
+        <Text style={styles.restaurantName} numberOfLines={2}>
+          {restaurant.name}
         </Text>
+        <Text style={styles.cuisineLine}>
+          {(restaurant.cuisine_type || 'DINING').toUpperCase()}{restaurant.rating ? ` · ${restaurant.rating}★` : ''}
+        </Text>
+        <Text style={styles.addressLine} numberOfLines={1}>
+          {(restaurant.vicinity ?? '').split(',').slice(0, 3).join(', ')}
+        </Text>
+        {/* Address is now in the header via addressLine */}
       </View>
 
       {isLoading && (
@@ -1096,29 +1094,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
 
-  /* ── Header — centered like a real menu ────── */
+  /* ── Header — stacked, centered ────────────── */
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 24,
     paddingTop: 8,
-    paddingBottom: 16,
+    paddingBottom: 20,
   },
   backButton: {
-    width: 40,
-    alignItems: 'flex-start',
-    justifyContent: 'center',
+    alignSelf: 'flex-start',
+    marginBottom: 12,
   },
   backArrow: {
     fontSize: 20,
     color: '#1A1A1A',
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerSpacer: {
-    width: 40,
   },
   eyebrowRow: {
     flexDirection: 'row',
@@ -1154,12 +1143,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   restaurantName: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 18,
-    letterSpacing: 4,
+    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 32,
+    letterSpacing: -0.5,
     color: '#1A1A1A',
     textAlign: 'center',
-    textTransform: 'uppercase',
     marginBottom: 4,
   },
   cuisineLine: {
@@ -1170,6 +1158,12 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     textAlign: 'center',
     marginBottom: 4,
+  },
+  addressLine: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 13,
+    color: '#999999',
+    textAlign: 'center',
   },
   restaurantAddress: {
     fontFamily: 'DMSans-Regular',
@@ -1213,7 +1207,7 @@ const styles = StyleSheet.create({
 
   /* ── Search ────────────────────────────────── */
   searchContainer: {
-    marginBottom: 24,
+    marginBottom: 12,
   },
   searchInput: {
     flexDirection: 'row',
@@ -1315,7 +1309,7 @@ const styles = StyleSheet.create({
 
   /* ── Menu header / THE MENU label ──────────── */
   menuHeader: {
-    marginBottom: 20,
+    marginBottom: 12,
   },
   menuTitleRow: {
     flexDirection: 'row',

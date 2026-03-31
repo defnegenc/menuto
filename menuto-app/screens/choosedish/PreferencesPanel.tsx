@@ -23,7 +23,7 @@ interface PreferencesPanelProps {
   onContinue: () => void;
 }
 
-const cravingOptions = [
+const foodCravings = [
   'light',
   'fresh',
   'carb-heavy',
@@ -32,6 +32,19 @@ const cravingOptions = [
   'creamy',
   'crispy',
   'comforting',
+];
+
+const drinkCravings = [
+  'light',
+  'fresh',
+  'fruity',
+  'dry',
+  'sweet',
+  'sparkling',
+  'savory',
+  'boozy',
+  'refreshing',
+  'bitter',
 ];
 
 function SliderControl({
@@ -164,10 +177,12 @@ export function PreferencesPanel({
 
       {/* Craving Selection */}
       <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>What are you craving?</Text>
+        <Text style={styles.sectionTitle}>
+          {menuType === 'drinks' ? 'What kind of drink?' : 'What are you craving?'}
+        </Text>
         <Text style={styles.sectionSubtitle}>Select all that apply</Text>
         <View style={styles.chipsContainer}>
-          {cravingOptions.map((craving) => {
+          {(menuType === 'drinks' ? drinkCravings : menuType === 'both' ? [...foodCravings, ...drinkCravings.filter(d => !foodCravings.includes(d))] : foodCravings).map((craving) => {
             const isSelected = selectedCravings.includes(craving);
             return (
               <TouchableOpacity
