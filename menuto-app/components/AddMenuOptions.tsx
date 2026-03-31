@@ -1,8 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 
-const RED = '#E9323D';
-
 interface Props {
   onAddPhoto: () => void;
   onAddLink: () => void;
@@ -12,35 +10,35 @@ interface Props {
 
 export function AddMenuOptions({ onAddPhoto, onAddLink, onPasteText, compact }: Props) {
   if (compact) {
-    // Compact: 3 horizontal buttons (used in review modal)
     return (
       <View style={styles.compactContainer}>
-        <Text style={styles.label}>ADD MENU</Text>
+        <Text style={styles.label}>ADD MORE</Text>
         <View style={styles.compactRow}>
           <TouchableOpacity style={styles.compactBtn} onPress={onAddPhoto} activeOpacity={0.7}>
-            <Text style={styles.compactBtnText}>📸 Photo</Text>
+            <Text style={styles.compactBtnText}>Photo</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.compactBtn} onPress={onAddLink} activeOpacity={0.7}>
-            <Text style={styles.compactBtnText}>🔗 Link</Text>
+            <Text style={styles.compactBtnText}>Link</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.compactBtn} onPress={onPasteText} activeOpacity={0.7}>
-            <Text style={styles.compactBtnText}>📋 Text</Text>
+            <Text style={styles.compactBtnText}>Text</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   }
 
-  // Full: stacked list items with arrows (used when no menu exists)
   return (
     <View style={styles.container}>
       <Text style={styles.label}>ADD A MENU</Text>
 
       <TouchableOpacity style={styles.option} onPress={onAddPhoto} activeOpacity={0.7}>
-        <Text style={styles.optionIcon}>📸</Text>
+        <View style={styles.optionIcon}>
+          <Text style={styles.iconLetter}>P</Text>
+        </View>
         <View style={styles.optionText}>
           <Text style={styles.optionTitle}>Snap the menu</Text>
-          <Text style={styles.optionSubtitle}>Take a photo with your camera</Text>
+          <Text style={styles.optionSubtitle}>Camera or photo library</Text>
         </View>
         <Text style={styles.optionArrow}>→</Text>
       </TouchableOpacity>
@@ -48,10 +46,12 @@ export function AddMenuOptions({ onAddPhoto, onAddLink, onPasteText, compact }: 
       <View style={styles.divider} />
 
       <TouchableOpacity style={styles.option} onPress={onAddLink} activeOpacity={0.7}>
-        <Text style={styles.optionIcon}>🔗</Text>
+        <View style={styles.optionIcon}>
+          <Text style={styles.iconLetter}>L</Text>
+        </View>
         <View style={styles.optionText}>
           <Text style={styles.optionTitle}>Paste a link</Text>
-          <Text style={styles.optionSubtitle}>From the restaurant's website</Text>
+          <Text style={styles.optionSubtitle}>Website or PDF URL</Text>
         </View>
         <Text style={styles.optionArrow}>→</Text>
       </TouchableOpacity>
@@ -59,10 +59,12 @@ export function AddMenuOptions({ onAddPhoto, onAddLink, onPasteText, compact }: 
       <View style={styles.divider} />
 
       <TouchableOpacity style={styles.option} onPress={onPasteText} activeOpacity={0.7}>
-        <Text style={styles.optionIcon}>📋</Text>
+        <View style={styles.optionIcon}>
+          <Text style={styles.iconLetter}>T</Text>
+        </View>
         <View style={styles.optionText}>
-          <Text style={styles.optionTitle}>Paste menu text</Text>
-          <Text style={styles.optionSubtitle}>Copy-paste dish names and descriptions</Text>
+          <Text style={styles.optionTitle}>Paste text</Text>
+          <Text style={styles.optionSubtitle}>Copy-paste from anywhere</Text>
         </View>
         <Text style={styles.optionArrow}>→</Text>
       </TouchableOpacity>
@@ -71,7 +73,6 @@ export function AddMenuOptions({ onAddPhoto, onAddLink, onPasteText, compact }: 
 }
 
 const styles = StyleSheet.create({
-  // Full layout
   container: {
     paddingVertical: 8,
   },
@@ -90,9 +91,16 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   optionIcon: {
-    fontSize: 22,
-    width: 32,
-    textAlign: 'center',
+    width: 28,
+    height: 28,
+    backgroundColor: '#1A1A1A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconLetter: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 13,
+    color: '#FFFFFF',
   },
   optionText: {
     flex: 1,
@@ -109,35 +117,33 @@ const styles = StyleSheet.create({
     color: '#666666',
   },
   optionArrow: {
-    fontFamily: 'DMSans-Regular',
-    fontSize: 18,
+    fontSize: 16,
     color: '#CCCCCC',
   },
   divider: {
     height: 1,
     backgroundColor: '#E5E5E5',
   },
-
-  // Compact layout
   compactContainer: {
     marginBottom: 16,
   },
   compactRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 0,
   },
   compactBtn: {
     flex: 1,
-    backgroundColor: '#FAFAF9',
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    borderRadius: 0,
+    backgroundColor: '#1A1A1A',
     paddingVertical: 12,
     alignItems: 'center',
+    borderRightWidth: 1,
+    borderRightColor: '#333333',
   },
   compactBtnText: {
-    fontFamily: 'DMSans-SemiBold',
-    fontSize: 12,
-    color: '#1A1A1A',
+    fontFamily: 'DMSans-Bold',
+    fontSize: 11,
+    letterSpacing: 2,
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
   },
 });

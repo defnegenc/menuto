@@ -418,12 +418,8 @@ export function AuthScreen({ onAuthComplete }: Props) {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <Text style={styles.eyebrow}>WELCOME TO MENUTO</Text>
             <Text style={styles.title}>
-              {isSignUp ? 'Create your\naccount' : 'Good to see\nyou again'}
-            </Text>
-            <Text style={styles.subtitle}>
-              {isSignUp ? 'Join us and discover your next favorite dish' : 'Sign in to pick up where you left off'}
+              {isSignUp ? 'Create\naccount' : 'Sign in'}
             </Text>
             {!!lastAuthLabel && (
               <View style={styles.lastAuthBadge}>
@@ -451,24 +447,6 @@ export function AuthScreen({ onAuthComplete }: Props) {
             >
               <Text style={[styles.tabText, isSignUp && styles.tabTextActive]}>Sign Up</Text>
             </TouchableOpacity>
-          </View>
-
-          {/* Google Sign In */}
-          <TouchableOpacity
-            style={styles.googleButton}
-            onPress={handleGoogleSignIn}
-            disabled={isLoading}
-            activeOpacity={0.9}
-          >
-            <Text style={styles.googleIcon}>G</Text>
-            <Text style={styles.googleButtonText}>Continue with Google</Text>
-          </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
           </View>
 
           <View style={styles.form}>
@@ -574,6 +552,24 @@ export function AuthScreen({ onAuthComplete }: Props) {
                   {isSignUp ? 'Sign In' : 'Sign Up'}
                 </Text>
               </Text>
+            </TouchableOpacity>
+
+            {/* Divider */}
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Google Sign In */}
+            <TouchableOpacity
+              style={styles.googleButton}
+              onPress={handleGoogleSignIn}
+              disabled={isLoading}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.googleIcon}>G</Text>
+              <Text style={styles.googleButtonText}>Continue with Google</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -739,16 +735,11 @@ const styles = StyleSheet.create({
     color: DARK,
   },
   authButton: {
-    backgroundColor: TERRA,
+    backgroundColor: '#1A1A1A',
     borderRadius: 0,
     paddingVertical: 18,
     alignItems: 'center',
     marginTop: 10,
-    shadowColor: TERRA,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
   },
   authButtonDisabled: {
     opacity: 0.5,
