@@ -481,6 +481,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEFAFA',
     borderLeftWidth: 3,
     borderLeftColor: RED,
+    paddingLeft: 12,
   },
   resultInfo: {
     flex: 1,
