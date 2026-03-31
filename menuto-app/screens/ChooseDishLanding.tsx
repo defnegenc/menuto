@@ -259,15 +259,34 @@ export function ChooseDishLanding({
     setShowDishRecommendations(true);
   };
 
+  const resetFlow = () => {
+    setSelectedRestaurant(null);
+    setSearchText('');
+    setSearchResults([]);
+    setMenuDishes([]);
+    setIsLoadingMenu(false);
+    setIsParsing(false);
+    setHungerLevel(3);
+    setPreferenceLevel(3);
+    setSelectedCravings([]);
+    setDiningOccasion('');
+    setFreeTextMood('');
+    setShowDishRecommendations(false);
+    setShowMultiDishScoring(false);
+    setShowPostMealFeedback(false);
+    setSelectedDishesForScoring([]);
+    setSelectedDishForFeedback(null);
+  };
+
   const handleDishRecommendationContinue = (dishes: any[]) => {
     setSelectedDishesForScoring(dishes); setShowDishRecommendations(false); setShowMultiDishScoring(true);
   };
   const handleMultiDishScoringComplete = (_dishes: any[], _addToFavorites: boolean[]) => {
-    setShowMultiDishScoring(false); setSelectedDishesForScoring([]);
-    Alert.alert('Feedback Submitted!', 'Thank you for your feedback. Your preferences have been saved.', [{ text: 'OK' }]);
+    resetFlow();
+    Alert.alert('Done!', 'Your feedback has been saved.', [{ text: 'OK' }]);
   };
   const handleFeedbackComplete = (_rating: number, _feedback: string) => {
-    setShowPostMealFeedback(false); setSelectedDishForFeedback(null);
+    resetFlow();
   };
   const handleBackToRecommendations = () => {
     setShowPostMealFeedback(false); setShowMultiDishScoring(false); setShowDishRecommendations(true);

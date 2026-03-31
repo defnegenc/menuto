@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LoadingScreen } from '../components/LoadingScreen';
-import { MenuItemCard } from '../components/MenuItemCard';
 import { SearchBar } from '../components/SearchBar';
 import { api } from '../services/api';
 import { useStore } from '../store/useStore';
@@ -435,92 +434,59 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
           </View>
         ) : (
           <>
-            {selectedDish && (
-              <View style={styles.recommendationSection}>
-                {/* Show all filtered recommendations grouped by course */}
-                {filteredRecommendations.map((dish, index) => {
-                  const isSelected = selectedDishes.some(d => d.id === dish.id);
-                  return (
-                    <View key={dish.id} style={styles.recommendationCard}>
-                      {filteredRecommendations.length > 1 && (
-                        <Text style={styles.courseLabel}>
-                          {dish.category === 'starter' ? 'Starter' : 
-                           dish.category === 'share' ? 'Share' : 
-                           dish.category === 'main' ? 'Main' : 
-                           capitalizeText(dish.category || 'Main')}
-                        </Text>
-                      )}
-                      <MenuItemCard
-                        dish={{
-                          id: String(dish.id),
-                          name: dish.name,
-                          description: dish.description || '',
-                          category: dish.category || 'main',
-                          ingredients: dish.ingredients || [],
-                          dietary_tags: dish.dietary_tags || [],
-                          is_user_added: false,
-                          score: dish.recommendation_score || 0,
-                          explanation: '',
-                          restaurant_id: restaurant.place_id
-                        }}
-                        rank={index + 1}
-                        isSelected={isSelected}
-                        onPress={() => handleDishSelect(dish)}
-                        isFavorite={hasUserHadDish(dish.name)}
-                      />
-                      
-                      {/* Recommendation reason — compact */}
-                      {formatRecommendationReason(dish).length > 0 && (
-                        <Text style={styles.reasoningText} numberOfLines={1}>
-                          {formatRecommendationReason(dish)[0]}
-                        </Text>
+            <Text style={styles.picksTitle}>Your picks</Text>
+            <Text style={styles.picksSubtitle}>Tap to select what you're ordering</Text>
+
+            {filteredRecommendations.map((dish) => {
+              const isSelected = selectedDishes.some(d => d.id === dish.id);
+              const reasons = formatRecommendationReason(dish);
+              const reasonText = reasons.length > 0 ? `"${reasons[0]}"` : '';
+              const courseRole = (dish as any).course_role || dish.category || 'main';
+              const isDiscovery = (dish as any).is_discovery === true;
+
+              return (
+                <TouchableOpacity
+                  key={dish.id}
+                  activeOpacity={0.7}
+                  onPress={() => handleDishSelect(dish)}
+                  style={[
+                    styles.dishCard,
+                    isSelected && styles.dishCardSelected,
+                  ]}
+                >
+                  {/* Selection circle */}
+                  <View style={[
+                    styles.selectCircle,
+                    isSelected && styles.selectCircleFilled,
+                  ]}>
+                    {isSelected && <Text style={styles.selectCheck}>{'✓'}</Text>}
+                  </View>
+
+                  {/* Dish content */}
+                  <View style={styles.dishContent}>
+                    <View style={styles.dishMeta}>
+                      <Text style={styles.dishCategory}>
+                        {capitalizeText(courseRole)}
+                      </Text>
+                      {isDiscovery && (
+                        <Text style={styles.discoveryBadge}>NEW FOR YOU</Text>
                       )}
                     </View>
-                  );
-                })}
-
-                {/* Get new recommendation button - only show if there are more recommendations */}
-                {recommendations.length > filteredRecommendations.length && (
-                  <TouchableOpacity 
-                    style={styles.newRecommendationButton}
-                    onPress={handleGetNewRecommendation}
-                  >
-                    <Text style={styles.newRecommendationText}>Get new recommendation</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-
-            {/* Other recommendations list - only show if there are more recommendations than the filtered ones */}
-            {recommendations.length > filteredRecommendations.length && (
-              <View style={styles.allRecommendationsSection}>
-                <Text style={styles.sectionTitle}>
-                  {searchText ? `Search Results (${recommendations.length})` : 'Other recommendations'}
-                </Text>
-                {recommendations
-                  .filter((dish) => !filteredRecommendations.some(fd => fd.id === dish.id)) // Remove filtered recommendations from this list
-                  .map((dish) => (
-                    <MenuItemCard
-                      key={dish.id}
-                      dish={{
-                        id: String(dish.id),
-                        name: dish.name,
-                        description: dish.description || '',
-                        category: dish.category || 'main',
-                        ingredients: dish.ingredients || [],
-                        dietary_tags: dish.dietary_tags || [],
-                        is_user_added: false,
-                        score: dish.recommendation_score || 0,
-                        explanation: '',
-                        restaurant_id: restaurant.place_id
-                      }}
-                      isSelected={selectedDishes.some(d => d.id === dish.id)}
-                      onPress={() => handleDishSelect(dish)}
-                      isFavorite={hasUserHadDish(dish.name)}
-                    />
-                  ))}
-              </View>
-            )}
+                    <Text style={styles.dishName}>{dish.name}</Text>
+                    {dish.description ? (
+                      <Text style={styles.dishDescription} numberOfLines={2}>
+                        {dish.description}
+                      </Text>
+                    ) : null}
+                    {reasonText ? (
+                      <Text style={styles.dishReason} numberOfLines={2}>
+                        {reasonText}
+                      </Text>
+                    ) : null}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </>
         )}
       </ScrollView>
@@ -610,66 +576,99 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    paddingBottom: 16,
+  },
+  picksTitle: {
+    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 22,
+    color: '#1A1A1A',
+    marginBottom: 4,
+    paddingHorizontal: 16,
+    marginTop: 8,
+  },
+  picksSubtitle: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 14,
+    color: '#666666',
+    marginBottom: 20,
     paddingHorizontal: 16,
   },
-  recommendationSection: {
-    marginTop: 16,
-    marginBottom: 20,
+  dishCard: {
+    flexDirection: 'row',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+    gap: 14,
+    alignItems: 'flex-start',
   },
-  recommendationTitle: {
+  dishCardSelected: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#E9323D',
+    backgroundColor: '#FEFAFA',
+  },
+  selectCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  selectCircleFilled: {
+    backgroundColor: '#E9323D',
+    borderColor: '#E9323D',
+  },
+  selectCheck: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontFamily: 'DMSans-Bold',
-    fontSize: 16,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    color: '#1C1917',
-    marginBottom: 12,
   },
-  featuredCard: {
-    marginBottom: 16,
+  dishContent: {
+    flex: 1,
   },
-  recommendationCard: {
-    marginBottom: 12,
+  dishMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
+    marginBottom: 6,
   },
-  courseLabel: {
+  dishCategory: {
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
-    letterSpacing: 2,
-    color: '#8C7E77',
+    letterSpacing: 3,
+    color: '#1B2541',
     textTransform: 'uppercase',
   },
-  reasoningText: {
+  discoveryBadge: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 9,
+    letterSpacing: 2,
+    color: '#E9323D',
+    textTransform: 'uppercase',
+  },
+  dishName: {
+    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 20,
+    color: '#1A1A1A',
+    letterSpacing: -0.3,
+    marginBottom: 4,
+  },
+  dishDescription: {
     fontFamily: 'DMSans-Regular',
-    fontSize: 12,
-    color: '#8C7E77',
-    paddingLeft: 4,
+    fontSize: 14,
+    color: '#444444',
     lineHeight: 20,
+    marginBottom: 8,
   },
-  newRecommendationButton: {
-    alignSelf: 'flex-start',
-    marginTop: 12,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#E7E5E4',
-    borderRadius: 0,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  newRecommendationText: {
-    fontFamily: 'DMSans-SemiBold',
-    fontSize: 12,
-    color: '#5A4D48',
-  },
-  allRecommendationsSection: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 10,
-    letterSpacing: 2,
-    color: '#8C7E77',
-    textTransform: 'uppercase',
-    marginBottom: 12,
+  dishReason: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 14,
+    color: '#E9323D',
+    fontStyle: 'italic',
+    lineHeight: 20,
   },
   continueSection: {
     padding: 16,
