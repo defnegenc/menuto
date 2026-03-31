@@ -430,8 +430,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginTop: 12,
-    marginBottom: 16,
+    marginTop: 8,
+    marginBottom: 8,
   },
   cuisineChip: {
     backgroundColor: 'transparent',
@@ -472,8 +472,8 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Regular',
   },
   expandButton: {
-    marginTop: 8,
-    paddingVertical: 8,
+    marginTop: 0,
+    paddingVertical: 4,
   },
   expandButtonText: {
     fontSize: 14,
