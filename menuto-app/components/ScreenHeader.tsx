@@ -20,7 +20,7 @@ export const ScreenHeader: React.FC<Props> = ({ title, accent }) => {
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 24,
-    paddingBottom: 16,
+    paddingBottom: 8,
   },
   title: {
     fontFamily: 'PlayfairDisplay-Italic',

@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
   // Search
   searchSection: {
     paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingVertical: 4,
   },
   searchInput: {
     flexDirection: 'row',

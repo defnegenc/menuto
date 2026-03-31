@@ -82,11 +82,11 @@ export const RestaurantCard: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   card: {
-    paddingVertical: 20,
+    paddingVertical: 14,
     paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5E5',
-    gap: 6,
+    gap: 4,
   },
   nameRow: {
     flexDirection: 'row',

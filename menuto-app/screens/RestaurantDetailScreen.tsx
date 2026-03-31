@@ -39,6 +39,7 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
   const [isParsing, setIsParsing] = useState(false); // Separate state for parsing
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [showAddMoreOptions, setShowAddMoreOptions] = useState(false);
+  const [editingFavorites, setEditingFavorites] = useState(false);
   const [menuText, setMenuText] = useState('');
   const [searchText, setSearchText] = useState('');
   const [filteredDishes, setFilteredDishes] = useState<ParsedDish[]>([]);
@@ -727,21 +728,20 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Editorial journal header */}
+      {/* Header — centered, all caps, like a real menu */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backArrow}>{'←'}</Text>
-          <Text style={styles.backLabel}>BACK</Text>
+          <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
-        <View style={styles.titleRow}>
-          <View style={styles.titleAccentLine} />
-          <View style={styles.titleTextCol}>
-            <Text style={styles.restaurantName} numberOfLines={2}>{restaurant.name}</Text>
-            <Text style={styles.cuisineLine}>
-              {(restaurant.cuisine_type || 'DINING').toUpperCase()}{restaurant.rating ? ` · ${restaurant.rating}\u2605` : ''}
-            </Text>
-          </View>
+        <View style={styles.headerCenter}>
+          <Text style={styles.restaurantName} numberOfLines={2}>
+            {restaurant.name.toUpperCase()}
+          </Text>
+          <Text style={styles.cuisineLine}>
+            {(restaurant.cuisine_type || 'DINING').toUpperCase()}{restaurant.rating ? ` · ${restaurant.rating}★` : ''}
+          </Text>
         </View>
+        <View style={styles.headerSpacer} />
         <Text style={styles.restaurantAddress} numberOfLines={1}>
           {(restaurant.vicinity ?? 'Location unknown').split(',').slice(0, 3).join(', ')}
         </Text>
@@ -773,20 +773,6 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
             />
           ) : (
             <View style={styles.menuContainer}>
-              {/* Minimal search bar */}
-              <View style={styles.searchContainer}>
-                <View style={styles.searchInput}>
-                  <Text style={styles.searchIcon}>⌕</Text>
-                  <TextInput
-                    style={styles.searchTextInput}
-                    value={searchText}
-                    onChangeText={handleSearchMenu}
-                    placeholder="Search dishes..."
-                    placeholderTextColor="#999999"
-                  />
-                </View>
-              </View>
-
               {/* Search Results - inline dish items */}
               {searchText.trim() && (
                 <View style={styles.searchResultsSection}>
@@ -816,15 +802,40 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                 </View>
               )}
 
-              {/* Your Favorites — dashed red border box */}
+              {/* Your Favorites — dashed red border box with removable items */}
               {(() => {
                 const favoriteDishes = getFavoriteDishesForRestaurant();
                 return favoriteDishes.length > 0 ? (
                   <View style={styles.favoritesBox}>
-                    <Text style={styles.favoritesBoxLabel}>YOUR FAVORITES</Text>
-                    <Text style={styles.favoritesBoxList}>
-                      {favoriteDishes.map(f => f.dish_name).join(', ')}
-                    </Text>
+                    <View style={styles.favoritesHeader}>
+                      <Text style={styles.favoritesBoxLabel}>YOUR FAVORITES</Text>
+                      <TouchableOpacity onPress={() => setEditingFavorites(!editingFavorites)}>
+                        <Text style={styles.favEditLink}>{editingFavorites ? 'done' : 'edit'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.favoritesChips}>
+                      {favoriteDishes.map((fav, idx) => (
+                        <View key={`${fav.dish_name}-${idx}`} style={styles.favChip}>
+                          <Text style={styles.favChipText}>{fav.dish_name}</Text>
+                          {editingFavorites && <TouchableOpacity
+                            onPress={() => {
+                              if (!user || !userId) return;
+                              const updated = {
+                                ...user,
+                                favorite_dishes: (user.favorite_dishes || []).filter(f =>
+                                  !(f.dish_name === fav.dish_name &&
+                                    (f.restaurant_id === restaurant.place_id || f.restaurant_id === restaurant.name))
+                                ),
+                              };
+                              setUser(updated, userId);
+                            }}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Text style={styles.favChipRemove}>×</Text>
+                          </TouchableOpacity>}
+                        </View>
+                      ))}
+                    </View>
                   </View>
                 ) : null;
               })()}
@@ -853,6 +864,20 @@ export function RestaurantDetailScreen({ restaurant, onBack, onGetRecommendation
                     />
                   </View>
                 )}
+              </View>
+
+              {/* Search bar — below menu header */}
+              <View style={styles.searchContainer}>
+                <View style={styles.searchInput}>
+                  <Text style={styles.searchIcon}>⌕</Text>
+                  <TextInput
+                    style={styles.searchTextInput}
+                    value={searchText}
+                    onChangeText={handleSearchMenu}
+                    placeholder="Search dishes..."
+                    placeholderTextColor="#999999"
+                  />
+                </View>
               </View>
 
               {/* Menu Type Tabs — simple text tabs */}
@@ -1071,29 +1096,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
 
-  /* ── Header ────────────────────────────────── */
+  /* ── Header — centered like a real menu ────── */
   header: {
-    paddingHorizontal: 24,
-    paddingTop: 8,
-    paddingBottom: 20,
-  },
-  backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginBottom: 16,
-    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 16,
+  },
+  backButton: {
+    width: 40,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
   backArrow: {
-    fontSize: 14,
-    color: '#666666',
+    fontSize: 20,
+    color: '#1A1A1A',
   },
-  backLabel: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 10,
-    letterSpacing: 4,
-    color: '#666666',
-    textTransform: 'uppercase',
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerSpacer: {
+    width: 40,
   },
   eyebrowRow: {
     flexDirection: 'row',
@@ -1129,19 +1154,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   restaurantName: {
-    fontFamily: 'PlayfairDisplay-Italic',
-    fontSize: 36,
-    lineHeight: 42,
-    letterSpacing: -1,
+    fontFamily: 'DMSans-Bold',
+    fontSize: 18,
+    letterSpacing: 4,
     color: '#1A1A1A',
-    marginBottom: 6,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    marginBottom: 4,
   },
   cuisineLine: {
-    fontFamily: 'DMSans-Bold',
-    fontSize: 12,
-    letterSpacing: 3,
-    color: '#E9323D',
+    fontFamily: 'DMSans-Regular',
+    fontSize: 11,
+    letterSpacing: 2,
+    color: '#666666',
     textTransform: 'uppercase',
+    textAlign: 'center',
     marginBottom: 4,
   },
   restaurantAddress: {
@@ -1242,20 +1269,48 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     marginBottom: 32,
   },
+  favoritesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   favoritesBoxLabel: {
     fontFamily: 'DMSans-Bold',
     fontSize: 10,
     letterSpacing: 3,
     color: '#E9323D',
     textTransform: 'uppercase',
-    marginBottom: 6,
   },
-  favoritesBoxList: {
+  favEditLink: {
     fontFamily: 'DMSans-Regular',
-    fontSize: 14,
-    color: '#444444',
-    fontStyle: 'italic',
-    lineHeight: 20,
+    fontSize: 12,
+    color: '#999999',
+  },
+  favoritesChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  favChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FEFAFA',
+    borderWidth: 1,
+    borderColor: '#E9323D',
+    borderRadius: 0,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  favChipText: {
+    fontFamily: 'DMSans-Medium',
+    fontSize: 13,
+    color: '#E9323D',
+  },
+  favChipRemove: {
+    fontSize: 16,
+    color: '#E9323D',
   },
 
   /* ── Menu header / THE MENU label ──────────── */
