@@ -45,11 +45,14 @@ function SliderControl({
   leftLabel: string;
   rightLabel: string;
 }) {
+  const fillPercent = ((value - 1) / 4) * 100;
   return (
     <View>
       <View style={styles.sliderContainer}>
-        {/* Track */}
-        <View style={styles.sliderTrack} />
+        {/* Track with red fill */}
+        <View style={styles.sliderTrack}>
+          <View style={[styles.sliderFill, { width: `${fillPercent}%` }]} />
+        </View>
         {/* Dots on track */}
         <View style={styles.sliderDotsRow}>
           {[1, 2, 3, 4, 5].map((level) => (
@@ -63,22 +66,16 @@ function SliderControl({
                 style={[
                   styles.sliderDot,
                   level <= value && styles.sliderDotActive,
+                  level === value && styles.sliderDotCurrent,
                 ]}
               />
             </TouchableOpacity>
           ))}
         </View>
-        {/* Active thumb */}
-        <View
-          style={[
-            styles.sliderThumb,
-            { left: `${((value - 1) / 4) * 100}%` },
-          ]}
-        />
       </View>
       <View style={styles.sliderLabels}>
-        <Text style={styles.sliderLabel}>{leftLabel}</Text>
-        <Text style={styles.sliderLabel}>{rightLabel}</Text>
+        <Text style={[styles.sliderLabel, value <= 2 && styles.sliderLabelActive]}>{leftLabel}</Text>
+        <Text style={[styles.sliderLabel, value >= 4 && styles.sliderLabelActive]}>{rightLabel}</Text>
       </View>
     </View>
   );
@@ -154,16 +151,16 @@ export function PreferencesPanel({
         </View>
       </View>
 
-      {/* Dining Context */}
+      {/* How are you dining? */}
       <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>What's the vibe?</Text>
+        <Text style={styles.sectionTitle}>How are you dining?</Text>
         <View style={styles.chipsContainer}>
           {[
-            { key: 'solo', label: '🙋 Just me' },
-            { key: 'date', label: '❤️ Date night' },
-            { key: 'friends', label: '👯 With friends' },
-            { key: 'family', label: '👨‍👩‍👧 Family' },
-            { key: 'business', label: '💼 Business' },
+            { key: 'solo', label: 'Just me, own dish' },
+            { key: 'duo', label: 'Two of us, splitting' },
+            { key: 'group-own', label: 'Group, own dishes' },
+            { key: 'group-share', label: 'Group, sharing family style' },
+            { key: 'tasting', label: 'Tasting — many small plates' },
           ].map(({ key, label }) => {
             const isSelected = diningOccasion === key;
             return (
@@ -190,15 +187,15 @@ export function PreferencesPanel({
         </View>
       </View>
 
-      {/* Free-text mood — goes straight to the agent */}
+      {/* Anything else — rectangle input */}
       <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>Anything else?</Text>
         <TextInput
           style={styles.moodInput}
           value={freeTextMood}
           onChangeText={onSetFreeTextMood}
-          placeholder="I'm feeling adventurous... celebrating tonight... want something cozy..."
-          placeholderTextColor="#A8A29E"
+          placeholder="Celebrating, want comfort food, feeling adventurous..."
+          placeholderTextColor="#9CA3AF"
           multiline
           numberOfLines={2}
           textAlignVertical="top"
@@ -224,23 +221,21 @@ const styles = StyleSheet.create({
     gap: 24,
   },
 
-  // Section cards
+  // Sections — editorial, no card backgrounds
   sectionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E7E5E4',
-    padding: 20,
+    paddingBottom: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
   sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'DMSans-SemiBold',
-    color: '#1C1917',
-    marginBottom: 8,
+    fontSize: 20,
+    fontFamily: 'PlayfairDisplay-Italic',
+    color: '#1A1A1A',
+    marginBottom: 12,
   },
   sectionSubtitle: {
-    fontSize: 12,
-    color: '#8C7E77',
+    fontSize: 13,
+    color: '#9CA3AF',
     marginBottom: 12,
     fontFamily: 'DMSans-Regular',
   },
@@ -255,9 +250,15 @@ const styles = StyleSheet.create({
   },
   sliderTrack: {
     width: '100%',
-    height: 4,
-    backgroundColor: '#F5F5F4',
-    borderRadius: 4,
+    height: 3,
+    backgroundColor: '#E5E5E5',
+    borderRadius: 1.5,
+    overflow: 'hidden',
+  },
+  sliderFill: {
+    height: 3,
+    backgroundColor: RED,
+    borderRadius: 1.5,
   },
   sliderDotsRow: {
     position: 'absolute',
@@ -276,22 +277,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sliderDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#E7E5E4',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#E5E5E5',
   },
   sliderDotActive: {
     backgroundColor: RED,
-    opacity: 1,
+  },
+  sliderDotCurrent: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: RED,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    shadowColor: RED,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   sliderThumb: {
-    position: 'absolute',
-    top: '50%',
-    marginTop: -12,
-    marginLeft: -2,
-    width: 24,
-    height: 24,
+    display: 'none', // replaced by sliderDotCurrent
+    width: 0,
+    height: 0,
     borderRadius: 12,
     backgroundColor: RED,
     shadowColor: RED,
@@ -307,8 +317,12 @@ const styles = StyleSheet.create({
   },
   sliderLabel: {
     fontSize: 12,
-    color: '#8C7E77',
+    color: '#9CA3AF',
     fontFamily: 'DMSans-Medium',
+  },
+  sliderLabelActive: {
+    color: RED,
+    fontFamily: 'DMSans-SemiBold',
   },
 
   // Chips (shared for cravings + meal structure)
@@ -318,40 +332,39 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
     borderRadius: 4,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#E7E5E4',
+    borderColor: '#E5E5E5',
   },
   chipSelected: {
-    backgroundColor: '#FFF5F5',
+    backgroundColor: RED,
     borderColor: RED,
-    borderWidth: 2,
   },
   chipText: {
     fontSize: 14,
-    color: '#374151',
+    color: '#444444',
     fontFamily: 'DMSans-Medium',
   },
   chipTextSelected: {
-    color: RED,
+    color: '#FFFFFF',
     fontFamily: 'DMSans-SemiBold',
   },
 
   // Free-text mood
   moodInput: {
-    backgroundColor: '#FAFAF9',
-    borderRadius: 16,
+    backgroundColor: 'transparent',
+    borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#E7E5E4',
-    padding: 16,
+    borderColor: '#E5E5E5',
+    padding: 14,
     fontSize: 14,
-    color: '#1C1917',
+    color: '#1A1A1A',
     fontFamily: 'DMSans-Regular',
     minHeight: 56,
-    lineHeight: 22,
+    lineHeight: 20,
   },
 
   // Continue button

@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { FavoriteRestaurant } from '../../types';
-import { RestaurantCard } from '../../components/RestaurantCard';
 import { SearchBar } from '../../components/SearchBar';
 
 interface SavedRestaurantsListProps {
@@ -121,14 +120,20 @@ export function SavedRestaurantsList({
             {top3Restaurants.length > 0 ? (
               <View style={styles.top3RestaurantsContainer}>
                 {top3Restaurants.map((restaurant, index) => (
-                  <RestaurantCard
+                  <TouchableOpacity
                     key={restaurant.place_id}
-                    restaurant={restaurant}
-                    dishes={getFavoriteDishesForRestaurant(restaurant)}
-                    onSelectRestaurant={onSelectRestaurant}
-                    onRemoveRestaurant={() => {}}
-                    rank={index + 1}
-                  />
+                    style={styles.briefRestaurant}
+                    onPress={() => onSelectRestaurant(restaurant)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.briefRank}>#{index + 1}</Text>
+                    <View style={styles.briefInfo}>
+                      <Text style={styles.briefName} numberOfLines={1}>{restaurant.name}</Text>
+                      <Text style={styles.briefAddress} numberOfLines={1}>
+                        {(restaurant.vicinity || '').split(',').slice(0, 2).join(', ')}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             ) : (
@@ -196,12 +201,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 10,
+    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 28,
     color: '#1A1A1A',
-    marginBottom: 8,
-    fontFamily: 'DMSans-Bold',
-    letterSpacing: 3,
-    textTransform: 'uppercase',
+    letterSpacing: -0.5,
+    marginBottom: 16,
   },
   preferenceHeader: {
     flexDirection: 'row',
@@ -243,7 +247,36 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-SemiBold',
   },
   top3RestaurantsContainer: {
-    gap: 8,
+    gap: 0,
+  },
+  briefRestaurant: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+    gap: 12,
+  },
+  briefRank: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 16,
+    color: '#E9323D',
+    width: 28,
+  },
+  briefInfo: {
+    flex: 1,
+  },
+  briefName: {
+    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 20,
+    color: '#1A1A1A',
+    letterSpacing: -0.3,
+  },
+  briefAddress: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 12,
+    color: '#666666',
+    marginTop: 2,
   },
   selectedTop3Container: {
     marginBottom: 12,

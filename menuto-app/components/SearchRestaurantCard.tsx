@@ -13,16 +13,18 @@ interface Props {
 }
 
 export const SearchRestaurantCard: React.FC<Props> = ({ restaurant, onPress }) => {
-  const parseAddress = (vicinity: string) =>
-    vicinity.split(',').map(p => p.trim()).slice(0, 3).join(', ');
+  const shortAddress = restaurant.vicinity?.split(',').slice(0, 2).join(', ') || '';
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>{restaurant.name}</Text>
-        <Text style={styles.address} numberOfLines={1}>{parseAddress(restaurant.vicinity)}</Text>
+        <Text style={styles.address} numberOfLines={1}>{shortAddress}</Text>
+        {restaurant.cuisine_type && restaurant.cuisine_type !== 'Restaurant' && (
+          <Text style={styles.cuisine}>{restaurant.cuisine_type.toUpperCase()}</Text>
+        )}
       </View>
-      <View style={styles.radio} />
+      <Text style={styles.arrow}>→</Text>
     </TouchableOpacity>
   );
 };
@@ -31,36 +33,36 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-    gap: 16,
-    marginBottom: 10,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    gap: 12,
   },
   info: {
     flex: 1,
+    gap: 2,
   },
   name: {
-    fontFamily: 'IBMPlexMono-SemiBold',
-    fontSize: 16,
-    color: '#1F2937',
-    letterSpacing: -0.5,
+    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 20,
+    color: '#1A1A1A',
+    letterSpacing: -0.3,
   },
   address: {
     fontFamily: 'DMSans-Regular',
     fontSize: 13,
     color: '#9CA3AF',
-    marginTop: 4,
   },
-  radio: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
+  cuisine: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 10,
+    letterSpacing: 2,
+    color: '#E9323D',
+    marginTop: 2,
+  },
+  arrow: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 20,
+    color: '#D1D5DB',
   },
 });

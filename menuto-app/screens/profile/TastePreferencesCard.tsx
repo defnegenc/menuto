@@ -399,12 +399,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   sectionTitle: {
-    fontSize: 10,
+    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 28,
     color: '#1A1A1A',
-    marginBottom: 8,
-    fontFamily: 'DMSans-Bold',
-    letterSpacing: 3,
-    textTransform: 'uppercase',
+    letterSpacing: -0.5,
+    marginBottom: 16,
   },
   preferenceGroup: {
     marginBottom: 20,
@@ -431,7 +430,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 12,
+    marginTop: 12,
+    marginBottom: 16,
   },
   cuisineChip: {
     backgroundColor: 'transparent',
