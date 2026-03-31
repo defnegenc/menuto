@@ -518,14 +518,12 @@ export function ChooseDishLanding({
             <TouchableOpacity onPress={() => setShowMenuUrlModal(false)}>
               <Text style={styles.modalCancelButton}>Cancel</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Paste Menu Link</Text>
-            <TouchableOpacity onPress={handleSubmitMenuUrls}>
-              <Text style={styles.modalSubmitButton}>Parse</Text>
-            </TouchableOpacity>
+            <Text style={styles.modalTitle}>MENU LINK</Text>
+            <View style={{ width: 50 }} />
           </View>
           <View style={styles.modalContent}>
             <Text style={styles.modalInstructions}>
-              Add one or more menu links (website, PDF, or image). We'll parse and save them to this restaurant.
+              Paste the restaurant's menu URL and we'll extract all dishes.
             </Text>
             {menuUrls.map((value, idx) => (
               <View key={`menu-url-${idx}`} style={styles.menuUrlRow}>
@@ -538,26 +536,48 @@ export function ChooseDishLanding({
                     );
                   }}
                   placeholder="https://example.com/menu"
+                  placeholderTextColor="#999999"
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
                 {menuUrls.length > 1 && (
                   <TouchableOpacity
-                    style={styles.removeUrlButton}
                     onPress={() =>
                       setMenuUrls((prev) => prev.filter((_, i) => i !== idx))
                     }
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <Text style={styles.removeUrlButtonText}>Remove</Text>
+                    <Text style={{ fontSize: 20, color: '#CCCCCC', paddingLeft: 8 }}>×</Text>
                   </TouchableOpacity>
                 )}
               </View>
             ))}
             <TouchableOpacity
-              style={styles.addUrlButton}
               onPress={() => setMenuUrls((prev) => [...prev, ''])}
+              style={{ paddingVertical: 8 }}
             >
-              <Text style={styles.addUrlButtonText}>+ Add another URL</Text>
+              <Text style={{ fontSize: 12, color: '#999999', fontFamily: 'DMSans-Regular' }}>+ add another</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ paddingHorizontal: 16, paddingBottom: 32 }}>
+            <TouchableOpacity
+              style={{
+                backgroundColor: menuUrls.some(u => u.trim()) ? '#1A1A1A' : '#E5E5E5',
+                borderRadius: 0,
+                paddingVertical: 18,
+                alignItems: 'center',
+              }}
+              onPress={handleSubmitMenuUrls}
+              disabled={!menuUrls.some(u => u.trim())}
+              activeOpacity={0.8}
+            >
+              <Text style={{
+                fontFamily: 'DMSans-Bold',
+                fontSize: 16,
+                color: menuUrls.some(u => u.trim()) ? '#FFFFFF' : '#999999',
+                letterSpacing: 1,
+                textTransform: 'uppercase',
+              }}>Parse menu</Text>
             </TouchableOpacity>
           </View>
         </View>
