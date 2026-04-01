@@ -98,7 +98,7 @@ menuto-backend/
     users.py                  # User profile CRUD
     places.py                 # Google Places proxy
   app/services/
-    smart_recommendation_algorithm.py  # 8-component scoring engine + Thompson Sampling
+    smart_recommendation_algorithm.py  # Agent-first: signal enrichment → Gemini picks dishes
     recommendation_engine.py           # Legacy taste profiler (fallback only)
     recommendation_types.py            # Dataclasses: ItemFeatures, ScoredItem, etc.
     menu_data_service.py               # Supabase menu item source
@@ -134,6 +134,16 @@ menuto-backend/
 - `npx expo prebuild --clean` needed after adding new native font files
 - Profile icon (`ProfileIcon` component) lives in top-right of MainTabScreen, not in tab bar
 - `theme.tsx` still exports but screens use direct values — don't mix approaches
+- NEVER use `sed -i` on source files — it can silently empty files. Use the Edit tool instead
+- `Animated.start()` callbacks can't call `setState` in React 19 — use `setTimeout` wrapper
+- `display: 'none'` unreliable in RN for preserving state — use `opacity: 0` + `pointerEvents: 'none'`
+- MainTabScreen keeps both tabs mounted (opacity hidden) so ChooseDish state survives tab switches
+- App.tsx keeps MainTabScreen mounted when navigating to detail screens (same opacity pattern)
+- Menu ingest merges into existing parsed_menus by place_id — deduplicates dishes by name
+- Many restaurant websites use JS-rendered menus (UpMenu, Squarespace) — URL scraping returns 404, need text paste
+- `requirements.txt` uses loose pins — google-genai needs anyio>=4.8 which needs fastapi>=0.115
+- Google Places API free tier: 1,000 Enterprise calls/month — reviews cached 14 days in review_cache table
+- `getSmartRecommendationsNew()` in api.ts must send `user_id` — without it all personalization is skipped
 
 ## Rules
 
@@ -145,3 +155,7 @@ menuto-backend/
 - `smart_recommendation_algorithm.py` is the active engine — `recommendation_engine.py` is fallback only
 - Screens use direct color/font values, not `theme.*` imports
 - Design follows editorial/journal aesthetic — no card backgrounds, divider-based, typography-driven
+- No emojis in UI — use typographic characters (♥ ♡ ★ ← × ⌕) or monogram squares
+- No borderRadius: 999 anywhere — buttons get 0, chips get 4, inputs get 8-16
+- Hearts: ♡ empty (#CCCCCC) / ♥ filled (#E9323D) — toggle add/remove favorite
+- Agent-first algorithm — no rigid scoring. Raw signals → Gemini agent reasons about what to pick
