@@ -509,9 +509,9 @@ export const DishRecommendations: React.FC<DishRecommendationsProps> = ({
                     >
                       {expandedDishIds.has(dish.id) ? (
                         <View style={styles.reasonExpanded}>
-                          {reasons.map((r, ri) => (
-                            <Text key={ri} style={styles.dishReason}>• {r}</Text>
-                          ))}
+                          <Text style={styles.dishReason}>
+                            {reasons.join('\n')}
+                          </Text>
                           {dish.description ? (
                             <Text style={styles.dishDescriptionFull}>{dish.description}</Text>
                           ) : null}

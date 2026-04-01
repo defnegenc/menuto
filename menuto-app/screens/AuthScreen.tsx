@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../services/supabase';
@@ -18,6 +19,16 @@ import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
 
 import { formatLastAuthMethod, getLastAuth, setLastAuth } from '../utils/lastAuth';
+
+const checkUsernameAvailable = async (username: string): Promise<boolean> => {
+  if (!username || username.length < 3) return false;
+  const { data } = await supabase
+    .from('user_profiles')
+    .select('username')
+    .eq('username', username)
+    .maybeSingle();
+  return !data;
+};
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -37,6 +48,10 @@ export function AuthScreen({ onAuthComplete }: Props) {
   const [verificationCode, setVerificationCode] = useState('');
   const [lastAuthLabel, setLastAuthLabel] = useState<string | null>(null);
   const [lastAuthIdentifier, setLastAuthIdentifier] = useState<string | null>(null);
+  const [needsUsername, setNeedsUsername] = useState(false);
+  const [googleUserId, setGoogleUserId] = useState<string | null>(null);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
 
   const { setUser } = useStore();
 
@@ -329,8 +344,22 @@ export function AuthScreen({ onAuthComplete }: Props) {
               }
 
               await setLastAuth({ method: 'google', identifier: userEmail, ts: Date.now() });
-              // Let App.tsx auth listener handle routing (session is already set)
-              onAuthComplete();
+
+              // Check if user has a username — if not, prompt for one
+              try {
+                const existingProfile = await api.getUserPreferences(userId);
+                if (existingProfile?.username) {
+                  onAuthComplete();
+                } else {
+                  setGoogleUserId(userId);
+                  setName(userName || '');
+                  setNeedsUsername(true);
+                }
+              } catch {
+                setGoogleUserId(userId);
+                setName(userName || '');
+                setNeedsUsername(true);
+              }
             }
           }
         }
@@ -346,6 +375,70 @@ export function AuthScreen({ onAuthComplete }: Props) {
       setIsLoading(false);
     }
   };
+
+  // Username prompt after Google sign-in
+  if (needsUsername) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <Text style={styles.title}>Pick a username</Text>
+          <Text style={styles.subtitle}>This is how others will find you</Text>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Username</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                value={username}
+                onChangeText={(text) => {
+                  const clean = text.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                  setUsername(clean);
+                  setUsernameAvailable(null);
+                  if (clean.length >= 3) {
+                    setCheckingUsername(true);
+                    checkUsernameAvailable(clean).then(available => {
+                      setUsernameAvailable(available);
+                      setCheckingUsername(false);
+                    });
+                  }
+                }}
+                placeholder="your_username"
+                placeholderTextColor="#999999"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {username.length >= 3 && (
+                <Text style={{ marginLeft: 8, fontSize: 16 }}>
+                  {checkingUsername ? '...' : usernameAvailable ? '✓' : '✗'}
+                </Text>
+              )}
+            </View>
+            {username.length >= 3 && usernameAvailable === false && (
+              <Text style={{ color: '#E9323D', fontSize: 12, marginTop: 4, fontFamily: 'DMSans-Regular' }}>
+                Username taken — try another
+              </Text>
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={[styles.authButton, (!username || !usernameAvailable) && styles.authButtonDisabled]}
+            disabled={!username || !usernameAvailable}
+            onPress={async () => {
+              if (!googleUserId || !usernameAvailable) return;
+              try {
+                await api.updateUserPreferences(googleUserId, { username });
+                onAuthComplete();
+              } catch (e) {
+                Alert.alert('Error', 'Failed to save username');
+              }
+            }}
+          >
+            <Text style={styles.authButtonText}>Continue</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   if (showVerification) {
     return (

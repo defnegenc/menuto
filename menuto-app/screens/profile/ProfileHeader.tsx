@@ -52,7 +52,7 @@ export function ProfileHeader({
       {/* Profile Section */}
       {/* Edit removed — global edit at top */}
       <View style={styles.profileSection}>
-        <View style={styles.profilePicContainer}>
+        <TouchableOpacity style={styles.profilePicContainer} onPress={onProfilePhotoChange} activeOpacity={0.7}>
           {user?.profile_photo ? (
             <Image source={{ uri: user.profile_photo }} style={styles.profilePhoto} />
           ) : (
@@ -62,7 +62,8 @@ export function ProfileHeader({
               </Text>
             </View>
           )}
-        </View>
+          <Text style={{ fontFamily: 'DMSans-Regular', fontSize: 11, color: '#999999', marginTop: 4, textAlign: 'center' }}>tap to change</Text>
+        </TouchableOpacity>
         <Text style={styles.userName}>{user?.name || 'User'}</Text>
         <Text style={styles.userHandle}>@{user?.username || 'unknown'}</Text>
       </View>
