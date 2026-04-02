@@ -548,10 +548,10 @@ const styles = StyleSheet.create({
   starCircleEmpty: {},
   starCircleFilled: {},
   starIcon: {
-    fontSize: 28,
+    fontSize: 24,
   },
   starIconEmpty: {
-    color: '#E5E5E5',
+    color: '#CCCCCC',
   },
   starIconFilled: {
     color: '#E9323D',

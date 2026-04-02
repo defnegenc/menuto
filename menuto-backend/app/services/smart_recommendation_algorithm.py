@@ -377,9 +377,9 @@ class SmartRecommendationAlgorithm:
             prompt = f"""You are a personal food advisor for someone dining at {restaurant_name}. Pick the best {limit} dishes for them.
 
 WHO THEY ARE:
-- Cuisines they love: {', '.join(taste_profile.cuisine_preferences) or 'still discovering'}
-- Flavor profile: {taste_profile.flavor_profile or 'varied'}
-- Usual orders: {', '.join(taste_profile.dish_types) or 'varied'}
+- Cuisines they love: {', '.join(taste_profile.cuisine_preferences) or 'new user — no preference data yet, lean heavily on what is popular and well-reviewed here'}
+- Flavor profile: {taste_profile.flavor_profile or 'unknown — this is a new user, recommend the restaurant highlights and crowd favorites'}
+- Usual orders: {', '.join(taste_profile.dish_types) or 'unknown — pick a balanced, approachable selection'}
 - Spice: {taste_profile.spice_tolerance_label}
 {f'- Flavors they love (from past feedback): {", ".join(context.feedback_liked_keywords[:5])}' if context.feedback_liked_keywords else ''}
 {f'- Flavors they avoid (from past feedback): {", ".join(context.feedback_disliked_keywords[:5])}' if context.feedback_disliked_keywords else ''}

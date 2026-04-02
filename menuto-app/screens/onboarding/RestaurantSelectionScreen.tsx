@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontFamily: 'DMSans-Regular',
     fontSize: 15,
-    color: '#9CA3AF',
+    color: '#8C7E77',
   },
   // Header
   header: {
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
     fontSize: 44,
     lineHeight: 46,
     letterSpacing: -1.5,
-    color: '#111827',
+    color: '#1A1A1A',
   },
   headlineAccent: {
     fontFamily: 'PlayfairDisplay-Italic',
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: 'DMSans-Regular',
     fontSize: 14,
-    color: '#111827',
+    color: '#1A1A1A',
   },
   // Meta row
   metaRow: {

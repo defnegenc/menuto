@@ -595,7 +595,7 @@ const styles = StyleSheet.create({
     color: RED,
   },
   pillTextUnselected: {
-    color: '#374151',
+    color: '#666666',
   },
   // Section blocks
   sectionBlock: {
