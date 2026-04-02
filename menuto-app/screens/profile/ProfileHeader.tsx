@@ -68,6 +68,21 @@ export function ProfileHeader({
         <Text style={styles.userHandle}>@{user?.username || 'unknown'}</Text>
       </View>
 
+      {/* Complete profile nudge */}
+      {(!user?.username || !user?.profile_photo) && (
+        <TouchableOpacity style={styles.completeProfileNudge} onPress={onEditProfile} activeOpacity={0.7}>
+          <Text style={styles.nudgeLabel}>COMPLETE YOUR PROFILE</Text>
+          <Text style={styles.nudgeText}>
+            {!user?.username && !user?.profile_photo
+              ? 'Add a username and profile photo'
+              : !user?.username
+              ? 'Pick a username'
+              : 'Add a profile photo'}
+          </Text>
+          <Text style={styles.nudgeArrow}>→</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Separator */}
       <View style={styles.separator} />
 
@@ -374,5 +389,38 @@ const styles = StyleSheet.create({
     color: '#444444',
     textAlign: 'center',
     fontFamily: 'DMSans-Regular',
+  },
+  // Complete profile nudge
+  completeProfileNudge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E9323D',
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    gap: 12,
+  },
+  nudgeLabel: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 10,
+    letterSpacing: 2,
+    color: '#FFFFFF',
+    opacity: 0.7,
+    textTransform: 'uppercase',
+    position: 'absolute',
+    top: 8,
+    left: 16,
+  },
+  nudgeText: {
+    fontFamily: 'DMSans-SemiBold',
+    fontSize: 15,
+    color: '#FFFFFF',
+    flex: 1,
+    marginTop: 12,
+  },
+  nudgeArrow: {
+    fontSize: 18,
+    color: '#FFFFFF',
+    opacity: 0.7,
   },
 });

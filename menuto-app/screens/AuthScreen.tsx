@@ -345,21 +345,8 @@ export function AuthScreen({ onAuthComplete }: Props) {
 
               await setLastAuth({ method: 'google', identifier: userEmail, ts: Date.now() });
 
-              // Check if user has a username — if not, prompt for one
-              try {
-                const existingProfile = await api.getUserPreferences(userId);
-                if (existingProfile?.username) {
-                  onAuthComplete();
-                } else {
-                  setGoogleUserId(userId);
-                  setName(userName || '');
-                  setNeedsUsername(true);
-                }
-              } catch {
-                setGoogleUserId(userId);
-                setName(userName || '');
-                setNeedsUsername(true);
-              }
+              // Let them in — profile screen will prompt for username if missing
+              onAuthComplete();
             }
           }
         }
