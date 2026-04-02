@@ -16,6 +16,12 @@ interface AppState {
   loadingMessage: string;
   error: string | null;
 
+  // Pending rating — restaurant + dishes the user ordered but hasn't rated yet
+  pendingRating: {
+    restaurant: FavoriteRestaurant;
+    dishes: any[];
+  } | null;
+
   // Actions
   debugState: () => AppState;
   setUser: (user: UserPreferences | null, userId: string) => void;
@@ -26,6 +32,7 @@ interface AppState {
   setError: (error: string | null) => void;
   clearError: () => void;
   clearSession: () => void;
+  setPendingRating: (pending: { restaurant: FavoriteRestaurant; dishes: any[] } | null) => void;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -37,6 +44,7 @@ export const useStore = create<AppState>((set, get) => ({
   isLoading: false,
   loadingMessage: '',
   error: null,
+  pendingRating: null,
 
   // Debug function
   debugState: (): AppState => {
@@ -95,4 +103,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   clearSession: () =>
     set({ currentScan: null, currentRecommendations: null }),
+
+  setPendingRating: (pending) =>
+    set({ pendingRating: pending }),
 }));

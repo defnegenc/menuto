@@ -29,7 +29,7 @@ interface Props {
 }
 
 export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
-  const { user, setUser, userId } = useStore();
+  const { user, setUser, userId, pendingRating } = useStore();
   const [isLoading, setIsLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
   const insets = useSafeAreaInsets();
@@ -159,6 +159,24 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
           </View>
         ) : (
           <>
+            {/* Pending rating card */}
+            {!searchText && pendingRating && (
+              <View style={styles.restaurantList}>
+                <TouchableOpacity
+                  style={styles.pendingRateCard}
+                  onPress={() => {
+                    onSelectRestaurant(pendingRating.restaurant);
+                    // TODO: navigate to rating screen
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.pendingRateLabel}>RATE YOUR MEAL</Text>
+                  <Text style={styles.pendingRateName}>{pendingRating.restaurant.name}</Text>
+                  <Text style={styles.pendingRateHint}>Tap to rate your dishes →</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
             {/* Your Restaurants */}
             {!searchText && favoriteRestaurants.length > 0 && (
               <View style={styles.restaurantList}>
@@ -405,5 +423,32 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 1,
     textTransform: 'uppercase',
+  },
+  // Pending rate card
+  pendingRateCard: {
+    backgroundColor: '#E9323D',
+    padding: 20,
+    marginBottom: 8,
+  },
+  pendingRateLabel: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 10,
+    letterSpacing: 3,
+    color: '#FFFFFF',
+    opacity: 0.7,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  pendingRateName: {
+    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 24,
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  pendingRateHint: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 14,
+    color: '#FFFFFF',
+    opacity: 0.8,
   },
 });

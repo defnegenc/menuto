@@ -61,6 +61,7 @@ export function ChooseDishLanding({
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [menuUrls, setMenuUrls] = useState<string[]>(['']);
   const [menuText, setMenuText] = useState('');
+  const [showEnjoyMessage, setShowEnjoyMessage] = useState(false);
 
   // Question states
   const [hungerLevel, setHungerLevel] = useState(3);
@@ -280,7 +281,35 @@ export function ChooseDishLanding({
   };
 
   const handleDishRecommendationContinue = (dishes: any[]) => {
-    setSelectedDishesForScoring(dishes); setShowDishRecommendations(false); setShowMultiDishScoring(true);
+    if (!selectedRestaurant) return;
+
+    // Add restaurant to favorites if not already there
+    if (user && userId) {
+      const existingRests = user.favorite_restaurants || [];
+      if (!existingRests.some(r => r.place_id === selectedRestaurant.place_id)) {
+        const updatedUser = {
+          ...user,
+          favorite_restaurants: [...existingRests, {
+            place_id: selectedRestaurant.place_id,
+            name: selectedRestaurant.name,
+            vicinity: selectedRestaurant.vicinity || '',
+            cuisine_type: selectedRestaurant.cuisine_type || 'Restaurant',
+          }],
+        };
+        setUser(updatedUser, userId);
+      }
+    }
+
+    // Save dishes for potential immediate rating
+    setSelectedDishesForScoring(dishes);
+
+    // Save pending rating in store — user can rate later from My List
+    const { setPendingRating } = useStore.getState();
+    setPendingRating({ restaurant: selectedRestaurant, dishes });
+
+    // Show "enjoy your meal" screen
+    setShowDishRecommendations(false);
+    setShowEnjoyMessage(true);
   };
   const handleMultiDishScoringComplete = (_dishes: any[], _addToFavorites: boolean[]) => {
     resetFlow();
@@ -311,6 +340,40 @@ export function ChooseDishLanding({
         onContinue={handleDishRecommendationContinue}
         onBack={handleBackToChooseDishLanding}
       />
+    );
+  }
+
+  if (showEnjoyMessage && selectedRestaurant) {
+    return (
+      <View style={styles.container}>
+        <View style={{ paddingTop: insets.top + 8 }}>
+          <ScreenHeader title="Enjoy your" accent="meal!" />
+        </View>
+        <View style={styles.enjoyContainer}>
+          <Text style={styles.enjoyRestaurant}>{selectedRestaurant.name}</Text>
+          <Text style={styles.enjoyText}>
+            Check back after you've eaten to rate your dishes and help us learn your taste.
+          </Text>
+          <TouchableOpacity
+            style={styles.rateNowButton}
+            onPress={() => {
+              setShowEnjoyMessage(false);
+              setShowMultiDishScoring(true);
+            }}
+          >
+            <Text style={styles.rateNowText}>RATE NOW</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              setShowEnjoyMessage(false);
+              resetFlow();
+            }}
+            style={{ marginTop: 12 }}
+          >
+            <Text style={styles.rateLaterText}>I'll rate later</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     );
   }
 
@@ -1060,5 +1123,47 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#E5E5E5',
     marginTop: 16,
+  },
+
+  // Enjoy your meal screen
+  enjoyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  enjoyRestaurant: {
+    fontFamily: 'PlayfairDisplay-Italic',
+    fontSize: 28,
+    color: '#1A1A1A',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  enjoyText: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 16,
+    color: '#666666',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  rateNowButton: {
+    backgroundColor: '#E9323D',
+    borderRadius: 0,
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    alignItems: 'center',
+  },
+  rateNowText: {
+    fontFamily: 'DMSans-Bold',
+    fontSize: 14,
+    letterSpacing: 2,
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+  },
+  rateLaterText: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 14,
+    color: '#999999',
   },
 });
