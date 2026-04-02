@@ -64,6 +64,7 @@ export function MainTabScreen({
         <MyRestaurants
           onSelectRestaurant={onSelectRestaurant}
           onAddRestaurant={onAddRestaurant}
+          onRatePending={() => setActiveTab('choose')}
         />
       </View>
       <View style={[styles.screenContainer, activeTab !== 'choose' && styles.offscreen]}>
@@ -133,9 +134,11 @@ const styles = StyleSheet.create({
   },
   toggleContainer: {
     flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FFFFFF',
     borderRadius: 4,
     padding: 3,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
   },
   toggleTab: {
     flex: 1,
@@ -151,7 +154,7 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans-Bold',
     fontSize: 12,
     letterSpacing: 2,
-    color: '#9CA3AF',
+    color: '#666666',
   },
   toggleLabelActive: {
     color: '#FFFFFF',

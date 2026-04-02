@@ -413,6 +413,7 @@ RULES:
 4. CRAVINGS: At least 1 dish should match their craving.
 5. DISCOVERY: Include 1 dish outside their usual picks with strong signals. Something they'd never pick themselves but would love.
 6. EXPLANATIONS — THIS IS CRITICAL: Each explanation must be specific to THIS person and THIS dish. Bad: "A great dish that matches your preferences." Good: "You mentioned you're craving something rich — this truffle pasta has that indulgent depth, and it's the most reordered dish here." Reference their specific craving, taste profile, history, or the signal flags. Talk to them like a friend who knows what they like.
+7. SIGNAL REFERENCES: When mentioning signals in explanations, use natural language. Don't write 'POPULAR' or 'WELL-REVIEWED' in caps — say "it's one of the most ordered dishes here" or "reviewers love this one". Never include signal flag names in the explanation text.
 
 Return JSON array:
 [

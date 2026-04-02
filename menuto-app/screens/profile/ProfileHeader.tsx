@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { supabase } from '../../services/supabase';
 
 interface ProfileHeaderProps {
   user: any;
@@ -47,6 +48,37 @@ export function ProfileHeader({
   getSpiceEmoji,
   getSpiceLabel,
 }: ProfileHeaderProps) {
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const usernameCheckRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (usernameCheckRef.current) clearTimeout(usernameCheckRef.current);
+
+    // Don't check if unchanged or too short
+    if (!editedUsername || editedUsername.length < 3 || editedUsername === user?.username) {
+      setUsernameStatus('idle');
+      return;
+    }
+
+    setUsernameStatus('checking');
+    usernameCheckRef.current = setTimeout(async () => {
+      try {
+        const { data } = await supabase
+          .from('user_profiles')
+          .select('username')
+          .eq('username', editedUsername)
+          .maybeSingle();
+        setUsernameStatus(data ? 'taken' : 'available');
+      } catch {
+        setUsernameStatus('idle');
+      }
+    }, 500);
+
+    return () => {
+      if (usernameCheckRef.current) clearTimeout(usernameCheckRef.current);
+    };
+  }, [editedUsername, user?.username]);
+
   return (
     <>
       {/* Profile Section */}
@@ -136,12 +168,25 @@ export function ProfileHeader({
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Username</Text>
               <TextInput
-                style={styles.textInput}
+                style={[
+                  styles.textInput,
+                  usernameStatus === 'taken' && styles.textInputError,
+                  usernameStatus === 'available' && styles.textInputSuccess,
+                ]}
                 value={editedUsername}
                 onChangeText={onSetEditedUsername}
                 placeholder="Your Username"
                 autoCapitalize="none"
               />
+              {usernameStatus === 'checking' && (
+                <Text style={styles.usernameHint}>Checking availability...</Text>
+              )}
+              {usernameStatus === 'taken' && (
+                <Text style={styles.usernameError}>Username is already taken</Text>
+              )}
+              {usernameStatus === 'available' && (
+                <Text style={styles.usernameSuccess}>Username is available</Text>
+              )}
             </View>
 
             {/* Spice Tolerance Slider */}
@@ -327,6 +372,30 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
     backgroundColor: '#FFFFFF',
     fontFamily: 'DMSans-Regular',
+  },
+  textInputError: {
+    borderColor: '#E9323D',
+  },
+  textInputSuccess: {
+    borderColor: '#22C55E',
+  },
+  usernameHint: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 12,
+    color: '#999999',
+    marginTop: 6,
+  },
+  usernameError: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 12,
+    color: '#E9323D',
+    marginTop: 6,
+  },
+  usernameSuccess: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 12,
+    color: '#22C55E',
+    marginTop: 6,
   },
   spiceSliderContainer: {
     alignItems: 'center',

@@ -26,9 +26,10 @@ const LIGHT_TEXT = '#8C7E77';
 interface Props {
   onSelectRestaurant: (restaurant: FavoriteRestaurant) => void;
   onAddRestaurant?: () => void;
+  onRatePending?: () => void;
 }
 
-export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
+export function MyRestaurants({ onSelectRestaurant, onAddRestaurant, onRatePending }: Props) {
   const { user, setUser, userId, pendingRating } = useStore();
   const [isLoading, setIsLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
@@ -165,8 +166,9 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
                 <TouchableOpacity
                   style={styles.pendingRateCard}
                   onPress={() => {
-                    onSelectRestaurant(pendingRating.restaurant);
-                    // TODO: navigate to rating screen
+                    if (onRatePending) {
+                      onRatePending();
+                    }
                   }}
                   activeOpacity={0.8}
                 >
@@ -244,8 +246,11 @@ export function MyRestaurants({ onSelectRestaurant, onAddRestaurant }: Props) {
             {/* Empty state */}
             {!searchText && favoriteRestaurants.length === 0 && (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyTitle}>No spots yet</Text>
-                <Text style={styles.emptySubtext}>Search above to find and save your favorite restaurants.</Text>
+                <Text style={styles.emptyTitle}>Find your first spot</Text>
+                <Text style={styles.emptySubtext}>Search for a restaurant above to get started</Text>
+                <View style={styles.emptyCtaBox}>
+                  <Text style={styles.emptyCtaText}>Search restaurants...</Text>
+                </View>
               </View>
             )}
           </>
@@ -393,6 +398,21 @@ const styles = StyleSheet.create({
     color: '#666666',
     textAlign: 'center',
     lineHeight: 22,
+  },
+  emptyCtaBox: {
+    marginTop: 24,
+    borderWidth: 1.5,
+    borderColor: '#D4D4D4',
+    borderStyle: 'dashed',
+    borderRadius: 0,
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+  },
+  emptyCtaText: {
+    fontFamily: 'DMSans-Regular',
+    fontSize: 14,
+    color: '#999999',
   },
   // Footer
   footer: {

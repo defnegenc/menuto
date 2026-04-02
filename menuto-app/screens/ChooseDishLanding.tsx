@@ -46,7 +46,7 @@ export function ChooseDishLanding({
   onSelectRestaurant,
   onNavigateToRecommendations,
 }: Props) {
-  const { user } = useStore();
+  const { user, pendingRating, setPendingRating } = useStore();
   const [searchText, setSearchText] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -312,6 +312,8 @@ export function ChooseDishLanding({
     setShowEnjoyMessage(true);
   };
   const handleMultiDishScoringComplete = (_dishes: any[], _addToFavorites: boolean[]) => {
+    const { setPendingRating: clearPending } = useStore.getState();
+    clearPending(null);
     resetFlow();
     Alert.alert('Done!', 'Your feedback has been saved.', [{ text: 'OK' }]);
   };
@@ -331,6 +333,23 @@ export function ChooseDishLanding({
 
   // Derived state: menu is found when we have dishes and aren't loading
   const menuFound = !isLoadingMenu && menuDishes.length > 0;
+
+  // If there's a pending rating and we're not mid-flow, show the rating screen
+  if (pendingRating && !showDishRecommendations && !showEnjoyMessage && !showMultiDishScoring && !showPostMealFeedback) {
+    return (
+      <MultiDishScoring
+        restaurant={pendingRating.restaurant}
+        selectedDishes={pendingRating.dishes}
+        onComplete={(dishes, addToFavorites) => {
+          setPendingRating(null);
+          Alert.alert('Done!', 'Your feedback has been saved.');
+        }}
+        onBack={() => {
+          // Don't clear pending — user can come back later
+        }}
+      />
+    );
+  }
 
   if (showDishRecommendations && selectedRestaurant) {
     return (
@@ -366,7 +385,6 @@ export function ChooseDishLanding({
           <TouchableOpacity
             onPress={() => {
               setShowEnjoyMessage(false);
-              resetFlow();
             }}
             style={{ marginTop: 12 }}
           >
